@@ -1,0 +1,120 @@
+apiVersion: fluxcd.controlplane.io/v1
+kind: FluxInstance
+metadata:
+  name: flux
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "1h"
+    fluxcd.controlplane.io/reconcileTimeout: "5m"
+spec:
+  distribution:
+    version: "2.x"
+    registry: "ghcr.io/fluxcd"
+    artifact: "oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests"
+  components:
+    - source-controller
+    - kustomize-controller
+    - helm-controller
+  cluster:
+    type: kubernetes
+    size: medium
+    multitenant: false
+    networkPolicy: true
+    domain: "cluster.local"
+  kustomize:
+    patches:
+      - patch: |
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: flux-system
+            labels:
+              pod-security.kubernetes.io/enforce: privileged
+              pod-security.kubernetes.io/warn: privileged
+              pod-security.kubernetes.io/audit: privileged
+        target:
+          kind: Namespace
+      - target:
+          kind: Deployment
+          name: source-controller
+        patch: |-
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --health-addr=127.0.0.1:45121
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --metrics-addr=127.0.0.1:45122
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --storage-addr=127.0.0.1:45123
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --storage-adv-addr=127.0.0.1:45123
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --events-addr=http://127.0.0.1:45423
+
+      - target:
+          kind: Deployment
+          name: helm-controller
+        patch: |-
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --health-addr=127.0.0.1:45221
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --metrics-addr=127.0.0.1:45222
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --events-addr=http://127.0.0.1:45423
+
+      - target:
+          kind: Deployment
+          name: kustomize-controller
+        patch: |-
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --health-addr=127.0.0.1:45321
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --metrics-addr=127.0.0.1:45322
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --events-addr=http://127.0.0.1:45423
+
+      - target:
+          kind: Deployment
+          labelSelector: app.kubernetes.io/part-of=flux
+        patch: |-
+          - op: replace
+            path: /spec/strategy
+            value:
+              type: Recreate
+          - op: replace
+            path: /spec/template/spec/hostNetwork
+            value: true
+          - op: remove
+            path: /spec/template/spec/containers/0/ports
+          - op: remove
+            path: /spec/template/spec/containers/0/livenessProbe
+          - op: remove
+            path: /spec/template/spec/containers/0/readinessProbe
+          - op: add
+            path: /spec/template/spec/tolerations
+            value:
+              - key: node.kubernetes.io/not-ready
+                operator: Exists
+                effect: NoSchedule
+              - key: node.kubernetes.io/unreachable
+                operator: Exists
+                effect: NoSchedule
+          - op: add
+            path: /spec/template/spec/containers/0/env/-
+            value:
+              name: KUBERNETES_SERVICE_HOST
+              value: "127.0.0.1"
+          - op: add
+            path: /spec/template/spec/containers/0/env/-
+            value:
+              name: KUBERNETES_SERVICE_PORT
+              value: "6443"

@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/controlplaneio-fluxcd/flux-operator/releases/download/v0.28.0/install.yaml
+  - instance.yml
+  - spectrum.yml
+
+patches:
+  - target:
+      kind: Namespace
+      name: flux-system
+    patch: |-
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: privileged
+  - target:
+      kind: Deployment
+      name: flux-operator
+      namespace: flux-system
+    patch: |-
+      - op: add
+        path: /spec/template/spec/hostNetwork
+        value: true
+      - op: add
+        path: /spec/template/spec/tolerations
+        value:
+          - key: "node.kubernetes.io/not-ready"
+            operator: "Exists"
+            effect: "NoSchedule"
+          - key: "node.kubernetes.io/unreachable"
+            operator: "Exists"
+            effect: "NoSchedule"
