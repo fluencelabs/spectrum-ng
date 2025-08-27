@@ -118,3 +118,16 @@ spec:
             value:
               name: KUBERNETES_SERVICE_PORT
               value: "6443"
+          - op: add
+            path: /spec/template/spec/affinity
+            value:
+              podAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+                      namespaces: ["flux-system"]
+                      labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/part-of: flux
+
