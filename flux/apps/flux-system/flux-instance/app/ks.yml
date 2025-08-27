@@ -11,5 +11,9 @@ spec:
   sourceRef:
     kind: GitRepository
     name: spectrum
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
   dependsOn:
     - name: flux-operator
