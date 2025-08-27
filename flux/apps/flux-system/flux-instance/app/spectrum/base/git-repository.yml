@@ -4,4 +4,4 @@ metadata:
   name: spectrum
 spec:
   interval: 5m0s
-  url: https://github.com/nahsi/spectrum-ng-test
+  url: https://github.com/fluencelabs/spectrum-ng
