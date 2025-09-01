@@ -1,0 +1,15 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lightmare
+  namespace: lightmare
+spec:
+  values:
+    operator:
+      config:
+        chainAdapter:
+          ipfsGatewayEndpoint: https://ipfs-gateway.fluence.dev
+          networkId: "52164803"
+          diamondContract: "0xA061470180457b6da7f50aF8c14Df9CE379218c6"
+        ccp:
+          proofPeriod: "8 sec"
