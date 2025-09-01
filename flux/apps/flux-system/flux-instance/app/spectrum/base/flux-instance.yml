@@ -22,4 +22,3 @@ spec:
     multitenant: false
     networkPolicy: true
     domain: "cluster.local"
-  kustomize: {}
