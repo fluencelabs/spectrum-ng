@@ -11,7 +11,6 @@ patches:
       kind: KubeVirt
       metadata:
         name: kubevirt
-        namespace: kubevirt
       spec:
         configuration:
           developerConfiguration: 
