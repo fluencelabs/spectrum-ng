@@ -5,3 +5,5 @@ resources:
 
   - ../../flux/apps/kube-system
   - ../../flux/apps/flux-system
+  - ../../flux/apps/kubevirt
+  - ../../flux/apps/local-path-provisioner
