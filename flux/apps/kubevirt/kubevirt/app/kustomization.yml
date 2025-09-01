@@ -1,5 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: kubevirt
 resources:
   - https://github.com/kubevirt/kubevirt/releases/download/v1.6.0/kubevirt-operator.yaml
   - https://github.com/kubevirt/kubevirt/releases/download/v1.6.0/kubevirt-cr.yaml
@@ -11,8 +12,27 @@ patches:
       kind: KubeVirt
       metadata:
         name: kubevirt
+        namespace: kubevirt
       spec:
         configuration:
           developerConfiguration: 
             featureGates:
               - CPUManager
+  - target:
+      kind: Namespace
+      name: kubevirt
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: kubevirt
+      $patch: delete
+  - target:
+      kind: Namespace
+      name: cdi
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: cdi
+      $patch: delete
