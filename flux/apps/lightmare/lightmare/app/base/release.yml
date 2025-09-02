@@ -25,6 +25,7 @@ spec:
           cni: "ovn"
           publicNetwork: "kube-system/public"
         ccp:
+          ipfsGatewayEndpoint: https://ipfs-gateway.fluence.dev
           image:
             repository: "fluencelabs/ccp-cu-worker"
             tag: "0.16.12@sha256:82699d5fe834175c911fc064223ff09810a33274d12a6ac355dc36fdbd4743b6"
