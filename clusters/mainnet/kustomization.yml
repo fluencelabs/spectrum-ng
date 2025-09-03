@@ -6,5 +6,6 @@ resources:
   - ../../flux/apps/kube-system
   - ../../flux/apps/flux-system
   - ../../flux/apps/kubevirt
+  - ../../flux/apps/system
 
   - ../../flux/apps/lightmare
