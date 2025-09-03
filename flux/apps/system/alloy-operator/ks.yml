@@ -8,7 +8,7 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: infra
+    name: spectrum
     namespace: flux-system
   interval: 1h
   retryInterval: 2m

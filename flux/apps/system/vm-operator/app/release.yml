@@ -28,7 +28,5 @@ spec:
       disable_prometheus_converter: true
     admissionWebhooks:
       enabled: true
-      certManager:
-        enabled: true
     serviceMonitor:
       enabled: false
