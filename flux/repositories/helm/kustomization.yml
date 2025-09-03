@@ -3,3 +3,6 @@ kind: Kustomization
 namespace: flux-system
 resources:
   - kube-ovn.yml
+  - metrics-server.yml
+  - victoria-metrics.yml
+  - grafana.yml
