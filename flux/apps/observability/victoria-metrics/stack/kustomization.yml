@@ -6,4 +6,3 @@ resources:
   - vmuser.yml
   - vmagent.yml
   - datasource.yml
-  - vmalert.yml

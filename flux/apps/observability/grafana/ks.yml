@@ -16,4 +16,3 @@ spec:
   timeout: 5m
   dependsOn:
     - name: grafana-operator-crd
-    - name: observability-secret-stores
