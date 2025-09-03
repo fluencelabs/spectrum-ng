@@ -1,12 +1,12 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: alloy-operator
+  name: grafana
   namespace: flux-system
 spec:
-  path: ./flux/apps/system/alloy-operator/app
+  path: ./flux/apps/observability/grafana/app
   prune: true
-  targetNamespace: system
+  targetNamespace: observability
   sourceRef:
     kind: GitRepository
     name: spectrum
@@ -14,3 +14,6 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
+  dependsOn:
+    - name: grafana-operator-crd
+    - name: observability-secret-stores

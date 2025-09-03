@@ -6,6 +6,7 @@ metadata:
 spec:
   path: ./flux/apps/system/vm-operator/app
   prune: true
+  targetNamespace: system
   sourceRef:
     kind: GitRepository
     name: spectrum

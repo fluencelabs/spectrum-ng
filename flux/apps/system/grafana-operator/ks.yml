@@ -8,6 +8,7 @@ spec:
   interval: 1m0s
   path: ./flux/apps/system/grafana-operator/crd
   prune: true
+  targetNamespace: system
   sourceRef:
     kind: GitRepository
     name: spectrum
@@ -21,6 +22,7 @@ metadata:
 spec:
   path: ./flux/apps/system/grafana-operator/app
   prune: true
+  targetNamespace: system
   sourceRef:
     kind: GitRepository
     name: spectrum
