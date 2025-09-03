@@ -7,7 +7,7 @@ spec:
     operator:
       config:
         chainAdapter:
-          networkId: "52164803"
-          diamondContract: "0xA061470180457b6da7f50aF8c14Df9CE379218c6"
+          networkId: "9999999"
+          diamondContract: "0xb05C35133C01C7193F09079eAeF97F693aE0E552"
         ccp:
-          proofPeriod: "8 sec"
+          proofPeriod: "7 min"

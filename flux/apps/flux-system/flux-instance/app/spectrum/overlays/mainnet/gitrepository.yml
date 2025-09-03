@@ -1,0 +1,7 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: spectrum
+spec:
+  ref:
+    branch: DOPS-241-mainnet
