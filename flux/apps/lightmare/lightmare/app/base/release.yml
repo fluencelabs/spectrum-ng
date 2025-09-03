@@ -1,0 +1,34 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lightmare
+spec:
+  interval: 5m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chartRef:
+    kind: OCIRepository
+    name: lightmare
+    namespace: lightmare
+  values:
+    operator:
+      octopus: true
+      image:
+        repository: "fluencelabs/lightmare"
+        tag: "0.7.3@sha256:9d6384a536a9783bf81057780853f39befc6f7e354268ab631a677fa71f0264f"
+      config:
+        k8s:
+          cni: "ovn"
+          publicNetwork: "kube-system/public"
+        ccp:
+          ipfsGatewayEndpoint: https://ipfs-gateway.fluence.dev
+          image:
+            repository: "fluencelabs/ccp-cu-worker"
+            tag: "0.16.12@sha256:82699d5fe834175c911fc064223ff09810a33274d12a6ac355dc36fdbd4743b6"
+          memory: 2.48 gib
+        chainAdapter:
+          privateRPCTokenSecretRef: private-rpc-token-secret
