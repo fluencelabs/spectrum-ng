@@ -94,7 +94,7 @@ spec:
 
         node_exporter.scrape "metrics" {
           targets = node_exporter.kubernetes.targets.output
-          forward_to = [prometheus.relabel.relable.receiver]
+          forward_to = [prometheus.relabel.nodeexporter.receiver]
         }
 
         // DISCOVERY
@@ -120,6 +120,26 @@ spec:
         // RELABELING
         prometheus.relabel "relable" {
           forward_to = [prometheus.remote_write.victoriametrics.receiver]
+        }
+
+        prometheus.relabel "nodeexporter" {
+          forward_to = [prometheus.remote_write.victoriametrics.receiver]
+
+          rule {
+            action         = "replace"
+            source_labels  = ["kubernetes_node"]
+            target_label   = "nodename"
+            regex          = "(.*)"
+            replacement    = "$1.talos"
+          }
+
+          rule {
+            action         = "replace"
+            source_labels  = ["kubernetes_node"]
+            target_label   = "instance"
+            regex          = "(.*)"
+            replacement    = "$1.talos"
+          }
         }
         
         // WRITING
