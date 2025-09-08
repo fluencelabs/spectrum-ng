@@ -31,5 +31,5 @@ spec:
     matchLabels:
       dashboards: grafana
   plugins:
-    - name: victorialogs
+    - name: victoriametrics-logs-datasource
       version: latest
