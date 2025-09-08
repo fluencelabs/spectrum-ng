@@ -16,7 +16,7 @@ spec:
     jsonData:
       prometheusType: Prometheus
       timeInterval: 15s
-----
+---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
