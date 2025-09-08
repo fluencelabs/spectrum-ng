@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/kube-system/multus/app
-  prune: true
+  prune: false
   targetNamespace: kube-system
   sourceRef:
     kind: GitRepository

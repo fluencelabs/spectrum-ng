@@ -6,7 +6,7 @@ metadata:
 spec:
   interval: 1m0s
   path: ./flux/apps/flux-system/flux-instance/app
-  prune: true
+  prune: false
   targetNamespace: flux-system
   sourceRef:
     kind: GitRepository
