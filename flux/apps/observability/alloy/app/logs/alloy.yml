@@ -72,11 +72,11 @@ spec:
 
         loki.source.kubernetes "pod_logs" {
           targets    = discovery.relabel.pod_logs.output
-          forward_to = [loki.write.loki.victorialogs]
+          forward_to = [loki.write.victorialogs.receiver]
         }
 
         // WRITING
-        loki.write.loki "victorialogs" {
+        loki.write "victorialogs" {
           endpoint {
             url = "http://vlogs-stack.observability.svc:9428/insert/loki/api/v1/push"
           }
