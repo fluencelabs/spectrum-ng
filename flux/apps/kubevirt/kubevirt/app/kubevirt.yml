@@ -7,5 +7,5 @@ spec:
     developerConfiguration: 
       featureGates:
         - CPUManager
-  monitorNamespace: kubevirt
+  monitorNamespace: observability
   monitorAccount: prometheus-k8s
