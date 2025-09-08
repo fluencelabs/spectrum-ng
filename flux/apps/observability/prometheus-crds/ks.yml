@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/observability/prometheus-crds/app
-  prune: true
+  prune: false
   targetNamespace: observability
   sourceRef:
     kind: GitRepository
