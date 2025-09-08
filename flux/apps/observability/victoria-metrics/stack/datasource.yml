@@ -16,3 +16,20 @@ spec:
     jsonData:
       prometheusType: Prometheus
       timeInterval: 15s
+----
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: victoria-logs
+spec:
+  datasource:
+    access: proxy
+    type: victoriametrics-logs-datasource
+    name: VictoriaLogs
+    url: http://vmlogs-stack.observability.svc:9428
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  plugins:
+    - name: victorialogs
+      version: latest
