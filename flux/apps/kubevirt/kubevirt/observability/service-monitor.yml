@@ -3,7 +3,7 @@ kind: ServiceMonitor
 metadata:
   name: kubevirt
   labels:
-    scrape: true
+    scrape: "true"
 spec:
   selector:
     matchLabels:
