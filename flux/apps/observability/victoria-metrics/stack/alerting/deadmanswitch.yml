@@ -1,0 +1,12 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: deadmanswitch
+spec:
+  groups:
+    - name: deadmanswitch
+      rules:
+        - alert: deadmanswitch
+          expr: vector(1)
+          annotations:
+            description: "Always firing alert that checks entire alerting pipeline is healthy"

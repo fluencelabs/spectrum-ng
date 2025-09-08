@@ -7,3 +7,4 @@ resources:
   - vmuser.yml
   - vmagent.yml
   - datasource.yml
+  - alerting

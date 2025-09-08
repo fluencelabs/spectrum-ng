@@ -1,0 +1,12 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-stack.observability.svc:8428"
+  notifier:
+    url: "http://vmalertmanager-stack.observability.svc:9093"
+  evaluationInterval: "30s"
+  selectAllByDefault: true
