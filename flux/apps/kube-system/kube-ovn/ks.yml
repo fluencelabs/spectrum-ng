@@ -5,6 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/kube-system/kube-ovn/app
+  prune: true
   targetNamespace: kube-system
   sourceRef:
     kind: GitRepository

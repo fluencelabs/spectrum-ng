@@ -5,6 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/observability/victoria-metrics/stack
+  prune: true
   targetNamespace: observability
   sourceRef:
     kind: GitRepository
