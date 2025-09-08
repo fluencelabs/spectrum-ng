@@ -7,7 +7,6 @@ spec:
     type: statefulset
     replicas: 1
   alloy:
-  
     enableReporting: false
     configMap:
       content: |-
