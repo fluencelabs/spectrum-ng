@@ -1,0 +1,18 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: victoria-metrics
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    name: VictoriaMetrics
+    type: prometheus
+    uid: victoria-metrics
+    access: proxy
+    url: http://vmsingle-stack.observability.svc:8429
+    isDefault: true
+    jsonData:
+      prometheusType: Prometheus
+      timeInterval: 15s

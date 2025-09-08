@@ -1,0 +1,66 @@
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-views-global
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-views-global.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-views-namespaces
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-views-namespaces.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-views-nodes
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-views-nodes.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-views-pods
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-views-pods.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-api-server
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-system-api-server.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-coredns
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: "Kubernetes"
+  url: "https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/refs/tags/v2.8.1/dashboards/k8s-system-coredns.json"

@@ -1,0 +1,150 @@
+apiVersion: collectors.grafana.com/v1alpha1
+kind: Alloy
+metadata:
+  name: alloy-metrics
+spec:
+  controller:
+    type: statefulset
+    replicas: 1
+  alloy:
+  
+    enableReporting: false
+    configMap:
+      content: |-
+        logging {
+          level  = "info"
+          format = "logfmt"
+        }
+        
+        // MODULES
+        // Annotations
+        import.git "metric_annotations" {
+          repository = "https://github.com/grafana/alloy-modules.git"
+          revision = "v0.2.11"
+          path = "modules/kubernetes/annotations/metrics.alloy"
+          pull_frequency = "15m"
+        }
+
+        metric_annotations.kubernetes "targets" {
+          role = "endpoints"
+          annotation = "metrics.grafana.com"
+        }
+
+        metric_annotations.metrics "scrape" {
+          targets = metric_annotations.kubernetes.targets.output
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
+        // K8S Core
+        import.git "k8s" {
+          repository = "https://github.com/grafana/alloy-modules.git"
+          revision = "v0.2.11"
+          path = "modules/kubernetes/core/metrics.alloy"
+          pull_frequency = "15m"
+        }
+        
+        k8s.cadvisor "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        k8s.resources "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        k8s.apiserver "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        k8s.probes "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        k8s.kube_dns "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        k8s.kubelet "scrape" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
+        // kube-state-metrics
+        import.git "ksm" {
+          repository = "https://github.com/grafana/alloy-modules.git"
+          revision = "v0.2.11"
+          path = "modules/kubernetes/kube-state-metrics/metrics.alloy"
+          pull_frequency = "15m"
+        }
+
+        ksm.kubernetes "targets" {}
+
+        ksm.scrape "metrics" {
+          targets = ksm.kubernetes.targets.output
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
+        // node-exporter
+        import.git "node_exporter" {
+          repository = "https://github.com/grafana/alloy-modules.git"
+          revision = "v0.2.11"
+          path = "modules/system/node-exporter/metrics.alloy"
+          pull_frequency = "15m"
+        }
+
+        node_exporter.kubernetes "targets" {}
+
+        node_exporter.scrape "metrics" {
+          targets = node_exporter.kubernetes.targets.output
+          forward_to = [prometheus.relabel.nodeexporter.receiver]
+        }
+
+        // DISCOVERY
+        prometheus.operator.servicemonitors "services" {
+          forward_to = [prometheus.relabel.relable.receiver]
+          selector {
+            match_labels = {scrape = "true"}
+          }
+        }
+
+        prometheus.operator.podmonitors "podmonitors" {
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
+        // SELF-MONITORING
+        prometheus.exporter.self "default" { }
+        
+        prometheus.scrape "metamonitoring" {
+          targets    = prometheus.exporter.self.default.targets
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+        
+        // RELABELING
+        prometheus.relabel "relable" {
+          forward_to = [prometheus.remote_write.victoriametrics.receiver]
+        }
+
+        prometheus.relabel "nodeexporter" {
+          forward_to = [prometheus.remote_write.victoriametrics.receiver]
+
+          rule {
+            action         = "replace"
+            source_labels  = ["__meta_kubernetes_node_name"]
+            target_label   = "nodename"
+            regex          = "(.*)"
+            replacement    = "$1.talos"
+          }
+
+          rule {
+            action         = "replace"
+            source_labels  = ["__meta_kubernetes_node_name"]
+            target_label   = "instance"
+            regex          = "(.*)"
+            replacement    = "$1.talos"
+          }
+        }
+        
+        // WRITING
+        prometheus.remote_write "victoriametrics" {
+          endpoint {
+            url = "http://vmsingle-stack.observability.svc:8429/prometheus/api/v1/write"
+          }
+        }

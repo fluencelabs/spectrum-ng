@@ -1,0 +1,42 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: node-exporter
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: prometheus-node-exporter
+    namespace: flux-system
+  values:
+    fullnameOverride: node-exporter
+
+    image:
+      registry: quay.io
+      repository: prometheus/node-exporter
+
+    extraArgs:
+      - --no-collector.wifi
+      - --no-collector.btrfs
+      - --no-collector.dmi
+      - --no-collector.fibrechannel
+      - --no-collector.hwmon
+      - --no-collector.infiniband
+      - --no-collector.powersupplyclass
+      - --no-collector.thermal_zone
+      - --no-collector.zfs
+      - --collector.filesystem.ignored-mount-points=^/(run|etc|dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
+      - --collector.netclass.ignored-devices=^(veth.*)$
+
+    prometheus:
+      monitor:
+        enabled: true
+
+    resources:
+      requests:
+        cpu: 23m
+        memory: 64M
+      limits:
+        memory: 64M
+
+    hostNetwork: false
