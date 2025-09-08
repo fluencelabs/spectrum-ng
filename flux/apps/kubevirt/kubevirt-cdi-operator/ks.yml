@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m0s
-  path: ./flux/apps/kubevirt/cdi/app
+  path: ./flux/apps/kubevirt/kubevirt-cdi-operator/app
   prune: false
   targetNamespace: kubevirt
   sourceRef:
