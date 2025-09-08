@@ -5,4 +5,4 @@ metadata:
 spec:
   replicaCount: 1
   selectAllByDefault: true
-  configSecret: vmalerting-config
+  configSecret: alertmanager-config
