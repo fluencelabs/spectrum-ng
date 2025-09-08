@@ -6,7 +6,6 @@ metadata:
 spec:
   interval: 1m0s
   path: ./flux/apps/kubevirt/kubevirt/kubevirt
-  prune: true
   targetNamespace: kubevirt
   sourceRef:
     kind: GitRepository
@@ -21,7 +20,6 @@ metadata:
 spec:
   interval: 1m0s
   path: ./flux/apps/kubevirt/kubevirt/cdi
-  prune: true
   targetNamespace: kubevirt
   sourceRef:
     kind: GitRepository
