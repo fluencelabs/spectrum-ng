@@ -1,152 +1,52 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: kubevirt-virt-controller-alert
+  name: kubevirt-virt-controller-alerts
 spec:
   groups:
     - name: kubevirt.virt_controller.alerts
       rules:
-      - alert: VirtControllerDown
-        expr: kubevirt_virt_controller:count_up == 0
-        for: 2m
+      - alert: LowReadyVirtControllersCount
+        expr: kubevirt_virt_controller_ready <  kubevirt_virt_controller_up
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Some virt controllers are running but not ready.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowReadyVirtControllersCount
+          
+      - alert: NoReadyVirtController
+        expr: kubevirt_virt_controller_ready == 0
+        for: 10m
         labels:
           severity: critical
-          component: virt-controller
         annotations:
-          summary: "virt-controller is down"
-          description: "No virt-controller instances are up. VM lifecycle management is not functional."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerDown.html"
+          summary: No ready virt-controller was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/NoReadyVirtController
+          
+      - alert: VirtControllerDown
+        expr: kubevirt_virt_controller_up == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: No running virt-controller was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtControllerDown
           
       - alert: LowVirtControllersCount
-        expr: kubevirt_virt_controller:count_ready < 2
+        expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_controller_ready < 2)
         for: 10m
         labels:
           severity: warning
-          component: virt-controller
         annotations:
-          summary: "Low number of ready virt-controller pods"
-          description: "Only {{ $value }} virt-controller pods are ready. High availability may be compromised."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtControllersCount.html"
-          
-      - alert: LowReadyVirtControllersCount
-        expr: kubevirt_virt_controller:count_ready == 0
-        for: 5m
-        labels:
-          severity: critical
-          component: virt-controller
-        annotations:
-          summary: "No ready virt-controller pods"
-          description: "No virt-controller pods are ready. VM operations will fail."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/LowReadyVirtControllersCount.html"
-          
-      - alert: VirtControllerAbsent
-        expr: absent(up{job=~".*virt-controller.*"})
-        for: 5m
-        labels:
-          severity: critical
-          component: virt-controller
-        annotations:
-          summary: "virt-controller is absent"
-          description: "virt-controller metrics are not being scraped. Service may be down or misconfigured."
-          
-      - alert: VirtControllerRESTErrorsHigh
-        expr: kubevirt_virt_controller:rest_client_error_ratio:rate5m > 0.05
-        for: 5m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "virt-controller REST client error rate is high"
-          description: "virt-controller error rate is {{ $value | humanizePercentage }}. Check connectivity to API server."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsHigh.html"
+          summary: More than one virt-controller should be ready if more than one worker node.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowVirtControllersCount
           
       - alert: VirtControllerRESTErrorsBurst
-        expr: increase(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m]) > 5
-        for: 2m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "virt-controller REST client error burst"
-          description: "virt-controller has {{ $value }} REST client errors in 5 minutes."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsBurst.html"
-          
-      - alert: VirtControllerRESTLatencyHigh
-        expr: kubevirt_virt_controller:rest_client_request_duration:p99 > 5
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "virt-controller REST client latency is high"
-          description: "virt-controller 99th percentile latency is {{ $value }}s. Performance may be degraded."
-          
-      - alert: VirtControllerWorkqueueDepthHigh
-        expr: kubevirt_virt_controller:workqueue_depth > 100
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "virt-controller workqueue depth is high"
-          description: "virt-controller workqueue {{ $labels.name }} depth is {{ $value }}. Processing may be slow."
-          
-      - alert: VirtControllerMemoryUsageHigh
-        expr: |
-          (
-            kubevirt_virt_controller:memory_usage_bytes
-            /
-            (kube_pod_container_resource_requests{pod=~"virt-controller.*", container="virt-controller", resource="memory"} > 0)
-          ) > 0.9
-        for: 15m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "virt-controller memory usage is high"
-          description: "virt-controller pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory."
-          
-      - alert: NoLeadingVirtController
-        expr: kubevirt_virt_controller:count_leading == 0
+        expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*"} [5m] ) ) >= 0.8
         for: 5m
         labels:
-          severity: warning
-          component: virt-controller
+          severity: critical
         annotations:
-          summary: "No leading virt-controller"
-          description: "No virt-controller instance is in leading state. Some operations may be impacted."
-          
-      - alert: VirtControllerSplitBrain
-        expr: kubevirt_virt_controller:count_leading > 1
-        for: 2m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "Multiple leading virt-controllers detected"
-          description: "{{ $value }} virt-controller instances are in leading state. This may cause conflicts."
-          
-      - alert: VirtControllerVMIMigrationFailuresHigh
-        expr: |
-          (
-            kubevirt_virt_controller:vmi_migration_failures:rate5m
-            /
-            (kubevirt_virt_controller:vmi_migrations:rate5m + kubevirt_virt_controller:vmi_migration_failures:rate5m)
-          ) > 0.1
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-controller
-        annotations:
-          summary: "VMI migration failure rate is high"
-          description: "VMI migration failure rate is {{ $value | humanizePercentage }}. Check cluster resources and network connectivity."
-          
-      - alert: VirtControllerVMIsStuckInPending
-        expr: kubevirt_vmi_phase_count{phase="Pending"} > 0
-        for: 15m
-        labels:
-          severity: info
-          component: virt-controller
-        annotations:
-          summary: "VMIs stuck in Pending state"
-          description: "{{ $value }} VMIs have been in Pending state for more than 15 minutes. Check node resources and scheduling constraints."
+          summary: More than 80% of the rest calls failed in virt-controller for the last 5 minutes
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsBurst

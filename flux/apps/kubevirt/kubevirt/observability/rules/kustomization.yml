@@ -4,5 +4,4 @@ resources:
   - virt-api
   - virt-controller
   - virt-handler
-  - virt-launcher
   - virt-operator

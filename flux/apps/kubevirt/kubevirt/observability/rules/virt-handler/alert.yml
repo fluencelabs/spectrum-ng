@@ -1,135 +1,25 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
-  name: kubevirt-virt-handler-alert
+  name: kubevirt-virt-handler-alerts
 spec:
   groups:
     - name: kubevirt.virt_handler.alerts
       rules:
       - alert: VirtHandlerDaemonSetRolloutFailing
-        expr: |
-          (
-            kube_daemonset_status_number_ready{daemonset="virt-handler"}
-            <
-            kube_daemonset_status_desired_number_scheduled{daemonset="virt-handler"}
-          )
+        expr: (kube_daemonset_status_number_ready{namespace='kubevirt', daemonset='virt-handler'} - kube_daemonset_status_desired_number_scheduled{namespace='kubevirt', daemonset='virt-handler'}) != 0
         for: 15m
         labels:
           severity: warning
-          component: virt-handler
         annotations:
-          summary: "virt-handler DaemonSet rollout is failing"
-          description: "virt-handler DaemonSet has {{ kube_daemonset_status_number_ready{daemonset=\"virt-handler\"} }} ready pods out of {{ kube_daemonset_status_desired_number_scheduled{daemonset=\"virt-handler\"} }} desired."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtHandlerDaemonSetRolloutFailing.html"
+          summary: Some virt-handlers failed to roll out
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtHandlerDaemonSetRolloutFailing
           
-      - alert: VirtHandlerLowNodeCoverage
-        expr: kubevirt_virt_handler:node_coverage_ratio < 0.9
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler has low node coverage"
-          description: "Only {{ $value | humanizePercentage }} of ready nodes have a running virt-handler. Some nodes may not support VMs."
-          
-      - alert: VirtHandlerAbsent
-        expr: absent(up{job=~".*virt-handler.*"})
+      - alert: VirtHandlerRESTErrorsBurst
+        expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-handler-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-handler-.*"} [5m] ) ) >= 0.8
         for: 5m
         labels:
           severity: critical
-          component: virt-handler
         annotations:
-          summary: "virt-handler is absent"
-          description: "virt-handler metrics are not being scraped. DaemonSet may be down or misconfigured."
-          
-      - alert: VirtHandlerRESTErrorsHigh
-        expr: kubevirt_virt_handler:rest_client_error_ratio:rate5m > 0.05
-        for: 5m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler REST client error rate is high"
-          description: "virt-handler error rate is {{ $value | humanizePercentage }} on node {{ $labels.node }}. Check connectivity to API server."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtHandlerRESTErrorsHigh.html"
-          
-      - alert: VirtHandlerRESTErrorsBurst
-        expr: increase(rest_client_requests_total{job=~".*virt-handler.*", code=~"[45].."}[5m]) > 5
-        for: 2m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler REST client error burst"
-          description: "virt-handler has {{ $value }} REST client errors in 5 minutes on node {{ $labels.node }}."
-          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtHandlerRESTErrorsBurst.html"
-          
-      - alert: VirtHandlerRESTLatencyHigh
-        expr: kubevirt_virt_handler:rest_client_request_duration:p99 > 5
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler REST client latency is high"
-          description: "virt-handler 99th percentile latency is {{ $value }}s on node {{ $labels.node }}. Performance may be degraded."
-          
-      - alert: VirtHandlerWorkqueueDepthHigh
-        expr: kubevirt_virt_handler:workqueue_depth > 50
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler workqueue depth is high"
-          description: "virt-handler workqueue {{ $labels.name }} depth is {{ $value }} on node {{ $labels.node }}. Processing may be slow."
-          
-      - alert: VirtHandlerMemoryUsageHigh
-        expr: |
-          (
-            kubevirt_virt_handler:memory_usage_bytes
-            /
-            (kube_pod_container_resource_requests{pod=~"virt-handler.*", container="virt-handler", resource="memory"} > 0)
-          ) > 0.9
-        for: 15m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler memory usage is high"
-          description: "virt-handler pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory on node {{ $labels.node }}."
-          
-      - alert: VirtHandlerNodeMissing
-        expr: |
-          (
-            count by (node) (kube_node_info{node_ready="true"})
-            unless
-            count by (node) (kubevirt_virt_handler_up == 1)
-          )
-        for: 10m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "Node missing virt-handler"
-          description: "Node {{ $labels.node }} is ready but has no running virt-handler. VMs cannot be scheduled on this node."
-          
-      - alert: VirtHandlerNotReady
-        expr: kubevirt_virt_handler_up == 0
-        for: 5m
-        labels:
-          severity: warning
-          component: virt-handler
-        annotations:
-          summary: "virt-handler is not ready"
-          description: "virt-handler on node {{ $labels.node }} is not ready. VMs on this node may be affected."
-          
-      - alert: VirtHandlerHighVMIDensity
-        expr: kubevirt_virt_handler:vmis_per_node > 20
-        for: 10m
-        labels:
-          severity: info
-          component: virt-handler
-        annotations:
-          summary: "High VMI density on node"
-          description: "Node {{ $labels.node }} is running {{ $value }} VMIs. Consider load balancing or node scaling."
+          summary: More than 80% of the rest calls failed in virt-handler for the last 5 minutes
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtHandlerRESTErrorsBurst
