@@ -1,0 +1,68 @@
+groups:
+- name: kubevirt.virt_operator.recording_rules
+  interval: 30s
+  rules:
+  # Basic availability and readiness metrics
+  - record: kubevirt_virt_operator:up
+    expr: up{job=~".*virt-operator.*"}
+    
+  - record: kubevirt_virt_operator:ready
+    expr: kubevirt_virt_operator_ready
+    
+  - record: kubevirt_virt_operator:leading
+    expr: kubevirt_virt_operator_leading
+    
+  # Count of operator instances
+  - record: kubevirt_virt_operator:count_total
+    expr: count(up{job=~".*virt-operator.*"})
+    
+  - record: kubevirt_virt_operator:count_up
+    expr: count(up{job=~".*virt-operator.*"} == 1)
+    
+  - record: kubevirt_virt_operator:count_ready
+    expr: count(kubevirt_virt_operator_ready == 1)
+    
+  - record: kubevirt_virt_operator:count_leading
+    expr: count(kubevirt_virt_operator_leading == 1)
+    
+  # REST client metrics
+  - record: kubevirt_virt_operator:rest_client_requests:rate5m
+    expr: rate(rest_client_requests_total{job=~".*virt-operator.*"}[5m])
+    
+  - record: kubevirt_virt_operator:rest_client_request_duration:p99
+    expr: histogram_quantile(0.99, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-operator.*"}[5m]))
+    
+  - record: kubevirt_virt_operator:rest_client_request_duration:p95
+    expr: histogram_quantile(0.95, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-operator.*"}[5m]))
+    
+  - record: kubevirt_virt_operator:rest_client_request_duration:p50
+    expr: histogram_quantile(0.50, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-operator.*"}[5m]))
+    
+  # Error rates
+  - record: kubevirt_virt_operator:rest_client_errors:rate5m
+    expr: rate(rest_client_requests_total{job=~".*virt-operator.*", code=~"[45].."}[5m])
+    
+  - record: kubevirt_virt_operator:rest_client_error_ratio:rate5m
+    expr: |
+      (
+        rate(rest_client_requests_total{job=~".*virt-operator.*", code=~"[45].."}[5m])
+        /
+        rate(rest_client_requests_total{job=~".*virt-operator.*"}[5m])
+      )
+      
+  # Workqueue metrics
+  - record: kubevirt_virt_operator:workqueue_depth
+    expr: workqueue_depth{job=~".*virt-operator.*"}
+    
+  - record: kubevirt_virt_operator:workqueue_adds:rate5m
+    expr: rate(workqueue_adds_total{job=~".*virt-operator.*"}[5m])
+    
+  - record: kubevirt_virt_operator:workqueue_retries:rate5m
+    expr: rate(workqueue_retries_total{job=~".*virt-operator.*"}[5m])
+    
+  # Resource usage
+  - record: kubevirt_virt_operator:memory_usage_bytes
+    expr: container_memory_working_set_bytes{pod=~"virt-operator.*", container="virt-operator"}
+    
+  - record: kubevirt_virt_operator:cpu_usage:rate5m
+    expr: rate(container_cpu_usage_seconds_total{pod=~"virt-operator.*", container="virt-operator"}[5m])

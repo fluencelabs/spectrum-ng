@@ -1,0 +1,85 @@
+- name: kubevirt.virt_controller.alerts
+  rules:
+  - alert: VirtControllerDown
+    expr: kubevirt_virt_controller:count_up == 0
+    for: 2m
+    labels:
+      severity: critical
+      component: virt-controller
+    annotations:
+      summary: "virt-controller is down"
+      description: "No virt-controller instances are up. VM lifecycle management is not functional."
+      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerDown.html"
+      
+  - alert: LowVirtControllersCount
+    expr: kubevirt_virt_controller:count_ready < 2
+    for: 10m
+    labels:
+      severity: warning
+      component: virt-controller
+    annotations:
+      summary: "Low number of ready virt-controller pods"
+      description: "Only {{ $value }} virt-controller pods are ready. High availability may be compromised."
+      runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtControllersCount.html"
+      
+  - alert: LowReadyVirtControllersCount
+    expr: kubevirt_virt_controller:count_ready == 0
+    for: 5m
+    labels:
+      severity: critical
+      component: virt-controller
+    annotations:
+      summary: "No ready virt-controller pods"
+      description: "No virt-controller pods are ready. VM operations will fail."
+      runbook_url: "https://kubevirt.io/monitoring/runbooks/LowReadyVirtControllersCount.html"
+      
+  - alert: VirtControllerAbsent
+    expr: absent(up{job=~".*virt-controller.*"})
+    for: 5m
+    labels:
+      severity: critical
+      component: virt-controller
+    annotations:
+      summary: "virt-controller is absent"
+      description: "virt-controller metrics are not being scraped. Service may be down or misconfigured."
+      
+  - alert: VirtControllerRESTErrorsHigh
+    expr: kubevirt_virt_controller:rest_client_error_ratio:rate5m > 0.05
+    for: 5m
+    labels:
+      severity: warning
+      component: virt-controller
+    annotations:
+      summary: "virt-controller REST client error rate is high"
+      description: "virt-controller error rate is {{ $value | humanizePercentage }}. Check connectivity to API server."
+      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsHigh.html"
+      
+  - alert: VirtControllerRESTErrorsBurst
+    expr: increase(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m]) > 5
+    for: 2m
+    labels:
+      severity: warning
+      component: virt-controller
+    annotations:
+      summary: "virt-controller REST client error burst"
+      description: "virt-controller has {{ $value }} REST client errors in 5 minutes."
+      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsBurst.html"
+      
+  - alert: VirtControllerRESTLatencyHigh
+    expr: kubevirt_virt_controller:rest_client_request_duration:p99 > 5
+    for: 10m
+    labels:
+      severity: warning
+      component: virt-controller
+    annotations:
+      summary: "virt-controller REST client latency is high"
+      description: "virt-controller 99th percentile latency is {{ $value }}s. Performance may be degraded."
+      
+  - alert: VirtControllerWorkqueueDepthHigh
+    expr: kubevirt_virt_controller:workqueue_depth > 100
+    for: 10m
+    labels:
+      severity: warning
+      component: virt-controller
+    annotations:
+      summary: "virt-controller workqueue depth is high"
