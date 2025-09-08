@@ -4,5 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    # tag: mainnet
-    branch: DOPS-244
+    tag: mainnet
