@@ -1,0 +1,11 @@
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+spec:
+  configuration:
+    developerConfiguration: 
+      featureGates:
+        - CPUManager
+  monitorNamespace: kubevirt
+  monitorAccount: prometheus-k8s
