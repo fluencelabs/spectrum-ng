@@ -1,0 +1,91 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-handler-recording
+spec:
+  groups:
+    - name: kubevirt.virt_handler.recording_rules
+      interval: 30s
+      rules:
+      # Basic availability and readiness metrics
+      - record: kubevirt_virt_handler:up
+        expr: up{job=~".*virt-handler.*"}
+        
+      - record: kubevirt_virt_handler:ready
+        expr: kubevirt_virt_handler_up
+        
+      # Count of handler instances (should match node count)
+      - record: kubevirt_virt_handler:count_total
+        expr: count(up{job=~".*virt-handler.*"})
+        
+      - record: kubevirt_virt_handler:count_up
+        expr: count(up{job=~".*virt-handler.*"} == 1)
+        
+      - record: kubevirt_virt_handler:count_ready
+        expr: count(kubevirt_virt_handler_up == 1)
+        
+      # Node coverage (should be 100%)
+      - record: kubevirt_virt_handler:node_coverage_ratio
+        expr: |
+          (
+            count(kubevirt_virt_handler_up == 1)
+            /
+            count(kube_node_info{node_ready="true"})
+          )
+          
+      # REST client metrics
+      - record: kubevirt_virt_handler:rest_client_requests:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-handler.*"}[5m])
+        
+      - record: kubevirt_virt_handler:rest_client_request_duration:p99
+        expr: histogram_quantile(0.99, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-handler.*"}[5m]))
+        
+      - record: kubevirt_virt_handler:rest_client_request_duration:p95
+        expr: histogram_quantile(0.95, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-handler.*"}[5m]))
+        
+      - record: kubevirt_virt_handler:rest_client_request_duration:p50
+        expr: histogram_quantile(0.50, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-handler.*"}[5m]))
+        
+      # Error rates
+      - record: kubevirt_virt_handler:rest_client_errors:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-handler.*", code=~"[45].."}[5m])
+        
+      - record: kubevirt_virt_handler:rest_client_error_ratio:rate5m
+        expr: |
+          (
+            rate(rest_client_requests_total{job=~".*virt-handler.*", code=~"[45].."}[5m])
+            /
+            rate(rest_client_requests_total{job=~".*virt-handler.*"}[5m])
+          )
+          
+      # Workqueue metrics
+      - record: kubevirt_virt_handler:workqueue_depth
+        expr: workqueue_depth{job=~".*virt-handler.*"}
+        
+      - record: kubevirt_virt_handler:workqueue_adds:rate5m
+        expr: rate(workqueue_adds_total{job=~".*virt-handler.*"}[5m])
+        
+      - record: kubevirt_virt_handler:workqueue_retries:rate5m
+        expr: rate(workqueue_retries_total{job=~".*virt-handler.*"}[5m])
+        
+      # VMI operations
+      - record: kubevirt_virt_handler:vmi_starts:rate5m
+        expr: rate(kubevirt_vmi_starts_total[5m])
+        
+      - record: kubevirt_virt_handler:vmi_stops:rate5m
+        expr: rate(kubevirt_vmi_stops_total[5m])
+        
+      # libvirt operations
+      - record: kubevirt_virt_handler:libvirt_domain_state_change:rate5m
+        expr: rate(kubevirt_libvirt_domain_state_change_total[5m])
+        
+      # Resource usage per node
+      - record: kubevirt_virt_handler:memory_usage_bytes
+        expr: container_memory_working_set_bytes{pod=~"virt-handler.*", container="virt-handler"}
+        
+      - record: kubevirt_virt_handler:cpu_usage:rate5m
+        expr: rate(container_cpu_usage_seconds_total{pod=~"virt-handler.*", container="virt-handler"}[5m])
+        
+      # VMI counts per node
+      - record: kubevirt_virt_handler:vmis_per_node
+        expr: count by (node) (kubevirt_vmi_info{phase="Running"})

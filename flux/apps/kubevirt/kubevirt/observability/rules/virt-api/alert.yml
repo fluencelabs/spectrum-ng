@@ -1,99 +1,105 @@
-- name: kubevirt.virt_api.alerts
-  rules:
-  - alert: VirtAPIDown
-    expr: kubevirt_virt_api:count_up == 0
-    for: 2m
-    labels:
-      severity: critical
-      component: virt-api
-    annotations:
-      summary: "virt-api is down"
-      description: "No virt-api instances are up. KubeVirt API is not available."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtAPIDown.html"
-      
-  - alert: LowVirtAPICount
-    expr: kubevirt_virt_api:count_ready < 2
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "Low number of ready virt-api pods"
-      description: "Only {{ $value }} virt-api pods are ready. High availability may be compromised."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtAPICount.html"
-      
-  - alert: VirtAPIAbsent
-    expr: absent(up{job=~".*virt-api.*"})
-    for: 5m
-    labels:
-      severity: critical
-      component: virt-api
-    annotations:
-      summary: "virt-api is absent"
-      description: "virt-api metrics are not being scraped. Service may be down or misconfigured."
-      
-  - alert: VirtAPIRESTErrorsHigh
-    expr: kubevirt_virt_api:http_error_ratio:rate5m > 0.05
-    for: 5m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api HTTP error rate is high"
-      description: "virt-api HTTP error rate is {{ $value | humanizePercentage }}. Check API server health."
-      
-  - alert: VirtAPIRESTErrorsBurst
-    expr: increase(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m]) > 5
-    for: 2m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api REST client error burst"
-      description: "virt-api has {{ $value }} REST client errors in 5 minutes. Check connectivity to API server."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtApiRESTErrorsBurst.html"
-      
-  - alert: VirtAPILatencyHigh
-    expr: kubevirt_virt_api:http_request_duration:p99 > 5
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api HTTP latency is high"
-      description: "virt-api 99th percentile latency is {{ $value }}s. Performance may be degraded."
-      
-  - alert: VirtAPIWorkqueueDepthHigh
-    expr: kubevirt_virt_api:workqueue_depth > 100
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api workqueue depth is high"
-      description: "virt-api workqueue {{ $labels.name }} depth is {{ $value }}. Processing may be slow."
-      
-  - alert: VirtAPIMemoryUsageHigh
-    expr: |
-      (
-        kubevirt_virt_api:memory_usage_bytes
-        /
-        (kube_pod_container_resource_requests{pod=~"virt-api.*", container="virt-api", resource="memory"} > 0)
-      ) > 0.9
-    for: 15m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api memory usage is high"
-      description: "virt-api pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory."
-      
-  - alert: VirtAPIClientErrorsHigh
-    expr: kubevirt_virt_api:rest_client_error_ratio:rate5m > 0.1
-    for: 5m
-    labels:
-      severity: warning
-      component: virt-api
-    annotations:
-      summary: "virt-api client error rate is high"
-      description: "virt-api client error rate is {{ $value | humanizePercentage }}. Check connectivity to Kubernetes API."
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-api-alert
+spec:
+  groups:
+    - name: kubevirt.virt_api.alerts
+      rules:
+      - alert: VirtAPIDown
+        expr: kubevirt_virt_api:count_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: virt-api
+        annotations:
+          summary: "virt-api is down"
+          description: "No virt-api instances are up. KubeVirt API is not available."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtAPIDown.html"
+          
+      - alert: LowVirtAPICount
+        expr: kubevirt_virt_api:count_ready < 2
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "Low number of ready virt-api pods"
+          description: "Only {{ $value }} virt-api pods are ready. High availability may be compromised."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtAPICount.html"
+          
+      - alert: VirtAPIAbsent
+        expr: absent(up{job=~".*virt-api.*"})
+        for: 5m
+        labels:
+          severity: critical
+          component: virt-api
+        annotations:
+          summary: "virt-api is absent"
+          description: "virt-api metrics are not being scraped. Service may be down or misconfigured."
+          
+      - alert: VirtAPIRESTErrorsHigh
+        expr: kubevirt_virt_api:http_error_ratio:rate5m > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api HTTP error rate is high"
+          description: "virt-api HTTP error rate is {{ $value | humanizePercentage }}. Check API server health."
+          
+      - alert: VirtAPIRESTErrorsBurst
+        expr: increase(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api REST client error burst"
+          description: "virt-api has {{ $value }} REST client errors in 5 minutes. Check connectivity to API server."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtApiRESTErrorsBurst.html"
+          
+      - alert: VirtAPILatencyHigh
+        expr: kubevirt_virt_api:http_request_duration:p99 > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api HTTP latency is high"
+          description: "virt-api 99th percentile latency is {{ $value }}s. Performance may be degraded."
+          
+      - alert: VirtAPIWorkqueueDepthHigh
+        expr: kubevirt_virt_api:workqueue_depth > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api workqueue depth is high"
+          description: "virt-api workqueue {{ $labels.name }} depth is {{ $value }}. Processing may be slow."
+          
+      - alert: VirtAPIMemoryUsageHigh
+        expr: |
+          (
+            kubevirt_virt_api:memory_usage_bytes
+            /
+            (kube_pod_container_resource_requests{pod=~"virt-api.*", container="virt-api", resource="memory"} > 0)
+          ) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api memory usage is high"
+          description: "virt-api pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory."
+          
+      - alert: VirtAPIClientErrorsHigh
+        expr: kubevirt_virt_api:rest_client_error_ratio:rate5m > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: virt-api
+        annotations:
+          summary: "virt-api client error rate is high"
+          description: "virt-api client error rate is {{ $value | humanizePercentage }}. Check connectivity to Kubernetes API."

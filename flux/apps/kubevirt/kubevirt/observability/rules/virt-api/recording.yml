@@ -1,81 +1,86 @@
-groups:
-- name: kubevirt.virt_api.recording_rules
-  interval: 30s
-  rules:
-  # Basic availability and readiness metrics
-  - record: kubevirt_virt_api:up
-    expr: up{job=~".*virt-api.*"}
-    
-  - record: kubevirt_virt_api:ready
-    expr: kubevirt_virt_api_up
-    
-  # Count of API server instances
-  - record: kubevirt_virt_api:count_total
-    expr: count(up{job=~".*virt-api.*"})
-    
-  - record: kubevirt_virt_api:count_up
-    expr: count(up{job=~".*virt-api.*"} == 1)
-    
-  - record: kubevirt_virt_api:count_ready
-    expr: count(kubevirt_virt_api_up == 1)
-    
-  # HTTP request metrics
-  - record: kubevirt_virt_api:http_requests:rate5m
-    expr: rate(http_requests_total{job=~".*virt-api.*"}[5m])
-    
-  - record: kubevirt_virt_api:http_request_duration:p99
-    expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
-    
-  - record: kubevirt_virt_api:http_request_duration:p95
-    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
-    
-  - record: kubevirt_virt_api:http_request_duration:p50
-    expr: histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
-    
-  # HTTP error rates
-  - record: kubevirt_virt_api:http_errors:rate5m
-    expr: rate(http_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
-    
-  - record: kubevirt_virt_api:http_error_ratio:rate5m
-    expr: |
-      (
-        rate(http_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
-        /
-        rate(http_requests_total{job=~".*virt-api.*"}[5m])
-      )
-      
-  # REST client metrics (for API server's outbound calls)
-  - record: kubevirt_virt_api:rest_client_requests:rate5m
-    expr: rate(rest_client_requests_total{job=~".*virt-api.*"}[5m])
-    
-  - record: kubevirt_virt_api:rest_client_errors:rate5m
-    expr: rate(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
-    
-  - record: kubevirt_virt_api:rest_client_error_ratio:rate5m
-    expr: |
-      (
-        rate(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
-        /
-        rate(rest_client_requests_total{job=~".*virt-api.*"}[5m])
-      )
-      
-  # Workqueue metrics
-  - record: kubevirt_virt_api:workqueue_depth
-    expr: workqueue_depth{job=~".*virt-api.*"}
-    
-  - record: kubevirt_virt_api:workqueue_adds:rate5m
-    expr: rate(workqueue_adds_total{job=~".*virt-api.*"}[5m])
-    
-  # VM API operations
-  - record: kubevirt_virt_api:vm_created:rate5m
-    expr: rate(kubevirt_vm_created_total{job=~".*virt-api.*"}[5m])
-    
-  - record: kubevirt_virt_api:vmi_created:rate5m
-    expr: rate(kubevirt_vmi_created_total{job=~".*virt-api.*"}[5m])
-    
-  # Resource usage
-  - record: kubevirt_virt_api:memory_usage_bytes
-    expr: container_memory_working_set_bytes{pod=~"virt-api.*", container="virt-api"}
-    
-  - record: kubevirt_virt_api:cpu_usage:rate5m
-    expr: rate(container_cpu_usage_seconds_total{pod=~"virt-api.*", container="virt-api"}[5m])
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-api-recording
+spec:
+  groups:
+    - name: kubevirt.virt_api.recording_rules
+      interval: 30s
+      rules:
+      # Basic availability and readiness metrics
+      - record: kubevirt_virt_api:up
+        expr: up{job=~".*virt-api.*"}
+        
+      - record: kubevirt_virt_api:ready
+        expr: kubevirt_virt_api_up
+        
+      # Count of API server instances
+      - record: kubevirt_virt_api:count_total
+        expr: count(up{job=~".*virt-api.*"})
+        
+      - record: kubevirt_virt_api:count_up
+        expr: count(up{job=~".*virt-api.*"} == 1)
+        
+      - record: kubevirt_virt_api:count_ready
+        expr: count(kubevirt_virt_api_up == 1)
+        
+      # HTTP request metrics
+      - record: kubevirt_virt_api:http_requests:rate5m
+        expr: rate(http_requests_total{job=~".*virt-api.*"}[5m])
+        
+      - record: kubevirt_virt_api:http_request_duration:p99
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
+        
+      - record: kubevirt_virt_api:http_request_duration:p95
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
+        
+      - record: kubevirt_virt_api:http_request_duration:p50
+        expr: histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=~".*virt-api.*"}[5m]))
+        
+      # HTTP error rates
+      - record: kubevirt_virt_api:http_errors:rate5m
+        expr: rate(http_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
+        
+      - record: kubevirt_virt_api:http_error_ratio:rate5m
+        expr: |
+          (
+            rate(http_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
+            /
+            rate(http_requests_total{job=~".*virt-api.*"}[5m])
+          )
+          
+      # REST client metrics (for API server's outbound calls)
+      - record: kubevirt_virt_api:rest_client_requests:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-api.*"}[5m])
+        
+      - record: kubevirt_virt_api:rest_client_errors:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
+        
+      - record: kubevirt_virt_api:rest_client_error_ratio:rate5m
+        expr: |
+          (
+            rate(rest_client_requests_total{job=~".*virt-api.*", code=~"[45].."}[5m])
+            /
+            rate(rest_client_requests_total{job=~".*virt-api.*"}[5m])
+          )
+          
+      # Workqueue metrics
+      - record: kubevirt_virt_api:workqueue_depth
+        expr: workqueue_depth{job=~".*virt-api.*"}
+        
+      - record: kubevirt_virt_api:workqueue_adds:rate5m
+        expr: rate(workqueue_adds_total{job=~".*virt-api.*"}[5m])
+        
+      # VM API operations
+      - record: kubevirt_virt_api:vm_created:rate5m
+        expr: rate(kubevirt_vm_created_total{job=~".*virt-api.*"}[5m])
+        
+      - record: kubevirt_virt_api:vmi_created:rate5m
+        expr: rate(kubevirt_vmi_created_total{job=~".*virt-api.*"}[5m])
+        
+      # Resource usage
+      - record: kubevirt_virt_api:memory_usage_bytes
+        expr: container_memory_working_set_bytes{pod=~"virt-api.*", container="virt-api"}
+        
+      - record: kubevirt_virt_api:cpu_usage:rate5m
+        expr: rate(container_cpu_usage_seconds_total{pod=~"virt-api.*", container="virt-api"}[5m])

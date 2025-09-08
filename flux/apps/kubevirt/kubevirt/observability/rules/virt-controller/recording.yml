@@ -1,92 +1,97 @@
-groups:
-- name: kubevirt.virt_controller.recording_rules
-  interval: 30s
-  rules:
-  # Basic availability and readiness metrics
-  - record: kubevirt_virt_controller:up
-    expr: up{job=~".*virt-controller.*"}
-    
-  - record: kubevirt_virt_controller:ready
-    expr: kubevirt_virt_controller_up
-    
-  - record: kubevirt_virt_controller:leading
-    expr: kubevirt_virt_controller_leading
-    
-  # Count of controller instances
-  - record: kubevirt_virt_controller:count_total
-    expr: count(up{job=~".*virt-controller.*"})
-    
-  - record: kubevirt_virt_controller:count_up
-    expr: count(up{job=~".*virt-controller.*"} == 1)
-    
-  - record: kubevirt_virt_controller:count_ready
-    expr: count(kubevirt_virt_controller_up == 1)
-    
-  - record: kubevirt_virt_controller:count_leading
-    expr: count(kubevirt_virt_controller_leading == 1)
-    
-  # REST client metrics
-  - record: kubevirt_virt_controller:rest_client_requests:rate5m
-    expr: rate(rest_client_requests_total{job=~".*virt-controller.*"}[5m])
-    
-  - record: kubevirt_virt_controller:rest_client_request_duration:p99
-    expr: histogram_quantile(0.99, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
-    
-  - record: kubevirt_virt_controller:rest_client_request_duration:p95
-    expr: histogram_quantile(0.95, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
-    
-  - record: kubevirt_virt_controller:rest_client_request_duration:p50
-    expr: histogram_quantile(0.50, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
-    
-  # Error rates
-  - record: kubevirt_virt_controller:rest_client_errors:rate5m
-    expr: rate(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m])
-    
-  - record: kubevirt_virt_controller:rest_client_error_ratio:rate5m
-    expr: |
-      (
-        rate(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m])
-        /
-        rate(rest_client_requests_total{job=~".*virt-controller.*"}[5m])
-      )
-      
-  # Workqueue metrics
-  - record: kubevirt_virt_controller:workqueue_depth
-    expr: workqueue_depth{job=~".*virt-controller.*"}
-    
-  - record: kubevirt_virt_controller:workqueue_adds:rate5m
-    expr: rate(workqueue_adds_total{job=~".*virt-controller.*"}[5m])
-    
-  - record: kubevirt_virt_controller:workqueue_retries:rate5m
-    expr: rate(workqueue_retries_total{job=~".*virt-controller.*"}[5m])
-    
-  - record: kubevirt_virt_controller:workqueue_duration:p99
-    expr: histogram_quantile(0.99, rate(workqueue_work_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
-    
-  # VMI phase tracking
-  - record: kubevirt_virt_controller:vmi_phase_count
-    expr: kubevirt_vmi_phase_count
-    
-  - record: kubevirt_virt_controller:vmi_phase_transition:rate5m
-    expr: rate(kubevirt_vmi_phase_transition_total[5m])
-    
-  # VM operations
-  - record: kubevirt_virt_controller:vm_created:rate5m
-    expr: rate(kubevirt_vm_created_total{job=~".*virt-controller.*"}[5m])
-    
-  - record: kubevirt_virt_controller:vmi_created:rate5m
-    expr: rate(kubevirt_vmi_created_total{job=~".*virt-controller.*"}[5m])
-    
-  # Migration metrics
-  - record: kubevirt_virt_controller:vmi_migrations:rate5m
-    expr: rate(kubevirt_vmi_migration_succeeded_total[5m])
-    
-  - record: kubevirt_virt_controller:vmi_migration_failures:rate5m
-    expr: rate(kubevirt_vmi_migration_failed_total[5m])
-    
-  # Resource usage
-  - record: kubevirt_virt_controller:memory_usage_bytes
-    expr: container_memory_working_set_bytes{pod=~"virt-controller.*", container="virt-controller"}
-    
-  - record: kubevirt_virt_controller:cpu_usage:rate5m
-    expr: rate(container_cpu_usage_seconds_total{pod=~"virt-controller.*", container="virt-controller"}[5m])
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-controller-recording
+spec:
+  groups:
+    - name: kubevirt.virt_controller.recording_rules
+      interval: 30s
+      rules:
+      # Basic availability and readiness metrics
+      - record: kubevirt_virt_controller:up
+        expr: up{job=~".*virt-controller.*"}
+        
+      - record: kubevirt_virt_controller:ready
+        expr: kubevirt_virt_controller_up
+        
+      - record: kubevirt_virt_controller:leading
+        expr: kubevirt_virt_controller_leading
+        
+      # Count of controller instances
+      - record: kubevirt_virt_controller:count_total
+        expr: count(up{job=~".*virt-controller.*"})
+        
+      - record: kubevirt_virt_controller:count_up
+        expr: count(up{job=~".*virt-controller.*"} == 1)
+        
+      - record: kubevirt_virt_controller:count_ready
+        expr: count(kubevirt_virt_controller_up == 1)
+        
+      - record: kubevirt_virt_controller:count_leading
+        expr: count(kubevirt_virt_controller_leading == 1)
+        
+      # REST client metrics
+      - record: kubevirt_virt_controller:rest_client_requests:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-controller.*"}[5m])
+        
+      - record: kubevirt_virt_controller:rest_client_request_duration:p99
+        expr: histogram_quantile(0.99, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
+        
+      - record: kubevirt_virt_controller:rest_client_request_duration:p95
+        expr: histogram_quantile(0.95, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
+        
+      - record: kubevirt_virt_controller:rest_client_request_duration:p50
+        expr: histogram_quantile(0.50, rate(rest_client_request_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
+        
+      # Error rates
+      - record: kubevirt_virt_controller:rest_client_errors:rate5m
+        expr: rate(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m])
+        
+      - record: kubevirt_virt_controller:rest_client_error_ratio:rate5m
+        expr: |
+          (
+            rate(rest_client_requests_total{job=~".*virt-controller.*", code=~"[45].."}[5m])
+            /
+            rate(rest_client_requests_total{job=~".*virt-controller.*"}[5m])
+          )
+          
+      # Workqueue metrics
+      - record: kubevirt_virt_controller:workqueue_depth
+        expr: workqueue_depth{job=~".*virt-controller.*"}
+        
+      - record: kubevirt_virt_controller:workqueue_adds:rate5m
+        expr: rate(workqueue_adds_total{job=~".*virt-controller.*"}[5m])
+        
+      - record: kubevirt_virt_controller:workqueue_retries:rate5m
+        expr: rate(workqueue_retries_total{job=~".*virt-controller.*"}[5m])
+        
+      - record: kubevirt_virt_controller:workqueue_duration:p99
+        expr: histogram_quantile(0.99, rate(workqueue_work_duration_seconds_bucket{job=~".*virt-controller.*"}[5m]))
+        
+      # VMI phase tracking
+      - record: kubevirt_virt_controller:vmi_phase_count
+        expr: kubevirt_vmi_phase_count
+        
+      - record: kubevirt_virt_controller:vmi_phase_transition:rate5m
+        expr: rate(kubevirt_vmi_phase_transition_total[5m])
+        
+      # VM operations
+      - record: kubevirt_virt_controller:vm_created:rate5m
+        expr: rate(kubevirt_vm_created_total{job=~".*virt-controller.*"}[5m])
+        
+      - record: kubevirt_virt_controller:vmi_created:rate5m
+        expr: rate(kubevirt_vmi_created_total{job=~".*virt-controller.*"}[5m])
+        
+      # Migration metrics
+      - record: kubevirt_virt_controller:vmi_migrations:rate5m
+        expr: rate(kubevirt_vmi_migration_succeeded_total[5m])
+        
+      - record: kubevirt_virt_controller:vmi_migration_failures:rate5m
+        expr: rate(kubevirt_vmi_migration_failed_total[5m])
+        
+      # Resource usage
+      - record: kubevirt_virt_controller:memory_usage_bytes
+        expr: container_memory_working_set_bytes{pod=~"virt-controller.*", container="virt-controller"}
+        
+      - record: kubevirt_virt_controller:cpu_usage:rate5m
+        expr: rate(container_cpu_usage_seconds_total{pod=~"virt-controller.*", container="virt-controller"}[5m])

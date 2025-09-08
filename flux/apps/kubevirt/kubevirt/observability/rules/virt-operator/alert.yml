@@ -1,99 +1,105 @@
-- name: kubevirt.virt_operator.alerts
-  rules:
-  - alert: VirtOperatorDown
-    expr: kubevirt_virt_operator:count_up == 0
-    for: 2m
-    labels:
-      severity: critical
-      component: virt-operator
-    annotations:
-      summary: "virt-operator is down"
-      description: "No virt-operator instances are up. KubeVirt installation and updates are not functional."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtOperatorDown.html"
-      
-  - alert: NoLeadingVirtOperator
-    expr: kubevirt_virt_operator:count_leading == 0
-    for: 5m
-    labels:
-      severity: critical
-      component: virt-operator
-    annotations:
-      summary: "No leading virt-operator"
-      description: "No virt-operator instance is in leading state. KubeVirt management operations may be impacted."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/NoLeadingVirtOperator.html"
-      
-  - alert: LowVirtOperatorCount
-    expr: kubevirt_virt_operator:count_ready < 2
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "Low number of ready virt-operator pods"
-      description: "Only {{ $value }} virt-operator pods are ready. High availability may be compromised."
-      runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtOperatorCount.html"
-      
-  - alert: VirtOperatorRESTErrorsHigh
-    expr: kubevirt_virt_operator:rest_client_error_ratio:rate5m > 0.05
-    for: 5m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "virt-operator REST client error rate is high"
-      description: "virt-operator error rate is {{ $value | humanizePercentage }}. Investigate API server connectivity."
-      
-  - alert: VirtOperatorRESTLatencyHigh
-    expr: kubevirt_virt_operator:rest_client_request_duration:p99 > 5
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "virt-operator REST client latency is high"
-      description: "virt-operator 99th percentile latency is {{ $value }}s. Performance may be degraded."
-      
-  - alert: VirtOperatorWorkqueueDepthHigh
-    expr: kubevirt_virt_operator:workqueue_depth > 100
-    for: 10m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "virt-operator workqueue depth is high"
-      description: "virt-operator workqueue {{ $labels.name }} depth is {{ $value }}. Processing may be slow."
-      
-  - alert: VirtOperatorMemoryUsageHigh
-    expr: |
-      (
-        kubevirt_virt_operator:memory_usage_bytes
-        /
-        (kube_pod_container_resource_requests{pod=~"virt-operator.*", container="virt-operator", resource="memory"} > 0)
-      ) > 0.9
-    for: 15m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "virt-operator memory usage is high"
-      description: "virt-operator pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory."
-      
-  - alert: VirtOperatorAbsent
-    expr: absent(up{job=~".*virt-operator.*"})
-    for: 5m
-    labels:
-      severity: critical
-      component: virt-operator
-    annotations:
-      summary: "virt-operator is absent"
-      description: "virt-operator metrics are not being scraped. Service may be down or misconfigured."
-      
-  - alert: VirtOperatorSplitBrain
-    expr: kubevirt_virt_operator:count_leading > 1
-    for: 2m
-    labels:
-      severity: warning
-      component: virt-operator
-    annotations:
-      summary: "Multiple leading virt-operators detected"
-      description: "{{ $value }} virt-operator instances are in leading state. This may cause conflicts."
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-operator-alerts
+spec:
+  groups:
+    - name: kubevirt.virt_operator.alerts
+      rules:
+      - alert: VirtOperatorDown
+        expr: kubevirt_virt_operator:count_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: virt-operator
+        annotations:
+          summary: "virt-operator is down"
+          description: "No virt-operator instances are up. KubeVirt installation and updates are not functional."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/VirtOperatorDown.html"
+          
+      - alert: NoLeadingVirtOperator
+        expr: kubevirt_virt_operator:count_leading == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: virt-operator
+        annotations:
+          summary: "No leading virt-operator"
+          description: "No virt-operator instance is in leading state. KubeVirt management operations may be impacted."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/NoLeadingVirtOperator.html"
+          
+      - alert: LowVirtOperatorCount
+        expr: kubevirt_virt_operator:count_ready < 2
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "Low number of ready virt-operator pods"
+          description: "Only {{ $value }} virt-operator pods are ready. High availability may be compromised."
+          runbook_url: "https://kubevirt.io/monitoring/runbooks/LowVirtOperatorCount.html"
+          
+      - alert: VirtOperatorRESTErrorsHigh
+        expr: kubevirt_virt_operator:rest_client_error_ratio:rate5m > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "virt-operator REST client error rate is high"
+          description: "virt-operator error rate is {{ $value | humanizePercentage }}. Investigate API server connectivity."
+          
+      - alert: VirtOperatorRESTLatencyHigh
+        expr: kubevirt_virt_operator:rest_client_request_duration:p99 > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "virt-operator REST client latency is high"
+          description: "virt-operator 99th percentile latency is {{ $value }}s. Performance may be degraded."
+          
+      - alert: VirtOperatorWorkqueueDepthHigh
+        expr: kubevirt_virt_operator:workqueue_depth > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "virt-operator workqueue depth is high"
+          description: "virt-operator workqueue {{ $labels.name }} depth is {{ $value }}. Processing may be slow."
+          
+      - alert: VirtOperatorMemoryUsageHigh
+        expr: |
+          (
+            kubevirt_virt_operator:memory_usage_bytes
+            /
+            (kube_pod_container_resource_requests{pod=~"virt-operator.*", container="virt-operator", resource="memory"} > 0)
+          ) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "virt-operator memory usage is high"
+          description: "virt-operator pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of requested memory."
+          
+      - alert: VirtOperatorAbsent
+        expr: absent(up{job=~".*virt-operator.*"})
+        for: 5m
+        labels:
+          severity: critical
+          component: virt-operator
+        annotations:
+          summary: "virt-operator is absent"
+          description: "virt-operator metrics are not being scraped. Service may be down or misconfigured."
+          
+      - alert: VirtOperatorSplitBrain
+        expr: kubevirt_virt_operator:count_leading > 1
+        for: 2m
+        labels:
+          severity: warning
+          component: virt-operator
+        annotations:
+          summary: "Multiple leading virt-operators detected"
+          description: "{{ $value }} virt-operator instances are in leading state. This may cause conflicts."
