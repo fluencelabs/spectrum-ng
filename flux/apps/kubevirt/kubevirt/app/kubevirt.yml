@@ -7,5 +7,3 @@ spec:
     developerConfiguration: 
       featureGates:
         - CPUManager
-  monitorNamespace: null
-  monitorAccount: null
