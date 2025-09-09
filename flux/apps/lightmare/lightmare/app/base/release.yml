@@ -24,6 +24,7 @@ spec:
         k8s:
           cni: "ovn"
           publicNetwork: "kube-system/public"
+          privateVlanId: "${PRIVATE_VLAN_ID}"
         ccp:
           image:
             repository: "fluencelabs/ccp-cu-worker"

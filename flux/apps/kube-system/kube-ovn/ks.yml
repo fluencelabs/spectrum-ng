@@ -27,3 +27,22 @@ spec:
       kind: Deployment
       name: ovn-central
       namespace: kube-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kube-ovn-fluence-network
+  namespace: flux-system
+spec:
+  path: ./flux/apps/kube-system/kube-ovn/fluence-network
+  prune: false
+  targetNamespace: kube-system
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  dependsOn:
+    - name: kube-ovn
