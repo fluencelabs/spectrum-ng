@@ -1,12 +1,12 @@
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: OCIRepository
 metadata:
-  name: prometheus-node-exporter
+  name: kube-state-metrics
 spec:
   interval: 2h
   layerSelector:
     mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
     operation: copy
-  url: oci://ghcr.io/prometheus-community/charts/prometheus-node-exporter
+  url: oci://ghcr.io/prometheus-community/charts/kube-state-metrics
   ref:
-    tag: 4.45.2
+    tag: 6.3.0
