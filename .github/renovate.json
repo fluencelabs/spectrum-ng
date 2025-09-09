@@ -1,108 +1,38 @@
 {
-    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": [
-        "config:recommended"
-    ],
-    "dependencyDashboard": true,
-    "dependencyDashboardTitle": "Renovate Dashboard 🤖",
-    "commitMessagePrefix": "chore:",
-    "semanticCommits": "enabled",
-    "timezone": "UTC",
-    "prConcurrentLimit": 5,
-    "prHourlyLimit": 2,
-    "flux": {
-        "fileMatch": [
-            "flux/**/*.ya?ml$"
-        ]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "flux": {
+    "fileMatch": ["flux/**/*\\.(yaml|yml)$"]
+  },
+  "helm-values": {
+    "fileMatch": ["flux/**/*\\.(yaml|yml)$"]
+  },
+  "kubernetes": {
+    "fileMatch": ["flux/**/*\\.(yaml|yml)$"]
+  },
+  "kustomize": {
+    "fileMatch": ["flux/**/*\\.(yaml|yml)$"]
+  },
+  "regexManagers": [
+    {
+      "fileMatch": ["flux/**/*\\.(yaml|yml)$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s.*?_version: (?<currentValue>.*)\\s"
+      ]
     },
-    "kubernetes": {
-        "fileMatch": [
-            "flux/**/*.ya?ml$"
-        ]
+    {
+      "fileMatch": ["flux/**/*\\.(yaml|yml)$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s.*?version: (?<currentValue>.*)\\s"
+      ]
     },
-    "helm-values": {
-        "fileMatch": [
-            "flux/**/*.ya?ml$"
-        ]
-    },
-    "kustomize": {
-        "fileMatch": [
-            "flux/**/*.ya?ml$"
-        ]
-    },
-    "github-actions": {
-        "enabled": true,
-        "fileMatch": [
-            "^\\.github/workflows/.+\\.ya?ml$",
-            "(^|/)action\\.ya?ml$"
-        ]
-    },
-    "docker": {
-        "enabled": true,
-        "pinDigests": false
-    },
-    "regexManagers": [
-        {
-            "description": "Update FluxInstance distribution version",
-            "fileMatch": [
-                "flux/**/*.ya?ml$"
-            ],
-            "matchStrings": [
-                "apiVersion: fluxcd\\.controlplane\\.io/v1\\s+kind: FluxInstance[\\s\\S]*?distribution:\\s*\\n[\\s]*version: [\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-            ],
-            "datasourceTemplate": "github-releases",
-            "depNameTemplate": "fluxcd/flux2",
-            "versioningTemplate": "semver-coerced"
-        },
-        {
-            "description": "Update Flux Operator manifests artifact",
-            "fileMatch": [
-                "flux/**/*.ya?ml$"
-            ],
-            "matchStrings": [
-                "artifact: [\"']?oci://ghcr\\.io/controlplaneio-fluxcd/flux-operator-manifests:(?<currentValue>[^\"'\\s]+)[\"']?"
-            ],
-            "datasourceTemplate": "docker",
-            "depNameTemplate": "ghcr.io/controlplaneio-fluxcd/flux-operator-manifests"
-        },
-        {
-            "description": "Update Flux components versions",
-            "fileMatch": [
-                "flux/**/*.ya?ml$"
-            ],
-            "matchStrings": [
-                "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s.*?version: (?<currentValue>.*)\\s"
-            ],
-            "datasourceTemplate": "github-releases",
-            "depNameTemplate": "fluxcd/{{{depName}}}"
-        }
-    ],
-    "packageRules": [
-        {
-            "description": "Group Flux Operator updates",
-            "matchPackagePatterns": ["^fluxcd/", "flux-operator"],
-            "matchDatasources": ["github-releases", "docker"],
-            "groupName": "flux-operator",
-            "automerge": false,
-            "prPriority": 10
-        },
-        {
-            "description": "Group GitHub Actions updates",
-            "matchManagers": ["github-actions"],
-            "groupName": "github-actions",
-            "automerge": false,
-            "prPriority": 5
-        },
-        {
-            "description": "Separate major updates",
-            "matchUpdateTypes": ["major"],
-            "prPriority": 15,
-            "labels": ["major-update"]
-        }
-    ],
-    "vulnerabilityAlerts": {
-        "enabled": true,
-        "prPriority": 20,
-        "labels": ["security"]
+    {
+      "fileMatch": ["flux/**/*\\.(yaml|yml)$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s.*?tag: (?<currentValue>.*)\\s"
+      ]
     }
+  ]
 }
