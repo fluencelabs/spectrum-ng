@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "dependencyDashboard": true,
+  "flux": {
+    "fileMatch": ["flux/*/.+\\.ya?ml$"]
+  },
+  "kubernetes": {
+    "fileMatch": ["flux/*/.+\\.ya?ml$"]
+  },
+  "helm-values": {
+    "fileMatch": ["flux/*/.+\\.ya?ml$"]
+  }
+}
