@@ -1,0 +1,43 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-api-alerts
+spec:
+  groups:
+    - name: kubevirt.virt_api.alerts
+      rules:
+      - alert: VirtAPIDown
+        expr: kubevirt_virt_api_up == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: All virt-api servers are down.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtAPIDown
+          
+      - alert: LowVirtAPICount
+        expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_api_up < 2)
+        for: 60m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than one virt-api should be running if more than one worker nodes exist.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowVirtAPICount
+          
+      - alert: VirtApiRESTErrorsBurst
+        expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-api-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-api-.*"} [5m] ) ) >= 0.8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: More than 80% of the rest calls failed in virt-api for the last 5 minutes
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtApiRESTErrorsBurst
+          
+      - alert: KubeVirtDeprecatedAPIRequested
+        expr: sum by (resource,group,version) ((round(increase(kubevirt_api_request_deprecated_total{verb!~"LIST|WATCH"}[10m])) > 0 and kubevirt_api_request_deprecated_total{verb!~"LIST|WATCH"} offset 10m) or (kubevirt_api_request_deprecated_total{verb!~"LIST|WATCH"} != 0 unless kubevirt_api_request_deprecated_total{verb!~"LIST|WATCH"} offset 10m))
+        labels:
+          severity: info
+        annotations:
+          description: Detected requests to the deprecated {{ $labels.resource }}.{{ $labels.group }}/{{ $labels.version }} API.
+          summary: Detected {{ $value }} requests in the last 10 minutes.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/KubeVirtDeprecatedAPIRequested

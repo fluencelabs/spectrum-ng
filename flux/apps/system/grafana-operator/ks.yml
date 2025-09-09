@@ -7,7 +7,7 @@ metadata:
 spec:
   interval: 1m0s
   path: ./flux/apps/system/grafana-operator/crd
-  prune: true
+  prune: false
   targetNamespace: system
   sourceRef:
     kind: GitRepository
@@ -21,7 +21,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/system/grafana-operator/app
-  prune: true
+  prune: false
   targetNamespace: system
   sourceRef:
     kind: GitRepository

@@ -1,0 +1,52 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-controller-alerts
+spec:
+  groups:
+    - name: kubevirt.virt_controller.alerts
+      rules:
+      - alert: LowReadyVirtControllersCount
+        expr: kubevirt_virt_controller_ready <  kubevirt_virt_controller_up
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Some virt controllers are running but not ready.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowReadyVirtControllersCount
+          
+      - alert: NoReadyVirtController
+        expr: kubevirt_virt_controller_ready == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: No ready virt-controller was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/NoReadyVirtController
+          
+      - alert: VirtControllerDown
+        expr: kubevirt_virt_controller_up == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: No running virt-controller was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtControllerDown
+          
+      - alert: LowVirtControllersCount
+        expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_controller_ready < 2)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than one virt-controller should be ready if more than one worker node.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowVirtControllersCount
+          
+      - alert: VirtControllerRESTErrorsBurst
+        expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*"} [5m] ) ) >= 0.8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: More than 80% of the rest calls failed in virt-controller for the last 5 minutes
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtControllerRESTErrorsBurst

@@ -1,0 +1,16 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: stack
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-stack.observability.svc:8429"
+  notifier:
+    url: "http://vmalertmanager-stack.observability.svc:9093"
+  remoteWrite:
+    url: "http://vmsingle-stack.observability.svc:8429"
+  remoteRead:
+    url: "http://vmsingle-stack.observability.svc:8429"
+  evaluationInterval: "30s"
+  selectAllByDefault: true

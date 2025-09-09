@@ -1,0 +1,17 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-operator-recording
+spec:
+  groups:
+    - name: kubevirt.virt_operator.recording_rules
+      interval: 30s
+      rules:
+      - record: kubevirt_virt_operator_up
+        expr: sum(up{namespace='kubevirt', pod=~'virt-operator-.*'}) or vector(0)
+        
+      - record: kubevirt_virt_operator_ready
+        expr: sum(kube_pod_status_ready{pod=~'virt-operator-.*', condition='true', namespace='kubevirt'} * on (pod) kubevirt_virt_operator_ready_status{namespace='kubevirt'}) or vector(0)
+        
+      - record: kubevirt_virt_operator_leading
+        expr: sum(kubevirt_virt_operator_leading_status{namespace='kubevirt'})

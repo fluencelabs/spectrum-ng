@@ -1,0 +1,11 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-api-recording
+spec:
+  groups:
+    - name: kubevirt.virt_api.recording_rules
+      interval: 30s
+      rules:
+      - record: kubevirt_virt_api_up
+        expr: sum(up{namespace='kubevirt', pod=~'virt-api-.*'}) or vector(0)

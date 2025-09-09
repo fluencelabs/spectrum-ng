@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/system/alloy-operator/app
-  prune: true
+  prune: false
   targetNamespace: system
   sourceRef:
     kind: GitRepository

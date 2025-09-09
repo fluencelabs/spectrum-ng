@@ -1,0 +1,61 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-virt-operator-alerts
+spec:
+  groups:
+    - name: kubevirt.virt_operator.alerts
+      rules:
+      - alert: VirtOperatorDown
+        expr: kubevirt_virt_operator_up == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: All virt-operator servers are down.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtOperatorDown
+          
+      - alert: LowVirtOperatorCount
+        expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_operator_up < 2)
+        for: 60m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than one virt-operator should be running if more than one worker nodes exist.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowVirtOperatorCount
+          
+      - alert: VirtOperatorRESTErrorsBurst
+        expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-operator-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-operator-.*"} [5m] ) ) >= 0.8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: More than 80% of the rest calls failed in virt-operator for the last 5 minutes
+          runbook_url: https://kubevirt.io/monitoring/runbooks/VirtOperatorRESTErrorsBurst
+          
+      - alert: LowReadyVirtOperatorsCount
+        expr: kubevirt_virt_operator_ready <  kubevirt_virt_operator_up
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Some virt-operators are running but not ready.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/LowReadyVirtOperatorsCount
+          
+      - alert: NoReadyVirtOperator
+        expr: kubevirt_virt_operator_ready == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: No ready virt-operator was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/NoReadyVirtOperator
+          
+      - alert: NoLeadingVirtOperator
+        expr: kubevirt_virt_operator_leading == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: No leading virt-operator was detected for the last 10 min.
+          runbook_url: https://kubevirt.io/monitoring/runbooks/NoLeadingVirtOperator
