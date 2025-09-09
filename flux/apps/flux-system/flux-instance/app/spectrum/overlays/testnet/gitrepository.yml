@@ -4,5 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    # branch: main
-    branch: DOPS-246
+    branch: main
