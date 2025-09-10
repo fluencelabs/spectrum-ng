@@ -12,6 +12,11 @@ spec:
     kind: GitRepository
     name: spectrum
     namespace: flux-system
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
   dependsOn:
     - name: kubevirt
     - name: kube-ovn
