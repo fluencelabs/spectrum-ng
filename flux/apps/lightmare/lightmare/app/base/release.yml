@@ -19,11 +19,12 @@ spec:
       octopus: true
       image:
         repository: "fluencelabs/lightmare"
-        tag: "0.7.3@sha256:9d6384a536a9783bf81057780853f39befc6f7e354268ab631a677fa71f0264f"
+        tag: "0.7.4@sha256:ee52d02ba5c87959ec00323c1060c04b38681be2c4974e0873ca2b55c1ca6bcc"
       config:
         k8s:
           cni: "ovn"
           publicNetwork: "kube-system/public"
+          privateVlanId: "${PRIVATE_VLAN_ID}"
         ccp:
           image:
             repository: "fluencelabs/ccp-cu-worker"
