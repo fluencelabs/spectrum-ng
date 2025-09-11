@@ -9,5 +9,6 @@ spec:
         chainAdapter:
           networkId: "52164803"
           diamondContract: "0xA061470180457b6da7f50aF8c14Df9CE379218c6"
+          privateRPCTokenSecretRef: private-rpc-token-secret
         ccp:
           proofPeriod: "8 sec"
