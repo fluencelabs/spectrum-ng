@@ -17,6 +17,10 @@ spec:
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
+    substituteFrom:
+      - kind: ConfigMap
+        name: lightmare-vars
+        optional: true
   dependsOn:
     - name: kubevirt
     - name: kube-ovn
