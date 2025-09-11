@@ -4,9 +4,9 @@ metadata:
   name: prometheus-crds
   namespace: flux-system
 spec:
-  path: ./flux/apps/observability/prometheus-crds/app
+  path: ./flux/apps/system/prometheus-crds/app
   prune: false
-  targetNamespace: observability
+  targetNamespace: system
   sourceRef:
     kind: GitRepository
     name: spectrum

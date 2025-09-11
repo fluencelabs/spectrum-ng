@@ -1,0 +1,15 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lightmare
+spec:
+  values:
+    operator:
+      config:
+        chainAdapter:
+          networkId: "123420000220"
+          diamondContract: "0x72D09226141645949D09191bC42Da7de88535461"
+          httpEndpoint: https://rpc.stage.fluence.dev
+          wsEndpoint: wss://ws.stage.fluence.dev
+        ccp:
+          proofPeriod: "8 sec"
