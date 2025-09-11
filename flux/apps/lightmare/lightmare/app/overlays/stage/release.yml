@@ -13,3 +13,7 @@ spec:
           wsEndpoint: wss://ws.stage.fluence.dev
         ccp:
           proofPeriod: "8 sec"
+        k8s:
+          privateVlanId: "${PRIVATE_VLAN_ID}"
+      nodes:
+        nodeSelector: beam/id

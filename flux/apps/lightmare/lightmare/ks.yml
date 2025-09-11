@@ -20,7 +20,7 @@ spec:
     substituteFrom:
       - kind: ConfigMap
         name: lightmare-vars
-        optional: false
+        optional: true
   dependsOn:
     - name: kubevirt
     - name: kube-ovn
