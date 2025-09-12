@@ -7,6 +7,7 @@ spec:
     operator:
       config:
         logLevel: "debug"
+        print: true
         chainAdapter:
           networkId: "123420000220"
           diamondContract: "0x72D09226141645949D09191bC42Da7de88535461"
