@@ -20,6 +20,15 @@ spec:
       - kind: ConfigMap
         name: lightmare-vars
         optional: true
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: lightmare
+      namespace: lightmare
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: lightmare-operator
+      namespace: lightmare
   dependsOn:
     - name: kubevirt
     - name: kube-ovn
