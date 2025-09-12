@@ -129,7 +129,7 @@ spec:
             source_labels  = ["__meta_kubernetes_node_name"]
             target_label   = "nodename"
             regex          = "(.*)"
-            replacement    = "$1.talos"
+            replacement    = "$1"
           }
 
           rule {
@@ -137,7 +137,7 @@ spec:
             source_labels  = ["__meta_kubernetes_node_name"]
             target_label   = "instance"
             regex          = "(.*)"
-            replacement    = "$1.talos"
+            replacement    = "$1"
           }
         }
         
