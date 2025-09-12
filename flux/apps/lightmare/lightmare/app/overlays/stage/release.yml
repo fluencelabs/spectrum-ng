@@ -17,5 +17,5 @@ spec:
           proofPeriod: "8 sec"
         k8s:
           privateVlanId: "${PRIVATE_VLAN_ID}"
-      nodes:
-        nodeSelector: beam/id
+        nodes:
+          nodeSelector: beam/id
