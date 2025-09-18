@@ -33,3 +33,4 @@ spec:
     - name: kubevirt
     - name: kube-ovn
     - name: kube-ovn-fluence-network
+    # - name: local-path-provisioner
