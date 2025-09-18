@@ -8,5 +8,6 @@ resources:
   - ../../flux/apps/kubevirt
   - ../../flux/apps/system
   - ../../flux/apps/observability
+  - ../../flux/apps/storage
 
   - ../../flux/apps/lightmare

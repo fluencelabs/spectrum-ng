@@ -7,5 +7,6 @@ resources:
   - ../../flux/apps/flux-system
   - ../../flux/apps/kubevirt
   - ../../flux/apps/system
+  - ../../flux/apps/storage
 
   - ../../flux/apps/lightmare
