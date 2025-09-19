@@ -20,6 +20,9 @@ spec:
     image:
       repository: docker.io/rancher/local-path-provisioner
       tag: v0.0.32
+    helperImage:
+      repository: busybox
+      tag: 1
     storageClass:
       create: true
       defaultClass: true
