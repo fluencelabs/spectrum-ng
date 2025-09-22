@@ -9,6 +9,11 @@ spec:
         chainAdapter:
           networkId: "52164803"
           diamondContract: "0xA061470180457b6da7f50aF8c14Df9CE379218c6"
-          privateRPCTokenSecretRef: private-rpc-token-secret
+          httpEndpoint: https://rpc.testnet.fluence.dev
+          wsEndpoint: wss://ws.testnet.fluence.dev
         ccp:
           proofPeriod: "8 sec"
+        k8s:
+          privateVlanId: "${PRIVATE_VLAN_ID}"
+        nodes:
+          nodeSelector: beam/id

@@ -31,3 +31,4 @@ spec:
           memory: 2.48 gib
         chainAdapter:
           ipfsGatewayEndpoint: https://ipfs-gateway.fluence.dev
+          privateRPCTokenSecretRef: ${PRIVATE_RPC_TOKEN:=null}
