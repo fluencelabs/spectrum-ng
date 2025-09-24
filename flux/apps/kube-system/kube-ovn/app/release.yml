@@ -15,7 +15,7 @@ spec:
   values:
     images:
       kubeovn:
-        tag: v1.14.5
+        tag: v1.14.9
 
     masterNodesLabels:
       kube-ovn/role: null
