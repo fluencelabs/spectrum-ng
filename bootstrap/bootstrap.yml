@@ -1679,6 +1679,7 @@ spec:
     protocol: TCP
     targetPort: 8080
   selector:
+    app.kubernetes.io/instance: flux-operator
     app.kubernetes.io/name: flux-operator
 ---
 apiVersion: apps/v1
@@ -1692,6 +1693,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
+      app.kubernetes.io/instance: flux-operator
       app.kubernetes.io/name: flux-operator
   template:
     metadata:
@@ -1700,6 +1702,7 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/scrape: "true"
       labels:
+        app.kubernetes.io/instance: flux-operator
         app.kubernetes.io/name: flux-operator
     spec:
       affinity:
