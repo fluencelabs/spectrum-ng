@@ -26,15 +26,3 @@ spec:
     storageClass:
       create: true
       defaultClass: true
-      volumeBindingMode: Immediate
-    podSecurityContext:
-      runAsNonRoot: true
-    securityContext:
-      allowPrivilegeEscalation: false
-      seccompProfile:
-        type: RuntimeDefault
-      capabilities:
-        drop: ["ALL"]
-      runAsUser: 65534
-      runAsGroup: 65534
-      readOnlyRootFilesystem: true
