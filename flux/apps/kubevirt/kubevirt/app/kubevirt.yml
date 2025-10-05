@@ -4,6 +4,8 @@ metadata:
   name: kubevirt
 spec:
   configuration:
-    developerConfiguration: 
+    developerConfiguration:
       featureGates:
         - CPUManager
+        - AlignCPUs
+        - NUMA
