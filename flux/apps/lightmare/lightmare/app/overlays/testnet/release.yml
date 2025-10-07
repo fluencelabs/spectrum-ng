@@ -12,7 +12,7 @@ spec:
           httpEndpoint: https://rpc.testnet.fluence.dev
           wsEndpoint: wss://ws.testnet.fluence.dev
         ccp:
-          proofPeriod: "8 sec"
+          proofPeriod: "1 year"
         k8s:
           privateVlanId: "${PRIVATE_VLAN_ID}"
         nodes:
