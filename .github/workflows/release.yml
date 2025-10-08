@@ -39,6 +39,7 @@ jobs:
     with:
       environment: testnet
       ref: ${{ needs.release-please.outputs.spectrum-tag }}
+    secrets: inherit
 
   mainnet:
     if: needs.release-please.outputs.spectrum-release-created
@@ -49,3 +50,4 @@ jobs:
     with:
       environment: mainnet
       ref: ${{ needs.release-please.outputs.spectrum-tag }}
+    secrets: inherit

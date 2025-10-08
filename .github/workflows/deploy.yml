@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   retag:
-    name: "Deploy ${{ inputs.ref | github.ref }} to ${{ inputs.environment }}"
+    name: "Deploy ${{ inputs.ref || github.ref }} to ${{ inputs.environment }}"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ${{ inputs.environment }}
@@ -41,8 +41,9 @@ jobs:
       - name: Checkout requested ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref | github.ref }}
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
+          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
 
       - name: Resolve ref SHA
         id: rev
