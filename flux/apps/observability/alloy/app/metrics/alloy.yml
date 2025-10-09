@@ -153,21 +153,24 @@ spec:
         }
 
         // KUBE-OVN
-        prometheus.operator.servicemonitors "kube_ovn" {
-          selector {
-            match_labels = { app = "kube-ovn" }
+        discovery.kubernetes "kube_ovn" {
+          role = "endpoints"
+
+          selectors {
+            role  = "endpoints"
+            label = "app=kube-ovn"
           }
-          forward_to = [discovery.relabel.kube_ovn_targets.receiver]
         }
 
         discovery.relabel "kube_ovn_targets" {
+          targets = discovery.kubernetes.kube_ovn.targets
+
           rule {
-            action        = "replace"
-            source_labels = ["__meta_kubernetes_pod_node_name"]
-            target_label  = "nodename"
-            regex         = "(.+)"
-            replacement   = "$1"
+            action        = "keep"
+            source_labels = ["__meta_kubernetes_endpoint_port_name"]
+            regex         = "metrics"
           }
+
           rule {
             action        = "replace"
             source_labels = ["__meta_kubernetes_endpoint_node_name"]
@@ -189,6 +192,7 @@ spec:
             regex         = "(.+)"
             replacement   = "$1"
           }
+
           rule {
             action        = "replace"
             source_labels = ["nodename"]
@@ -198,6 +202,7 @@ spec:
 
         prometheus.scrape "kube_ovn" {
           targets    = discovery.relabel.kube_ovn_targets.output
+          job_name   = "kube-ovn"
           forward_to = [prometheus.relabel.relable.receiver]
         }
                 
