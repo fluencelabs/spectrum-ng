@@ -4,4 +4,5 @@ metadata:
   name: spectrum
 spec:
   ref:
-    tag: testnet
+    # tag: testnet
+    branch: BEA-258
