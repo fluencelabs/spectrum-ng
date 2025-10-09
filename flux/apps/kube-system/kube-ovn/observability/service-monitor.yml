@@ -3,7 +3,7 @@ kind: ServiceMonitor
 metadata:
   name: kube-ovn
   labels:
-    scrape: "true"
+    app: "kube-ovn"
 spec:
   endpoints:
     - port: metrics

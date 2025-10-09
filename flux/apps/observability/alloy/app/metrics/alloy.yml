@@ -7,7 +7,6 @@ spec:
     type: statefulset
     replicas: 1
   alloy:
-  
     enableReporting: false
     configMap:
       content: |-
@@ -155,6 +154,15 @@ spec:
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
+
+        // KUBE-OVN
+        prometheus.operator.servicemonitors "kube_ovn" {
+          selector {
+            match_labels = { app = "kube-ovn" }
+          }
+          forward_to = [prometheus.relabel.instance.receiver]
+        }
+
                 
         // SELF-MONITORING
         prometheus.exporter.self "default" { }
@@ -169,6 +177,43 @@ spec:
         prometheus.relabel "relable" {
           forward_to = [prometheus.remote_write.victoriametrics.receiver]
         }
+
+        prometheus.relabel "instance" {
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            target_label  = "instance"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpoint_node_name"]
+            target_label  = "instance"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpointslice_endpoint_node_name"]
+            target_label  = "instance"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname"]
+            target_label  = "instance"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
         
         // WRITING
         prometheus.remote_write "victoriametrics" {
