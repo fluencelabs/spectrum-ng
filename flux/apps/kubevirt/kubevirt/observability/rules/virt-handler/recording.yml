@@ -8,4 +8,4 @@ spec:
       interval: 30s
       rules:
       - record: kubevirt_virt_handler_up
-        expr: sum(up{pod=~'virt-handler-.*', namespace='kubevirt'}) or vector(0)
+        expr: sum(kube_pod_status_phase{pod=~'virt-handler-.*', phase="Running", namespace='kubevirt'}) or vector(0)
