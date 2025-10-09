@@ -7,9 +7,12 @@ metadata:
 spec:
   endpoints:
     - port: metrics
+  namespaceSelector:
+    matchNames:
+      - kube-system
   selector:
     matchLabels:
-      app: kube-ovn-monitor
+      app.kubernetes.io/name: kube-ovn-monitor
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -20,9 +23,12 @@ metadata:
 spec:
   endpoints:
     - port: metrics
+  namespaceSelector:
+    matchNames:
+      - kube-system
   selector:
     matchLabels:
-      app: kube-ovn-pinger
+      app.kubernetes.io/name: kube-ovn-pinger
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -33,9 +39,12 @@ metadata:
 spec:
   endpoints:
     - port: metrics
+  namespaceSelector:
+    matchNames:
+      - kube-system
   selector:
     matchLabels:
-      app: kube-ovn-controller
+      app.kubernetes.io/name: kube-ovn-controller
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -46,6 +55,9 @@ metadata:
 spec:
   endpoints:
     - port: metrics
+  namespaceSelector:
+    matchNames:
+      - kube-system
   selector:
     matchLabels:
-      app: kube-ovn-cni
+      app.kubernetes.io/name: kube-ovn-cni
