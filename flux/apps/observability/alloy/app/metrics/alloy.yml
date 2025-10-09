@@ -7,6 +7,7 @@ spec:
     type: statefulset
     replicas: 1
   alloy:
+  
     enableReporting: false
     configMap:
       content: |-
@@ -83,18 +84,64 @@ spec:
 
         // node-exporter
         import.git "node_exporter" {
-          repository = "https://github.com/grafana/alloy-modules.git"
-          revision = "v0.2.11"
-          path = "modules/system/node-exporter/metrics.alloy"
+          repository     = "https://github.com/grafana/alloy-modules.git"
+          revision       = "v0.2.11"
+          path           = "modules/system/node-exporter/metrics.alloy"
           pull_frequency = "15m"
         }
 
         node_exporter.kubernetes "targets" {}
 
-        node_exporter.scrape "metrics" {
+        discovery.relabel "nodeexporter_targets" {
           targets = node_exporter.kubernetes.targets.output
-          forward_to = [prometheus.relabel.nodeexporter.receiver]
+
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            target_label  = "nodename"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpoint_node_name"]
+            target_label  = "nodename"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpointslice_endpoint_node_name"]
+            target_label  = "nodename"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+          rule {
+            action        = "replace"
+            source_labels = ["__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname"]
+            target_label  = "nodename"
+            regex         = "(.+)"
+            replacement   = "$1"
+          }
+          rule {
+            action        = "replace"
+            source_labels = ["nodename"]
+            target_label  = "node"
+          }
+          rule {
+            action        = "replace"
+            source_labels = ["nodename"]
+            target_label  = "instance"
+          }
         }
+
+        prometheus.scrape "nodeexporter" {
+          targets    = discovery.relabel.nodeexporter_targets.output
+          job_name   = "integrations/node_exporter"
+          forward_to = [prometheus.relabel.relable.receiver]
+        }
+
+
 
         // DISCOVERY
         prometheus.operator.servicemonitors "services" {
@@ -108,6 +155,17 @@ spec:
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
+        // GRAPH-NODE
+        prometheus.operator.servicemonitors "graph_node" {
+          forward_to = [prometheus.relabel.relable.receiver]
+          selector {
+            match_labels = {
+              "app.kubernetes.io/name"     = "graph-node",
+              "app.kubernetes.io/instance" = "graph-node",
+            }
+          }
+        }
+                
         // SELF-MONITORING
         prometheus.exporter.self "default" { }
         
@@ -117,28 +175,9 @@ spec:
         }
         
         // RELABELING
+
         prometheus.relabel "relable" {
           forward_to = [prometheus.remote_write.victoriametrics.receiver]
-        }
-
-        prometheus.relabel "nodeexporter" {
-          forward_to = [prometheus.remote_write.victoriametrics.receiver]
-
-          rule {
-            action         = "replace"
-            source_labels  = ["__meta_kubernetes_node_name"]
-            target_label   = "nodename"
-            regex          = "(.*)"
-            replacement    = "$1"
-          }
-
-          rule {
-            action         = "replace"
-            source_labels  = ["__meta_kubernetes_node_name"]
-            target_label   = "instance"
-            regex          = "(.*)"
-            replacement    = "$1"
-          }
         }
         
         // WRITING
