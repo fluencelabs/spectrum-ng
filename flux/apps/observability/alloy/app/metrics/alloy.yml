@@ -157,11 +157,10 @@ spec:
           selector {
             match_labels = { app = "kube-ovn" }
           }
+          forward_to = [discovery.relabel.kube_ovn_targets.receiver]
         }
 
         discovery.relabel "kube_ovn_targets" {
-          targets = prometheus.operator.servicemonitors.kube_ovn.targets
-
           rule {
             action        = "replace"
             source_labels = ["__meta_kubernetes_pod_node_name"]
@@ -211,7 +210,6 @@ spec:
         }
         
         // RELABELING
-
         prometheus.relabel "relable" {
           forward_to = [prometheus.remote_write.victoriametrics.receiver]
         }
