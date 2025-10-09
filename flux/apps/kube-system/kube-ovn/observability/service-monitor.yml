@@ -6,9 +6,7 @@ metadata:
     scrape: "true"
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      interval: 15s
-      port: metrics
+    - port: metrics
   namespaceSelector:
     matchNames:
       - kube-system
@@ -24,9 +22,7 @@ metadata:
     scrape: "true"
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      interval: 15s
-      port: metrics
+    - port: metrics
   namespaceSelector:
     matchNames:
       - kube-system
@@ -42,9 +38,7 @@ metadata:
     scrape: "true"
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      interval: 15s
-      port: metrics
+    - port: metrics
   namespaceSelector:
     matchNames:
       - kube-system
@@ -60,9 +54,7 @@ metadata:
     scrape: "true"
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      interval: 15s
-      port: metrics
+    - port: metrics
   namespaceSelector:
     matchNames:
       - kube-system
