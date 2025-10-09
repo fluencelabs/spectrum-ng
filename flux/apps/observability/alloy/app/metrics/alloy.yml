@@ -153,58 +153,21 @@ spec:
         }
 
         // KUBE-OVN
-        discovery.kubernetes "kube_ovn" {
-          role = "endpoints"
-
-          selectors {
-            role  = "endpoints"
-            label = "app=kube-ovn"
-          }
-        }
-
-        discovery.relabel "kube_ovn_targets" {
-          targets = discovery.kubernetes.kube_ovn.targets
-
-          rule {
-            action        = "keep"
-            source_labels = ["__meta_kubernetes_endpoint_port_name"]
-            regex         = "metrics"
-          }
+        prometheus.operator.servicemonitors "kube_ovn" {
+          selector { match_labels = { app = "kube-ovn" } }
 
           rule {
             action        = "replace"
-            source_labels = ["__meta_kubernetes_endpoint_node_name"]
-            target_label  = "nodename"
-            regex         = "(.+)"
+            source_labels = ["__meta_kubernetes_pod_node_name","__meta_kubernetes_endpoint_node_name","__meta_kubernetes_endpointslice_endpoint_node_name","__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname"]
+            separator     = ";"
+            regex         = "^(?:;*)?([^;]+).*$"
             replacement   = "$1"
-          }
-          rule {
-            action        = "replace"
-            source_labels = ["__meta_kubernetes_endpointslice_endpoint_node_name"]
-            target_label  = "nodename"
-            regex         = "(.+)"
-            replacement   = "$1"
-          }
-          rule {
-            action        = "replace"
-            source_labels = ["__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname"]
-            target_label  = "nodename"
-            regex         = "(.+)"
-            replacement   = "$1"
-          }
-
-          rule {
-            action        = "replace"
-            source_labels = ["nodename"]
             target_label  = "instance"
           }
-        }
 
-        prometheus.scrape "kube_ovn" {
-          targets    = discovery.relabel.kube_ovn_targets.output
-          job_name   = "kube-ovn"
           forward_to = [prometheus.relabel.relable.receiver]
         }
+
                 
         // SELF-MONITORING
         prometheus.exporter.self "default" { }
