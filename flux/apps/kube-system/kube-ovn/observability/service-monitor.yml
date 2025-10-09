@@ -3,7 +3,7 @@ kind: ServiceMonitor
 metadata:
   name: kube-ovn-monitor
   labels:
-    scrape: true
+    scrape: "true"
 spec:
   endpoints:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -21,7 +21,7 @@ kind: ServiceMonitor
 metadata:
   name: kube-ovn-pinger
   labels:
-    scrape: true
+    scrape: "true"
 spec:
   endpoints:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -39,7 +39,7 @@ kind: ServiceMonitor
 metadata:
   name: kube-ovn-controller
   labels:
-    scrape: true
+    scrape: "true"
 spec:
   endpoints:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -57,7 +57,7 @@ kind: ServiceMonitor
 metadata:
   name: kube-ovn-cni
   labels:
-    scrape: true
+    scrape: "true"
 spec:
   endpoints:
     - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
