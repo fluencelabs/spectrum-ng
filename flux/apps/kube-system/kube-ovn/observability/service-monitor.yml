@@ -1,7 +1,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: kube-ovn-monitor
+  name: kube-ovn
   labels:
     scrape: "true"
 spec:
@@ -12,52 +12,4 @@ spec:
       - kube-system
   selector:
     matchLabels:
-      app.kubernetes.io/name: kube-ovn-monitor
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: kube-ovn-pinger
-  labels:
-    scrape: "true"
-spec:
-  endpoints:
-    - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: kube-ovn-pinger
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: kube-ovn-controller
-  labels:
-    scrape: "true"
-spec:
-  endpoints:
-    - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: kube-ovn-controller
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: kube-ovn-cni
-  labels:
-    scrape: "true"
-spec:
-  endpoints:
-    - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: kube-ovn-cni
+      helm.toolkit.fluxcd.io/name: kube-ovn
