@@ -157,7 +157,6 @@ spec:
           selector {
             match_labels = { app = "kube-ovn" }
           }
-          forward_to = [discovery.relabel.kube_ovn_targets.receiver]
         }
 
         discovery.relabel "kube_ovn_targets" {
@@ -200,7 +199,6 @@ spec:
 
         prometheus.scrape "kube_ovn" {
           targets    = discovery.relabel.kube_ovn_targets.output
-          job_name   = "kube-ovn"
           forward_to = [prometheus.relabel.relable.receiver]
         }
                 
