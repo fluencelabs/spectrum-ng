@@ -7,9 +7,6 @@ metadata:
 spec:
   endpoints:
     - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
   selector:
     matchLabels:
       app: kube-ovn-monitor
@@ -23,9 +20,6 @@ metadata:
 spec:
   endpoints:
     - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
   selector:
     matchLabels:
       app: kube-ovn-pinger
@@ -39,9 +33,6 @@ metadata:
 spec:
   endpoints:
     - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
   selector:
     matchLabels:
       app: kube-ovn-controller
@@ -55,9 +46,6 @@ metadata:
 spec:
   endpoints:
     - port: metrics
-  namespaceSelector:
-    matchNames:
-      - kube-system
   selector:
     matchLabels:
       app: kube-ovn-cni
