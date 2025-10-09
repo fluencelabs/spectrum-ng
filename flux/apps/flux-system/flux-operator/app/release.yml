@@ -9,4 +9,6 @@ spec:
     name: flux-operator
   values:
     serviceMonitor:
-      create: false
+      create: true
+      labels:
+        scrape: true

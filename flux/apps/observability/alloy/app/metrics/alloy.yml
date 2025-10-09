@@ -155,16 +155,6 @@ spec:
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
-        // GRAPH-NODE
-        prometheus.operator.servicemonitors "graph_node" {
-          forward_to = [prometheus.relabel.relable.receiver]
-          selector {
-            match_labels = {
-              "app.kubernetes.io/name"     = "graph-node",
-              "app.kubernetes.io/instance" = "graph-node",
-            }
-          }
-        }
                 
         // SELF-MONITORING
         prometheus.exporter.self "default" { }

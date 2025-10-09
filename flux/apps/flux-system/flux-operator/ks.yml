@@ -13,3 +13,4 @@ spec:
     name: spectrum
   dependsOn:
     - name: kube-ovn
+    - name: prometheus-crds
