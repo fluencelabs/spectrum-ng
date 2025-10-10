@@ -7,6 +7,67 @@ on:
         description: "Where to deploy"
         type: choice
         required: true
+        options: 
+          - testnet
+          - mainnet
+      ref:
+        description: "Tag, branch or commit (optional) - default to 'Use workflow from'"
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      ref:
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "deploy-${{ inputs.environment }}"
+  cancel-in-progress: false
+
+jobs:
+  retag:
+    name: "Deploy ${{ inputs.ref || github.ref }} to ${{ inputs.environment }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
+
+      - name: Resolve ref SHA
+        id: rev
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Update env tag
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: ${{ inputs.environment }}
+          commit_sha: ${{ steps.rev.outputs.sha }}
+          message: "Set ${{ inputs.environment }} -> ${{ steps.rev.outputs.sha }} by ${{ github.actor }}"
+          force_push_tag: true
+          tag_exists_error: false
+
+name: Deploy spectrum
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Where to deploy"
+        type: choice
+        required: true
         options:
           - testnet
           - mainnet

@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      spectrum-release-created: ${{ steps.release.outputs['flux--release_created'] }}
-      spectrum-tag: ${{ steps.release.outputs['flux--tag_name'] }}
+      spectrum-release-created: ${{ steps.release.outputs['release_created'] }}
+      spectrum-tag: ${{ steps.release.outputs['tag_name'] }}
 
     steps:
       - name: Run release-please
