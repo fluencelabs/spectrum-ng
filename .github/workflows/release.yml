@@ -1,0 +1,53 @@
+name: "release-please"
+
+on:
+  push:
+    branches:
+      - "main"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+
+    outputs:
+      spectrum-release-created: ${{ steps.release.outputs['flux--release_created'] }}
+      spectrum-tag: ${{ steps.release.outputs['flux--tag_name'] }}
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          target-branch: main
+          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
+
+      - name: Show output from release-please
+        if: steps.release.outputs.releases_created
+        env:
+          RELEASE_PLEASE_OUTPUT: ${{ toJSON(steps.release.outputs) }}
+        run: echo "${RELEASE_PLEASE_OUTPUT}" | jq
+
+  testnet:
+    if: needs.release-please.outputs.spectrum-release-created
+    needs: release-please
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: testnet
+      ref: ${{ needs.release-please.outputs.spectrum-tag }}
+    secrets: inherit
+
+  mainnet:
+    if: needs.release-please.outputs.spectrum-release-created
+    needs:
+      - release-please
+      - testnet
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: mainnet
+      ref: ${{ needs.release-please.outputs.spectrum-tag }}
+    secrets: inherit
