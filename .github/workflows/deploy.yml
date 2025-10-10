@@ -7,11 +7,11 @@ on:
         description: "Where to deploy"
         type: choice
         required: true
-        options: 
+        options:
           - testnet
           - mainnet
       ref:
-        description: "Release tag (e.g. v1.5.0), branch, or commit SHA"
+        description: "Tag, branch or commit (optional)"
         type: string
         required: false
   workflow_call:
@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   retag:
-    name: "Deploy ${{ inputs.ref || github.ref }} to ${{ inputs.environment }}"
+    name: "Deploy ${{ inputs.ref != '' && inputs.ref || github.ref }} to ${{ inputs.environment }}"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ${{ inputs.environment }}
@@ -41,13 +41,12 @@ jobs:
       - name: Checkout requested ref
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
           fetch-depth: 0
           token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
 
       - name: Resolve ref SHA
         id: rev
-        shell: bash
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Update env tag
