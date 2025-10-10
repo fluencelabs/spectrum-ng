@@ -33,23 +33,23 @@ spec:
           summary: More than 80% of the rest calls failed in virt-operator for the last 5 minutes
           runbook_url: https://kubevirt.io/monitoring/runbooks/VirtOperatorRESTErrorsBurst
           
-      - alert: LowReadyVirtOperatorsCount
-        expr: kubevirt_virt_operator_ready <  kubevirt_virt_operator_up
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: Some virt-operators are running but not ready.
-          runbook_url: https://kubevirt.io/monitoring/runbooks/LowReadyVirtOperatorsCount
-          
-      - alert: NoReadyVirtOperator
-        expr: kubevirt_virt_operator_ready == 0
-        for: 10m
-        labels:
-          severity: critical
-        annotations:
-          summary: No ready virt-operator was detected for the last 10 min.
-          runbook_url: https://kubevirt.io/monitoring/runbooks/NoReadyVirtOperator
+      # - alert: LowReadyVirtOperatorsCount
+      #   expr: kubevirt_virt_operator_ready <  kubevirt_virt_operator_up
+      #   for: 10m
+      #   labels:
+      #     severity: warning
+      #   annotations:
+      #     summary: Some virt-operators are running but not ready.
+      #     runbook_url: https://kubevirt.io/monitoring/runbooks/LowReadyVirtOperatorsCount
+      #     
+      # - alert: NoReadyVirtOperator
+      #   expr: kubevirt_virt_operator_ready == 0
+      #   for: 10m
+      #   labels:
+      #     severity: critical
+      #   annotations:
+      #     summary: No ready virt-operator was detected for the last 10 min.
+      #     runbook_url: https://kubevirt.io/monitoring/runbooks/NoReadyVirtOperator
           
       - alert: NoLeadingVirtOperator
         expr: kubevirt_virt_operator_leading == 0

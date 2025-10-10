@@ -8,4 +8,4 @@ spec:
       interval: 30s
       rules:
       - record: kubevirt_virt_api_up
-        expr: sum(up{namespace='kubevirt', pod=~'virt-api-.*'}) or vector(0)
+        expr: sum(kube_pod_status_phase{pod=~'virt-api-.*', phase="Running", namespace='kubevirt'}) or vector(0)

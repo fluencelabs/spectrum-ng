@@ -8,7 +8,7 @@ spec:
       interval: 30s
       rules:
       - record: kubevirt_virt_controller_up
-        expr: sum(up{pod=~'virt-controller-.*', namespace='kubevirt'}) or vector(0)
+        expr: sum(kube_pod_status_phase{pod=~'virt-controller-.*', phase="Running", namespace='kubevirt'}) or vector(0)
         
       - record: kubevirt_virt_controller_ready
         expr: sum(kubevirt_virt_controller_ready_status{namespace='kubevirt'}) or vector(0)

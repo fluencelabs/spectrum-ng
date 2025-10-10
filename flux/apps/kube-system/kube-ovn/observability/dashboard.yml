@@ -1,0 +1,59 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubeovn-cni
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: Kube-OVN
+  allowCrossNamespaceImport: true
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/cni-grafana.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubeovn-controller
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: Kube-OVN
+  allowCrossNamespaceImport: true
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/controller-grafana.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubeovn-ovn
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: Kube-OVN
+  allowCrossNamespaceImport: true
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovn-grafana.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubeovn-pinger
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: Kube-OVN
+  allowCrossNamespaceImport: true
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/pinger-grafana.json"
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubeovn-ovs
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  folder: Kube-OVN
+  allowCrossNamespaceImport: true
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovs-grafana.json"
