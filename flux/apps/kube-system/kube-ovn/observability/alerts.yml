@@ -1,0 +1,157 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn
+spec:
+  groups:
+  - name: kubeovn.capacity.alerts
+    rules:
+    - alert: ClusterPublicIPsPressure
+      expr: |
+        (
+          sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+          /
+          clamp_min(
+            sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+            + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
+          )
+        ) < 0.10
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: Public IPv4 pool below 10% free.
+
+    - alert: ClusterPublicIPsExhaustion
+      expr: |
+        (
+          sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+          /
+          clamp_min(
+            sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+            + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
+          )
+        ) < 0.02
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Public IPv4 pool is nearly exhausted (<2% free).
+
+  - name: kubeovn.ovn.alerts
+    rules:
+    - alert: OVNDBUnhealthy
+      expr: min(kube_ovn_db_status) == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: OVN NB/SB DB reported unhealthy.
+
+    - alert: OVNNoLeader
+      expr: sum(max by (pod) (kube_ovn_cluster_leader_self)) == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: No OVN Raft leader detected.
+
+    - alert: OVNUnhealthy
+      expr: min(kube_ovn_ovn_status) == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: OVN reported unhealthy status.
+
+    - alert: OVNFailedRequestsSpike
+      expr: increase(kube_ovn_failed_req_count[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: Failed requests to OVN increased in the last 5 minutes.
+
+  - name: kubeovn.ovs.alerts
+    rules:
+    - alert: OVSUnhealthy
+      expr: min(ovs_status) == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: OVS reported unhealthy status on at least one node.
+
+    - alert: OVSInterfaceLinkDown
+      expr: max by (interface) (interface_link_state == 0 and interface=~"br-.*|genev.*|vxlan.*") == 1
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Critical OVS interface (bridge or tunnel) link down for 10 minutes.
+
+    - alert: OVSFailedRequestsSpike
+      expr: increase(failed_req_count[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: Failed requests to OVS increased in the last 5 minutes.
+
+  - name: kubeovn.pinger.alerts
+    rules:
+    - alert: NodeAPIServerUnhealthy
+      expr: max by (node) (pinger_apiserver_unhealthy) == 1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: API server unhealthy on a node.
+
+    - alert: InternalDNSUnhealthy
+      expr: max by (node) (pinger_internal_dns_unhealthy) == 1
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Internal DNS unhealthy on a node.
+
+    - alert: ExternalDNSUnhealthy
+      expr: max by (node) (pinger_external_dns_unhealthy) == 1
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: External DNS unhealthy on a node.
+
+    - alert: PodToPodPacketLossHigh
+      expr: (increase(pinger_pod_ping_lost_total[5m]) / clamp_min(increase(pinger_pod_ping_count_total[5m]), 1)) > 0.05
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Pod-to-pod packet loss >5% over 10 minutes.
+
+    - alert: PodToNodePacketLossHigh
+      expr: (increase(pinger_node_ping_lost_total[5m]) / clamp_min(increase(pinger_node_ping_count_total[5m]), 1)) > 0.05
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Pod-to-node packet loss >5% over 10 minutes.
+
+    - alert: ExternalPingPacketLossHigh
+      expr: (increase(pinger_external_lost_total[5m]) / clamp_min(increase(pinger_external_ping_latency_ms_count[5m]), 1)) > 0.05
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: External connectivity packet loss >5% over 10 minutes.
+
+    - alert: ExternalLatencyP99High
+      expr: histogram_quantile(0.99, sum by (le) (rate(pinger_external_ping_latency_ms_bucket[5m]))) > 200
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: External ping P99 latency >200 ms.

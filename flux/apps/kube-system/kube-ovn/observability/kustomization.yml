@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - dashboard.yml
   - service-monitor.yml
+  - alerts.yml
