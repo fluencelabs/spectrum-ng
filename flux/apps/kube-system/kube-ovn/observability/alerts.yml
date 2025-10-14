@@ -83,7 +83,10 @@ spec:
         summary: OVS reported unhealthy status on at least one node.
 
     - alert: OVSInterfaceLinkDown
-      expr: max by (interface) (interface_link_state == 0 and interface=~"br-.*|genev.*|vxlan.*") == 1
+      expr: |
+        max by (interface) (
+          interface_link_state{interface=~"br-.*|genev.*|vxlan.*"}
+        ) == 0
       for: 10m
       labels:
         severity: critical
