@@ -140,7 +140,7 @@ spec:
 
         prometheus.scrape "nodeexporter" {
           targets    = discovery.relabel.nodeexporter_targets.output
-          job_name   = "integrations/node_exporter"
+          job_name   = "node"
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
