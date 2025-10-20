@@ -27,7 +27,7 @@ spec:
         ccp:
           image:
             repository: "fluencelabs/ccp-cu-worker"
-            tag: "0.16.12@sha256:82699d5fe834175c911fc064223ff09810a33274d12a6ac355dc36fdbd4743b6"
+            tag: "0.17.0@sha256:e2704500147b4c385e1047728e8158c6e6614a519ab8c0bd27eae79aece8d2f1"
           memory: 2.48 gib
         chainAdapter:
           ipfsGatewayEndpoint: https://ipfs-gateway.fluence.dev
