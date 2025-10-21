@@ -4,154 +4,412 @@ metadata:
   name: kube-ovn
 spec:
   groups:
-  - name: kubeovn.capacity.alerts
+  - name: kubeovn.resources
     rules:
-    - alert: ClusterPublicIPsPressure
-      expr: |
-        (
-          sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
-          /
-          clamp_min(
+      - alert: LargeOVNLogFile
+        expr: kube_ovn_log_file_size > 1073741824
+        for: 30m
+        labels:
+          severity: info
+          component: ovn
+        annotations:
+          summary: "Large OVN log file"
+          description: "OVN log file {{ $labels.filename }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
+
+      - alert: LargeOVSLogFile
+        expr: log_file_size > 1073741824
+        for: 30m
+        labels:
+          severity: info
+          component: ovs
+        annotations:
+          summary: "Large OVS log file"
+          description: "OVS log file {{ $labels.filename }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
+
+      - alert: LargeOVNDatabaseFile
+        expr: kube_ovn_db_file_size > 10737418240
+        for: 30m
+        labels:
+          severity: warning
+          component: ovn-db
+        annotations:
+          summary: "Large OVN database file"
+          description: "OVN database {{ $labels.database }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
+
+      - alert: ClusterPublicIPsPressure
+        expr: |
+          (
             sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
-            + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
-          )
-        ) < 0.10
-      for: 30m
-      labels:
-        severity: warning
-      annotations:
-        summary: Public IPv4 pool below 10% free.
+            /
+            clamp_min(
+              sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+              + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
+            )
+          ) < 0.10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Public IPv4 pool below 10% free.
 
-    - alert: ClusterPublicIPsExhaustion
-      expr: |
-        (
-          sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
-          /
-          clamp_min(
+      - alert: ClusterPublicIPsExhaustion
+        expr: |
+          (
             sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
-            + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
-          )
-        ) < 0.02
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: Public IPv4 pool is nearly exhausted (<2% free).
+            /
+            clamp_min(
+              sum(subnet_available_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"})
+              + sum(subnet_used_ip_count{subnet_name=~"subnet-.*",protocol="IPv4"}), 1
+            )
+          ) < 0.02
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Public IPv4 pool is nearly exhausted (<2% free).
 
-  - name: kubeovn.ovn.alerts
+  - name: kubeovn.health
     rules:
-    - alert: OVNDBUnhealthy
-      expr: min(kube_ovn_db_status) == 0
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: OVN NB/SB DB reported unhealthy.
+      - alert: OVNComponentUnhealthy
+        expr: kube_ovn_ovn_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: ovn
+        annotations:
+          summary: "OVN component is unhealthy"
+          description: "OVN component {{ $labels.component }} is unhealthy on {{ $labels.instance }}"
 
-    - alert: OVNNoLeader
-      expr: sum(max by (pod) (kube_ovn_cluster_leader_self)) == 0
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        summary: No OVN Raft leader detected.
+      - alert: OVNDatabaseUnhealthy
+        expr: kube_ovn_db_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: ovn-db
+        annotations:
+          summary: "OVN database is unhealthy"
+          description: "OVN {{ $labels.database }} database is unhealthy on {{ $labels.instance }}"
 
-    - alert: OVNUnhealthy
-      expr: min(kube_ovn_ovn_status) == 0
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: OVN reported unhealthy status.
+      - alert: OVNChassisDown
+        expr: kube_ovn_chassis_info == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: ovn-chassis
+        annotations:
+          summary: "OVN chassis is down"
+          description: "OVN chassis {{ $labels.chassis }} is down"
 
-    - alert: OVNFailedRequestsSpike
-      expr: increase(kube_ovn_failed_req_count[5m]) > 0
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: Failed requests to OVN increased in the last 5 minutes.
+      - alert: OVSUnhealthy
+        expr: ovs_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: ovs
+        annotations:
+          summary: "OVS is unhealthy"
+          description: "OVS is unhealthy on node {{ $labels.instance }}"
 
-  - name: kubeovn.ovs.alerts
+      - alert: OVSPingerDown
+        expr: pinger_ovs_down == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: ovs
+        annotations:
+          summary: "OVS is down on node"
+          description: "OVS is down on node {{ $labels.node_name }}"
+
+      - alert: OVNControllerDown
+        expr: pinger_ovn_controller_down == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: ovn-controller
+        annotations:
+          summary: "OVN controller is down"
+          description: "OVN controller is down on node {{ $labels.node_name }}"
+
+  - name: kubeovn.errors
+    interval: 30s
     rules:
-    - alert: OVSUnhealthy
-      expr: min(ovs_status) == 0
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: OVS reported unhealthy status on at least one node.
+      - alert: HighOVNRequestFailureRate
+        expr: rate(kube_ovn_failed_req_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ovn
+        annotations:
+          summary: "High OVN request failure rate"
+          description: "OVN is experiencing {{ $value }} failed requests per second on {{ $labels.instance }}"
 
-    - alert: OVSInterfaceLinkDown
-      expr: max by (interface) (interface_link_state == 0 and interface=~"br-.*|genev.*|vxlan.*") == 1
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: Critical OVS interface (bridge or tunnel) link down for 10 minutes.
+      - alert: HighOVSRequestFailureRate
+        expr: rate(failed_req_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs
+        annotations:
+          summary: "High OVS request failure rate"
+          description: "OVS is experiencing {{ $value }} failed requests per second on {{ $labels.instance }}"
 
-    - alert: OVSFailedRequestsSpike
-      expr: increase(failed_req_count[5m]) > 0
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: Failed requests to OVS increased in the last 5 minutes.
+      - alert: HighInterfaceRxErrors
+        expr: rate(interface_rx_errors[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs-interface
+        annotations:
+          summary: "High receive errors on interface"
+          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} has {{ $value }} RX errors per second"
 
-  - name: kubeovn.pinger.alerts
+      - alert: HighInterfaceTxErrors
+        expr: rate(interface_tx_errors[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs-interface
+        annotations:
+          summary: "High transmit errors on interface"
+          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} has {{ $value }} TX errors per second"
+
+      - alert: HighInterfaceDroppedPackets
+        expr: rate(interface_rx_dropped[5m]) > 50 or rate(interface_tx_dropped[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs-interface
+        annotations:
+          summary: "High packet drop rate on interface"
+          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} is dropping {{ $value }} packets per second"
+
+  - name: kubeovn.network-quality
     rules:
-    - alert: NodeAPIServerUnhealthy
-      expr: max by (node) (pinger_apiserver_unhealthy) == 1
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: API server unhealthy on a node.
+      - alert: APIServerUnhealthy
+        expr: pinger_apiserver_unhealthy == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: apiserver
+        annotations:
+          summary: "API server is unhealthy from node"
+          description: "API server is unhealthy from node {{ $labels.node_name }}"
 
-    - alert: InternalDNSUnhealthy
-      expr: max by (node) (pinger_internal_dns_unhealthy) == 1
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: Internal DNS unhealthy on a node.
+      - alert: HighAPIServerLatency
+        expr: histogram_quantile(0.99, rate(pinger_apiserver_latency_ms_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: apiserver
+        annotations:
+          summary: "High API server latency"
+          description: "P99 API server latency from node {{ $labels.node_name }} is {{ $value }}ms"
 
-    - alert: ExternalDNSUnhealthy
-      expr: max by (node) (pinger_external_dns_unhealthy) == 1
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: External DNS unhealthy on a node.
+      - alert: InternalDNSUnhealthy
+        expr: pinger_internal_dns_unhealthy == 1
+        for: 2m
+        labels:
+          severity: warning
+          component: dns
+        annotations:
+          summary: "Internal DNS is unhealthy"
+          description: "Internal DNS is unhealthy from node {{ $labels.node_name }}"
 
-    - alert: PodToPodPacketLossHigh
-      expr: (increase(pinger_pod_ping_lost_total[5m]) / clamp_min(increase(pinger_pod_ping_count_total[5m]), 1)) > 0.05
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: Pod-to-pod packet loss >5% over 10 minutes.
+      # - alert: ExternalDNSUnhealthy
+      #   expr: pinger_external_dns_unhealthy == 1
+      #   for: 2m
+      #   labels:
+      #     severity: warning
+      #     component: dns
+      #   annotations:
+      #     summary: "External DNS is unhealthy"
+      #     description: "External DNS is unhealthy from node {{ $labels.node_name }}"
 
-    - alert: PodToNodePacketLossHigh
-      expr: (increase(pinger_node_ping_lost_total[5m]) / clamp_min(increase(pinger_node_ping_count_total[5m]), 1)) > 0.05
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: Pod-to-node packet loss >5% over 10 minutes.
+      - alert: HighInternalDNSLatency
+        expr: histogram_quantile(0.99, rate(pinger_internal_dns_latency_ms_bucket[5m])) > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: dns
+        annotations:
+          summary: "High internal DNS latency"
+          description: "P99 internal DNS latency from node {{ $labels.node_name }} is {{ $value }}ms"
 
-    - alert: ExternalPingPacketLossHigh
-      expr: (increase(pinger_external_lost_total[5m]) / clamp_min(increase(pinger_external_ping_latency_ms_count[5m]), 1)) > 0.05
-      for: 10m
-      labels:
-        severity: critical
-      annotations:
-        summary: External connectivity packet loss >5% over 10 minutes.
+      # - alert: HighPodPingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_pod_ping_latency_ms_bucket[5m])) > 100
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: pod-network
+      #   annotations:
+      #     summary: "High pod-to-pod ping latency"
+      #     description: "P99 pod-to-pod ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighPodPingLossRate
+      #   expr: rate(pinger_pod_ping_lost_total[5m]) / rate(pinger_pod_ping_count_total[5m]) > 0.01
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: pod-network
+      #   annotations:
+      #     summary: "High pod ping loss rate"
+      #     description: "Pod ping loss rate on node {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
+      #
+      # - alert: HighNodePingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_node_ping_latency_ms_bucket[5m])) > 50
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: node-network
+      #   annotations:
+      #     summary: "High pod-to-node ping latency"
+      #     description: "P99 pod-to-node ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighNodePingLossRate
+      #   expr: rate(pinger_node_ping_lost_total[5m]) / rate(pinger_node_ping_count_total[5m]) > 0.01
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: node-network
+      #   annotations:
+      #     summary: "High node ping loss rate"
+      #     description: "Node ping loss rate on {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
+      #
+      # - alert: HighExternalPingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_external_ping_latency_ms_bucket[5m])) > 200
+      #   for: 5m
+      #   labels:
+      #     severity: info
+      #     component: external-network
+      #   annotations:
+      #     summary: "High external ping latency"
+      #     description: "P99 external ping latency from node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighExternalPingLossRate
+      #   expr: rate(pinger_external_lost_total[5m]) > 0.05
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: external-network
+      #   annotations:
+      #     summary: "High external ping loss rate"
+      #     description: "External ping loss rate from node {{ $labels.node_name }} is {{ $value }}"
 
-    - alert: ExternalLatencyP99High
-      expr: histogram_quantile(0.99, sum by (le) (rate(pinger_external_ping_latency_ms_bucket[5m]))) > 200
-      for: 10m
-      labels:
-        severity: warning
-      annotations:
-        summary: External ping P99 latency >200 ms.
+      - alert: InconsistentPortBindings
+        expr: pinger_inconsistent_port_binding > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: ovn
+        annotations:
+          summary: "Inconsistent port bindings detected"
+          description: "{{ $value }} inconsistent port bindings between OVS and OVN-SB on node {{ $labels.node_name }}"
+
+  - name: kube-ovn-datapath
+    interval: 30s
+    rules:
+      - alert: HighDatapathFlowLookupMissRate
+        expr: rate(dp_flows_lookup_missed[5m]) / rate(dp_flows_lookup_hit[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: ovs-datapath
+        annotations:
+          summary: "High datapath flow lookup miss rate"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} has high flow lookup miss rate: {{ $value | humanizePercentage }}"
+
+      - alert: DatapathFlowsLost
+        expr: rate(dp_flows_lookup_lost[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs-datapath
+        annotations:
+          summary: "Datapath flows being lost"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} is losing {{ $value }} flows per second"
+
+      - alert: LowDatapathMaskHitRatio
+        expr: dp_masks_hit_ratio < 1
+        for: 10m
+        labels:
+          severity: info
+          component: ovs-datapath
+        annotations:
+          summary: "Low datapath mask hit ratio"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} has low mask hit ratio: {{ $value }}"
+
+  - name: kube-ovn-performance
+    interval: 30s
+    rules:
+      - alert: HighCNIOperationLatency
+        expr: histogram_quantile(0.99, rate(cni_op_latency_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: cni
+        annotations:
+          summary: "High CNI operation latency"
+          description: "P99 CNI operation latency on {{ $labels.instance }} is {{ $value }}s"
+
+      - alert: HighCNIAddressWaitTime
+        expr: rate(cni_wait_address_seconds_total[5m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: cni
+        annotations:
+          summary: "High CNI address wait time"
+          description: "CNI is waiting {{ $value }}s per operation for address assignment on {{ $labels.instance }}"
+
+      - alert: HighOVSClientLatency
+        expr: histogram_quantile(0.99, rate(ovs_client_request_latency_milliseconds_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: ovs-client
+        annotations:
+          summary: "High OVS client request latency"
+          description: "P99 OVS client request latency on {{ $labels.instance }} is {{ $value }}ms"
+
+      - alert: HighControllerRESTLatency
+        expr: histogram_quantile(0.99, rate(rest_client_request_latency_seconds_bucket{job="kube-ovn-controller"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: controller
+        annotations:
+          summary: "High controller REST client latency"
+          description: "P99 REST client latency for {{ $labels.verb }} {{ $labels.url }} is {{ $value }}s"
+
+  - name: kubeovn.cluster
+    interval: 30s
+    rules:
+      - alert: OVNClusterLogNotCommitted
+        expr: kube_ovn_cluster_log_not_committed > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: ovn-cluster
+        annotations:
+          summary: "OVN cluster has uncommitted log entries"
+          description: "OVN cluster server {{ $labels.instance }} has {{ $value }} uncommitted log entries"
+
+      - alert: OVNClusterLogNotApplied
+        expr: kube_ovn_cluster_log_not_applied > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: ovn-cluster
+        annotations:
+          summary: "OVN cluster has unapplied log entries"
+          description: "OVN cluster server {{ $labels.instance }} has {{ $value }} unapplied log entries"
+
+      - alert: HighOVNClusterConnectionErrors
+        expr: rate(kube_ovn_cluster_inbound_connections_error_total[5m]) > 0.1 or rate(kube_ovn_cluster_outbound_connections_error_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ovn-cluster
+        annotations:
+          summary: "High OVN cluster connection error rate"
+          description: "OVN cluster server {{ $labels.instance }} has {{ $value }} connection errors per second"

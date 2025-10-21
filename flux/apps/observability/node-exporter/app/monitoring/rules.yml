@@ -2,8 +2,6 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: node-exporter-rules
-  labels:
-    app: node-exporter-rules
 spec:
   groups:
   - name: node-exporter.rules

@@ -2,8 +2,6 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: kubernetes-alerts
-  labels:
-    app: kubernetes-alerts
 spec:
   groups:
   - name: kubernetes-apps

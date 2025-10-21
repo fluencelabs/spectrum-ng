@@ -2,8 +2,6 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: kubernetes-rules
-  labels:
-    app: kubernetes-rules
 spec:
   groups:
   - interval: 3m

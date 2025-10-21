@@ -2,8 +2,6 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: kube-state-alerts
-  labels:
-    app: kube-state-alerts
 spec:
   groups:
   - name: kube-state-metrics

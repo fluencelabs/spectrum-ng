@@ -2,11 +2,9 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: node-exporter-alerts
-  labels:
-    app: node-exporter-alerts
 spec:
   groups:
-  - name: node-exporter.rules
+  - name: node-exporter.alerts
     rules:
     - alert: NodeFilesystemSpaceFillingUp
       annotations:

@@ -8,6 +8,9 @@ spec:
     replicas: 1
   alloy:
     enableReporting: false
+    extraEnv:
+      - name: CLUSTER
+        value: spectrum
     configMap:
       content: |-
         logging {
@@ -78,6 +81,7 @@ spec:
 
         ksm.scrape "metrics" {
           targets = ksm.kubernetes.targets.output
+          job_label = "kube-state-metrics"
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
@@ -136,7 +140,7 @@ spec:
 
         prometheus.scrape "nodeexporter" {
           targets    = discovery.relabel.nodeexporter_targets.output
-          job_name   = "integrations/node_exporter"
+          job_name   = "node"
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
@@ -179,6 +183,11 @@ spec:
         
         // RELABELING
         prometheus.relabel "relable" {
+          rule {
+            action = "replace"
+            target_label = "cluster"
+            replacement = env("CLUSTER")
+          }
           forward_to = [prometheus.remote_write.victoriametrics.receiver]
         }
 
