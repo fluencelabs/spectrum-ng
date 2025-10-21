@@ -235,65 +235,65 @@ spec:
           summary: "High internal DNS latency"
           description: "P99 internal DNS latency from node {{ $labels.node_name }} is {{ $value }}ms"
 
-      - alert: HighPodPingLatency
-        expr: histogram_quantile(0.99, rate(pinger_pod_ping_latency_ms_bucket[5m])) > 100
-        for: 5m
-        labels:
-          severity: warning
-          component: pod-network
-        annotations:
-          summary: "High pod-to-pod ping latency"
-          description: "P99 pod-to-pod ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
-
-      - alert: HighPodPingLossRate
-        expr: rate(pinger_pod_ping_lost_total[5m]) / rate(pinger_pod_ping_count_total[5m]) > 0.01
-        for: 5m
-        labels:
-          severity: warning
-          component: pod-network
-        annotations:
-          summary: "High pod ping loss rate"
-          description: "Pod ping loss rate on node {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
-
-      - alert: HighNodePingLatency
-        expr: histogram_quantile(0.99, rate(pinger_node_ping_latency_ms_bucket[5m])) > 50
-        for: 5m
-        labels:
-          severity: warning
-          component: node-network
-        annotations:
-          summary: "High pod-to-node ping latency"
-          description: "P99 pod-to-node ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
-
-      - alert: HighNodePingLossRate
-        expr: rate(pinger_node_ping_lost_total[5m]) / rate(pinger_node_ping_count_total[5m]) > 0.01
-        for: 5m
-        labels:
-          severity: warning
-          component: node-network
-        annotations:
-          summary: "High node ping loss rate"
-          description: "Node ping loss rate on {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
-
-      - alert: HighExternalPingLatency
-        expr: histogram_quantile(0.99, rate(pinger_external_ping_latency_ms_bucket[5m])) > 200
-        for: 5m
-        labels:
-          severity: info
-          component: external-network
-        annotations:
-          summary: "High external ping latency"
-          description: "P99 external ping latency from node {{ $labels.node_name }} is {{ $value }}ms"
-
-      - alert: HighExternalPingLossRate
-        expr: rate(pinger_external_lost_total[5m]) > 0.05
-        for: 5m
-        labels:
-          severity: warning
-          component: external-network
-        annotations:
-          summary: "High external ping loss rate"
-          description: "External ping loss rate from node {{ $labels.node_name }} is {{ $value }}"
+      # - alert: HighPodPingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_pod_ping_latency_ms_bucket[5m])) > 100
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: pod-network
+      #   annotations:
+      #     summary: "High pod-to-pod ping latency"
+      #     description: "P99 pod-to-pod ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighPodPingLossRate
+      #   expr: rate(pinger_pod_ping_lost_total[5m]) / rate(pinger_pod_ping_count_total[5m]) > 0.01
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: pod-network
+      #   annotations:
+      #     summary: "High pod ping loss rate"
+      #     description: "Pod ping loss rate on node {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
+      #
+      # - alert: HighNodePingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_node_ping_latency_ms_bucket[5m])) > 50
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: node-network
+      #   annotations:
+      #     summary: "High pod-to-node ping latency"
+      #     description: "P99 pod-to-node ping latency on node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighNodePingLossRate
+      #   expr: rate(pinger_node_ping_lost_total[5m]) / rate(pinger_node_ping_count_total[5m]) > 0.01
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: node-network
+      #   annotations:
+      #     summary: "High node ping loss rate"
+      #     description: "Node ping loss rate on {{ $labels.node_name }} is {{ $value | humanizePercentage }}"
+      #
+      # - alert: HighExternalPingLatency
+      #   expr: histogram_quantile(0.99, rate(pinger_external_ping_latency_ms_bucket[5m])) > 200
+      #   for: 5m
+      #   labels:
+      #     severity: info
+      #     component: external-network
+      #   annotations:
+      #     summary: "High external ping latency"
+      #     description: "P99 external ping latency from node {{ $labels.node_name }} is {{ $value }}ms"
+      #
+      # - alert: HighExternalPingLossRate
+      #   expr: rate(pinger_external_lost_total[5m]) > 0.05
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: external-network
+      #   annotations:
+      #     summary: "High external ping loss rate"
+      #     description: "External ping loss rate from node {{ $labels.node_name }} is {{ $value }}"
 
       - alert: InconsistentPortBindings
         expr: pinger_inconsistent_port_binding > 0
