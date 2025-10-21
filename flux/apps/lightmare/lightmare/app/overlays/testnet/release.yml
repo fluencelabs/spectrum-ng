@@ -5,6 +5,9 @@ metadata:
 spec:
   values:
     operator:
+      image:
+        repository: "docker.fluence.dev/lightmare"
+        tag: "feat-remove-ccp-33b9d63-2322-1@sha256:533f04fc559f11171d6585cda23eb865c482f0885af70e10b87c25b97dbcd9ac"
       config:
         chainAdapter:
           networkId: "52164803"
