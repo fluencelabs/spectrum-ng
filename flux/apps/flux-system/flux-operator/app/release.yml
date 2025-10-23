@@ -11,4 +11,4 @@ spec:
     serviceMonitor:
       create: true
       labels:
-        scrape: true
+        scrape: "true"
