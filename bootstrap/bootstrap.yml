@@ -1840,6 +1840,8 @@ spec:
         - mountPath: /tmp
           name: temp
       hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
       serviceAccountName: flux-operator
       terminationGracePeriodSeconds: 10
       tolerations:
