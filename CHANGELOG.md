@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.4...v0.1.5) (2025-10-29)
+
+
+### Bug Fixes
+
+* Run flux-operator only on control plane nodes ([#46](https://github.com/fluencelabs/spectrum-ng/issues/46)) ([605068d](https://github.com/fluencelabs/spectrum-ng/commit/605068df4296a165696e53af2c098ef00699f908))
+
 ## [0.1.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.3...v0.1.4) (2025-10-29)
 
 
