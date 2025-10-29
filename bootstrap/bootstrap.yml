@@ -203,6 +203,15 @@ spec:
                       Registry address to pull the distribution images from
                       e.g. 'ghcr.io/fluxcd'.
                     type: string
+                  variant:
+                    description: |-
+                      Variant specifies the Flux distribution flavor stored
+                      in the registry.
+                    enum:
+                    - upstream-alpine
+                    - enterprise-alpine
+                    - enterprise-distroless
+                    type: string
                   version:
                     description: Version semver expression e.g. '2.x', '2.3.x'.
                     type: string
@@ -1789,7 +1798,7 @@ spec:
           value: 127.0.0.1
         - name: KUBERNETES_SERVICE_PORT
           value: "6443"
-        image: ghcr.io/controlplaneio-fluxcd/flux-operator:v0.32.0
+        image: ghcr.io/controlplaneio-fluxcd/flux-operator:v0.33.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
