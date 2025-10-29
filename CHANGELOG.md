@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.3...v0.1.4) (2025-10-29)
+
+
+### Bug Fixes
+
+* Bump flux-operator version and fix first start issues ([#45](https://github.com/fluencelabs/spectrum-ng/issues/45)) ([e06752f](https://github.com/fluencelabs/spectrum-ng/commit/e06752ff3dc7b912d95418614f202cf35c2140a7))
+* fix flux-operator monitoring label ([#41](https://github.com/fluencelabs/spectrum-ng/issues/41)) ([8d330f9](https://github.com/fluencelabs/spectrum-ng/commit/8d330f939df3efb50bdfee857357a737297ef418))
+
 ## [0.1.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.2...v0.1.3) (2025-10-21)
 
 
