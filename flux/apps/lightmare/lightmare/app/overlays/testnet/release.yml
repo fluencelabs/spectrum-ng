@@ -7,7 +7,7 @@ spec:
     operator:
       image:
         repository: "docker.fluence.dev/lightmare"
-        tag: "release-please-881c0bc-2356-1@sha256:1a35d675d6082b7d7986dad627f4b909288a687d70d4a1dcd1cbd108645d879f"
+        tag: "release-please-a356647-2359-1@sha256:43a9645bdc31c4e121daa4907ba189a14f8ab5f46b4674b1210484d9a9fdd35a"
       config:
         chainAdapter:
           networkId: "52164803"
