@@ -1,0 +1,11 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: piraeus-operator
+  namespace: flux-system
+spec:
+  interval: 10m
+  ref:
+    # renovate: datasource=github-tags depName=piraeusdatastore/piraeus-operator extractVersion=^(?<version>.+)$
+    tag: v2.9.1
+  url: http://github.com/piraeusdatastore/piraeus-operator

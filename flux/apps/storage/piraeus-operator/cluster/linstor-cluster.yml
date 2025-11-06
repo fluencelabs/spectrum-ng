@@ -1,0 +1,122 @@
+apiVersion: piraeus.io/v1
+kind: LinstorCluster
+metadata:
+  name: linstor-cluster
+spec:
+  controller:
+    enabled: true
+
+  csiController:
+    enabled: true
+
+  csiNode:
+    enabled: true
+  
+  highAvailabilityController:
+    enabled: true
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: talos-override
+spec:
+  podTemplate:
+    metadata:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: storage/linstor
+        workload.default.ovn.kubernetes.io/logical_switch: linstor
+    spec:
+      initContainers:
+      - name: configure-replication-network
+        image: quay.io/piraeusdatastore/piraeus-server:v1.31.3
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          # Wait for net1 interface to exist
+          until ip addr show net1 &>/dev/null; do
+            echo "Waiting for net1 interface..."
+            sleep 2
+          done
+          
+          # Get the IP from net1
+          REPLICATION_IP=$(ip -4 addr show net1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+          
+          if [ -z "$REPLICATION_IP" ]; then
+            echo "ERROR: Could not find IP on net1"
+            exit 1
+          fi
+          
+          echo "Found replication IP: $REPLICATION_IP"
+          NODE_NAME="${NODE_NAME}"
+          
+          # Wait for LINSTOR controller
+          until linstor node list &>/dev/null 2>&1; do
+            echo "Waiting for LINSTOR controller..."
+            sleep 5
+          done
+          
+          # Check if interface exists
+          if linstor node interface list "$NODE_NAME" | grep -q "replication"; then
+            echo "Interface 'replication' exists, checking if IP needs update..."
+            CURRENT_IP=$(linstor node interface list "$NODE_NAME" | grep replication | awk '{print $3}')
+            
+            if [ "$CURRENT_IP" != "$REPLICATION_IP" ]; then
+              echo "IP changed from $CURRENT_IP to $REPLICATION_IP, updating..."
+              linstor node interface delete "$NODE_NAME" replication
+              linstor node interface create "$NODE_NAME" replication "$REPLICATION_IP"
+              echo "Interface updated successfully"
+            else
+              echo "IP unchanged, no update needed"
+            fi
+          else
+            echo "Creating LINSTOR interface 'replication' for node $NODE_NAME with IP $REPLICATION_IP"
+            linstor node interface create "$NODE_NAME" replication "$REPLICATION_IP"
+          fi
+          
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: LS_CONTROLLERS
+          value: "http://linstor-controller:3370"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /shared
+      - name: drbd-shutdown-guard
+        $patch: delete
+      - name: drbd-module-loader
+        $patch: delete
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      - name: run-systemd-system
+        $patch: delete
+      - name: run-drbd-shutdown-guard
+        $patch: delete
+      - name: systemd-bus-socket
+        $patch: delete
+      - name: lib-modules
+        $patch: delete
+      - name: usr-src
+        $patch: delete
+      - name: etc-lvm-backup
+        hostPath:
+          path: /var/etc/lvm/backup
+          type: DirectoryOrCreate
+      - name: etc-lvm-archive
+        hostPath:
+          path: /var/etc/lvm/archive
+          type: DirectoryOrCreate
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: use-replication-network
+spec:
+  properties:
+    - name: PrefNic
+      value: replication
