@@ -50,7 +50,6 @@ spec:
           fi
           
           echo "Found replication IP: $REPLICATION_IP"
-          NODE_NAME="${NODE_NAME}"
           
           # Wait for LINSTOR controller
           until linstor node list &>/dev/null 2>&1; do
