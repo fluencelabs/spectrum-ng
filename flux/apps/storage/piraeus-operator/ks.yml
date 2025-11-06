@@ -4,16 +4,12 @@ metadata:
   name: piraeus-operator-crd
   namespace: flux-system
 spec:
-  path: ./flux/apps/storage/piraeus-operator/crd
+  interval: 10m
+  path: ./config/crd
   prune: false
-  targetNamespace: storage
   sourceRef:
     kind: GitRepository
-    name: spectrum
-    namespace: flux-system
-  interval: 1h
-  retryInterval: 2m
-  timeout: 5m
+    name: piraeus-operator
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
