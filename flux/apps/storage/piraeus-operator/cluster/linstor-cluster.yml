@@ -33,7 +33,7 @@ spec:
         - /bin/bash
         - -c
         - |
-          set -e
+          set -ex
           
           # Wait for net1 interface to exist
           until ip addr show net1 &>/dev/null; do
