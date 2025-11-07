@@ -26,6 +26,11 @@ spec:
         k8s.v1.cni.cncf.io/networks: storage/linstor
         workload.default.ovn.kubernetes.io/logical_switch: linstor
     spec:
+      hostPID: true
+      containers:
+        - name: linstor-satellite
+          securityContext:
+            privileged: true
       initContainers:
       - name: configure-replication-network
         image: quay.io/piraeusdatastore/piraeus-server:v1.31.3
