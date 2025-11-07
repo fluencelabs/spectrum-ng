@@ -26,7 +26,6 @@ spec:
         k8s.v1.cni.cncf.io/networks: storage/linstor
         workload.default.ovn.kubernetes.io/logical_switch: linstor
     spec:
-      hostPID: true
       containers:
         - name: linstor-satellite
           securityContext:
