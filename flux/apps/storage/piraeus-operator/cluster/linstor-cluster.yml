@@ -1,19 +1,19 @@
-apiVersion: piraeus.io/v1
-kind: LinstorCluster
-metadata:
-  name: linstor-cluster
-spec:
-  controller:
-    enabled: true
-
-  csiController:
-    enabled: true
-
-  csiNode:
-    enabled: true
-  
-  highAvailabilityController:
-    enabled: true
+# apiVersion: piraeus.io/v1
+# kind: LinstorCluster
+# metadata:
+#   name: linstor-cluster
+# spec:
+#   controller:
+#     enabled: true
+#
+#   csiController:
+#     enabled: true
+#
+#   csiNode:
+#     enabled: true
+#   
+#   highAvailabilityController:
+#     enabled: true
 ---
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
