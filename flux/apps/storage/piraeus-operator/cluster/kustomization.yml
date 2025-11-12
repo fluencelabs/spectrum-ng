@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - linstor-cluster.yml
   - network.yml
+  - storage-class.yml

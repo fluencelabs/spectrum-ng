@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+provisioner: linstor.csi.linbit.com
+metadata:
+  name: lvm-thin-r2 # need to figure out naming
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  linstor.csi.linbit.com/autoPlace: "2"
+  linstor.csi.linbit.com/storagePool: lvm-thin

@@ -10,8 +10,8 @@ kind: Subnet
 metadata:
   name: linstor
 spec:
-  cidrBlock: 10.10.150.0/24
+  cidrBlock: 10.17.147.0/24
   protocol: IPv4
   provider: linstor.storage.ovn
   logicalGateway: true
-  vlan: ${PRIVATE_VLAN}
+  vlan: ${STORAGE_VLAN} # need beam to add it to the spectrum-vars.yml configmap
