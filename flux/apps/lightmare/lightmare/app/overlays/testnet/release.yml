@@ -7,7 +7,7 @@ spec:
     operator:
       image:
         repository: "docker.fluence.dev/lightmare"
-        tag: "feat-remove-ccp-33b9d63-2322-1@sha256:533f04fc559f11171d6585cda23eb865c482f0885af70e10b87c25b97dbcd9ac"
+        tag: "belyaev-an-sec-policy-bug-6e10c9d-2380-1@sha256:febe54d484c0564dc7dca3fda2e7e6ca0f8f77d993d654aad84cc8f7969cd770"
       config:
         chainAdapter:
           networkId: "52164803"
