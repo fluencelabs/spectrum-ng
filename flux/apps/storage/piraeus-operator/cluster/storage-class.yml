@@ -3,6 +3,21 @@ kind: StorageClass
 provisioner: linstor.csi.linbit.com
 metadata:
   name: lvm-thin-r1 # need to figure out naming
+  # annotations:
+  #   storageclass.kubernetes.io/is-default-class: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  linstor.csi.linbit.com/autoPlace: "1"
+  linstor.csi.linbit.com/storagePool: lvm-thin
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+provisioner: linstor.csi.linbit.com
+metadata:
+  name: lvm-thin-io-limited
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 allowVolumeExpansion: true
@@ -12,3 +27,7 @@ parameters:
   csi.storage.k8s.io/fstype: ext4
   linstor.csi.linbit.com/autoPlace: "1"
   linstor.csi.linbit.com/storagePool: lvm-thin
+  property.linstor.csi.linbit.com/sys/fs/blkio_throttle_read: "100000000"
+  property.linstor.csi.linbit.com/sys/fs/blkio_throttle_write: "100000000"
+  property.linstor.csi.linbit.com/sys/fs/blkio_throttle_read_iops: "4000"
+  property.linstor.csi.linbit.com/sys/fs/blkio_throttle_write_iops: "4000"
