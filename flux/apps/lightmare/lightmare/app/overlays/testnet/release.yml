@@ -7,7 +7,7 @@ spec:
     operator:
       image:
         repository: "docker.fluence.dev/lightmare"
-        tag: "belyaev-an-sec-policy-bug-6e10c9d-2380-1@sha256:febe54d484c0564dc7dca3fda2e7e6ca0f8f77d993d654aad84cc8f7969cd770"
+        tag: "belyaev-an-sec-policy-bug-7a1f6b7-2383-1@sha256:f8cd8f341b5d9e3c8aa5c7d8fab03452cfb6a9022e1149cdbe7180498c8918e5"
       config:
         chainAdapter:
           networkId: "52164803"
