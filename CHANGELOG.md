@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.5...v0.1.6) (2025-11-14)
+
+
+### Bug Fixes
+
+* Use same env as in beam ([#50](https://github.com/fluencelabs/spectrum-ng/issues/50)) ([6dc1302](https://github.com/fluencelabs/spectrum-ng/commit/6dc130294a63db882aa3ad0e1867c4793653b876))
+
 ## [0.1.5](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.4...v0.1.5) (2025-10-29)
 
 
