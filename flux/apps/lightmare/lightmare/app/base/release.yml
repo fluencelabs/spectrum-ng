@@ -19,7 +19,7 @@ spec:
       octopus: true
       image:
         repository: "fluencelabs/lightmare"
-        tag: "0.7.13@sha256:4734878292fe77ac0eb3ca016b78f7c6f54634a601b6c1534508820e8b18d847"
+        tag: "0.7.14@sha256:4641073102203151c90a5ca9dfaa8b854f1ed20c583d749e0fce341588bf784a"
       config:
         k8s:
           cni: "ovn"
