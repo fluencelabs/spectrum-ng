@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.6...v0.1.7) (2025-11-20)
+
+
+### Bug Fixes
+
+* update lightmare ([#56](https://github.com/fluencelabs/spectrum-ng/issues/56)) ([9e1946b](https://github.com/fluencelabs/spectrum-ng/commit/9e1946b30ef8a429c4e7f6529a84de214b58910a))
+
 ## [0.1.6](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.5...v0.1.6) (2025-11-14)
 
 
