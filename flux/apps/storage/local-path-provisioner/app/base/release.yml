@@ -25,4 +25,4 @@ spec:
       tag: 1
     storageClass:
       create: true
-      defaultClass: true
+      defaultClass: false

@@ -1,0 +1,23 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: piraeus-operator
+spec:
+  releaseName: piraeus
+  chart:
+    spec:
+      chart: charts/piraeus
+      interval: 12h
+      sourceRef:
+        kind: GitRepository
+        name: piraeus-operator
+        namespace: flux-system
+      reconcileStrategy: Revision
+  interval: 50m
+  install:
+    remediation:
+      retries: 3
+  values:
+    # https://github.com/piraeusdatastore/piraeus-operator/blob/v2/charts/piraeus/values.yaml
+    installCRDs: false
+    replicaCount: 1

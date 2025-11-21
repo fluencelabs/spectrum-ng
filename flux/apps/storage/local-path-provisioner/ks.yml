@@ -4,7 +4,7 @@ metadata:
   name: local-path-provisioner
   namespace: flux-system
 spec:
-  path: ./flux/apps/storage/local-path-provisioner/app
+  path: ./flux/apps/storage/local-path-provisioner/app/overlays/${NETWORK}
   prune: false
   targetNamespace: storage
   sourceRef:
@@ -14,3 +14,8 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
