@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.7...v0.1.8) (2025-11-25)
+
+
+### Bug Fixes
+
+* Linstor on testnet ([#58](https://github.com/fluencelabs/spectrum-ng/issues/58)) ([5c7915a](https://github.com/fluencelabs/spectrum-ng/commit/5c7915adf0d4449d31c17e3712603e79df7214f3))
+
 ## [0.1.7](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.6...v0.1.7) (2025-11-20)
 
 
