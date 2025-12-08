@@ -5,9 +5,9 @@ metadata:
 spec:
   values:
     operator:
-      #image:
-      #  repository: "docker.fluence.dev/lightmare"
-      #  tag: "feat-remove-ccp-33b9d63-2322-1@sha256:533f04fc559f11171d6585cda23eb865c482f0885af70e10b87c25b97dbcd9ac"
+      image:
+        repository: "docker.fluence.dev/lightmare"
+        tag: "feat-new-deals-getter-4423a59-2455-1@sha256:f4c88cf4662a70b819cc89c6ee9f0964c8153fe34e331b017d9012e03444f9fc"
       config:
         chainAdapter:
           networkId: "52164803"
