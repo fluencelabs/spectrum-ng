@@ -5,4 +5,4 @@ metadata:
 spec:
   values:
     storageClass:
-      defaultClass: true
+      defaultClass: false
