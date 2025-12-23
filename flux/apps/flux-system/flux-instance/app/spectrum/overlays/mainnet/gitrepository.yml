@@ -4,4 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    tag: mainnet
+    branch: test-linstor
