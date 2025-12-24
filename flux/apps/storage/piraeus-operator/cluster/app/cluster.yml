@@ -58,11 +58,11 @@ spec:
               value: http://linstor-controller:3370
           command:
             - /bin/sh
-            - -ceu
+            - -ceux
             - |
               LOG=/var/log/replication-setup.log
 
-              retry() { max="$1"; shift; n=0; until "$@"; do n=$((n+1)); [ "$n" -ge "$max" ] && return 1; sleep 2; done; }
+              retry() { max="10"; shift; n=0; until "$@"; do n=$((n+1)); [ "$n" -ge "$max" ] && return 1; sleep 2; done; }
 
               net1_ip() {
                 ip -4 -o addr show dev net1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1
