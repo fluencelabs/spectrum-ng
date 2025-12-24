@@ -4,7 +4,7 @@ metadata:
   name: local-path-provisioner
   namespace: flux-system
 spec:
-  path: ./flux/apps/storage/local-path-provisioner/app/overlays/${NETWORK}
+  path: ./flux/apps/storage/local-path-provisioner/app
   prune: false
   targetNamespace: storage
   sourceRef:

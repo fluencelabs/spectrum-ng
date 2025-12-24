@@ -36,7 +36,7 @@ metadata:
   name: linstor-cluster
   namespace: flux-system
 spec:
-  path: ./flux/apps/storage/piraeus-operator/cluster/overlays/${NETWORK}
+  path: ./flux/apps/storage/piraeus-operator/cluster/app
   prune: false
   targetNamespace: storage
   sourceRef:
