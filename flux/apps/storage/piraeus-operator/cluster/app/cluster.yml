@@ -113,12 +113,12 @@ spec:
         hostPath:
           path: /var/etc/lvm/archive
           type: DirectoryOrCreate
----
-apiVersion: piraeus.io/v1
-kind: LinstorSatelliteConfiguration
-metadata:
-  name: use-replication-network
-spec:
-  properties:
-    - name: PrefNic
-      value: replication
+# ---
+# apiVersion: piraeus.io/v1
+# kind: LinstorSatelliteConfiguration
+# metadata:
+#   name: use-replication-network
+# spec:
+#   properties:
+#     - name: PrefNic
+#       value: replication
