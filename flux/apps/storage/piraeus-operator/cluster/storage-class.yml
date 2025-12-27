@@ -12,6 +12,7 @@ parameters:
   csi.storage.k8s.io/fstype: ext4
   linstor.csi.linbit.com/autoPlace: "1"
   linstor.csi.linbit.com/storagePool: lvm-thin
+  linstor.csi.linbit.com/allowRemoteVolumeAccess: "false"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
