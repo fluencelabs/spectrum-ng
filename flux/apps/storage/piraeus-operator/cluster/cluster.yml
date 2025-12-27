@@ -3,6 +3,9 @@ kind: LinstorCluster
 metadata:
   name: linstor-cluster
 spec:
+  nodeSelector:
+    beam/linstor_ready: "true"
+
   controller:
     enabled: true
 
