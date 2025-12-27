@@ -19,7 +19,7 @@ spec:
     enabled: false
   
   highAvailabilityController:
-    enabled: true
+    enabled: false
 ---
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
