@@ -213,10 +213,38 @@ spec:
     - alert: NodeMemoryHighUtilization
       annotations:
         description: |
-          Memory is filling up at {{ $labels.instance }}, has been above 90% for the last 15 minutes, is currently at {{ printf "%.2f" $value }}%.
+          Memory is filling up at {{ $labels.instance }}.
+          Total: {{ $labels.mem_total_gib }} GiB
+          Used:  {{ $labels.mem_used_gib }} GiB
+          Utilization: {{ printf "%.2f" $value }}% (above 90% for 15m)
         summary: Host is running out of memory.
       expr: |
-        100 - (node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} * 100) > 90
+        (
+          100 - (
+            node_memory_MemAvailable_bytes{job="node"}
+            / node_memory_MemTotal_bytes{job="node"} * 100
+          )
+        ) > 90
+        * on (instance) group_left(mem_total_gib)
+          (
+            count_values(
+              "mem_total_gib",
+              floor(
+                max by (instance) (node_memory_MemTotal_bytes{job="node"}) / 1024^3
+              )
+            ) by (instance)
+          )
+        * on (instance) group_left(mem_used_gib)
+          (
+            count_values(
+              "mem_used_gib",
+              floor(
+                max by (instance) (
+                  (node_memory_MemTotal_bytes{job="node"} - node_memory_MemAvailable_bytes{job="node"})
+                ) / 1024^3
+              )
+            ) by (instance)
+          )
       for: 15m
       labels:
         severity: warning
