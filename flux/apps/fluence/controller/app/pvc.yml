@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: controller-state
+  namespace: fluence
+  labels:
+    app.kubernetes.io/name: controller
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: linstor-lvm-thin-r1
+  resources:
+    requests:
+      storage: 1Gi

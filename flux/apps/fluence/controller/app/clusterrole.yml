@@ -1,0 +1,76 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: controller
+  labels:
+    app.kubernetes.io/name: controller
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - namespaces
+      - configmaps
+      - services
+      - secrets
+      - persistentvolumeclaims
+    verbs:
+      - create
+      - get
+      - list
+      - delete
+      - deletecollection
+      - patch
+      - watch
+
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["cdi.kubevirt.io"]
+    resources:
+      - datasources
+      - datavolumes
+      - cdis
+    verbs:
+      - create
+      - get
+      - list
+      - delete
+      - deletecollection
+      - watch
+
+  - apiGroups: ["kubevirt.io"]
+    resources:
+      - virtualmachines
+      - virtualmachineinstances
+    verbs:
+      - create
+      - get
+      - list
+      - delete
+      - deletecollection
+      - watch
+      - patch
+      - update
+
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+    verbs:
+      - create
+      - get
+      - list
+      - delete
+      - deletecollection
+      - watch
+      - patch
+      - update
+
+  - apiGroups: ["kubeovn.io"]
+    resources: ["*"]
+    verbs: ["*"]
+
+  - apiGroups: ["k8s.cni.cncf.io"]
+    resources:
+      - network-attachment-definitions
+    verbs: ["*"]
