@@ -1,0 +1,6 @@
+apiVersion: kubeovn.io/v1
+kind: ProviderNetwork
+metadata:
+  name: underlay
+spec:
+  defaultInterface: enp16s0f0
