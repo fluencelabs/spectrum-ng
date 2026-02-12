@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fluence-controller
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./flux/apps/fluence/controller/app
+  prune: false
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  dependsOn:
+    - name: fluence-crd
