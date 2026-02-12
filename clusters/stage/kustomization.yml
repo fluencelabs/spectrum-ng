@@ -10,3 +10,4 @@ resources:
   - ../../flux/apps/storage
 
   - ../../flux/apps/lightmare
+  - ../../flux/apps/fluence
