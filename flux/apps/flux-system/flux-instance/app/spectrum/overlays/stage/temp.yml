@@ -4,3 +4,11 @@ metadata:
   name: underlay
 spec:
   defaultInterface: enp16s0f0
+---
+apiVersion: kubeovn.io/v1
+kind: Vlan
+metadata:
+  name: "121"
+spec:
+  id: 121
+  provider: underlay
