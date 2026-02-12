@@ -8,7 +8,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: linstor-lvm-thin-r1
+  storageClassName: lvm-thin-r1
   resources:
     requests:
       storage: 1Gi
