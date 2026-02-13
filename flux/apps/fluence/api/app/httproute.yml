@@ -4,16 +4,16 @@ metadata:
   name: api
 spec:
   hostnames:
-    - "crd-api.cloudless.dev"
+    - crd-api.cloudless.dev
   parentRefs:
-  - name: eg-gw
-    namespace: system
-    sectionName: http
+    - name: eg-gw
+      namespace: system
+      sectionName: http
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: api
-      port: 8080
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: api
+          port: 8080
