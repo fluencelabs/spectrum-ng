@@ -14,5 +14,4 @@ spec:
   protocol: IPv4
   provider: linstor.storage.ovn
   logicalGateway: true
-  # vlan: ${STORAGE_VLAN}
-  vlan: "121"
+  vlan: ${STORAGE_VLAN}
