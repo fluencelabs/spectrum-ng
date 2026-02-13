@@ -6,3 +6,5 @@ resources:
   - clusterrole.yml
   - clusterrolebinding.yml
   - deployment.yml
+  - service.yml
+  - httproute.yml
