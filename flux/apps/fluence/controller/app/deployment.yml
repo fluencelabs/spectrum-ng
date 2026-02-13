@@ -32,6 +32,9 @@ spec:
         - name: controller
           image: docker.fluence.dev/crd-controller:0.1.0-rc0
           imagePullPolicy: IfNotPresent
+          env:
+            - name: LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS
+              value: "['subnet-test']"
           envFrom:
             - configMapRef:
                 name: controller-config
