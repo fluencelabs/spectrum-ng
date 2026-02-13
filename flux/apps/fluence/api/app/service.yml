@@ -3,13 +3,8 @@ kind: Service
 metadata:
   name: api
   namespace: fluence
-  annotations:
-    ovn.kubernetes.io/attachmentprovider: public.kube-system.ovn
-    ovn.kubernetes.io/service_external_ip_from_subnet: subnet-temp
-    ovn.kubernetes.io/vpc: ovn-cluster
-    public.kube-system.ovn.kubernetes.io/logical_switch: subnet-temp
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: api
   ports:
