@@ -1,0 +1,15 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: eg-public-ovn
+  namespace: public-lb
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        annotations:
+          ovn.kubernetes.io/attachmentprovider: public.kube-system.ovn
+          public.kube-system.ovn.kubernetes.io/logical_switch: subnet-temp
+          ovn.kubernetes.io/service_external_ip_from_subnet: subnet-temp
+          ovn.kubernetes.io/vpc: ovn-cluster
