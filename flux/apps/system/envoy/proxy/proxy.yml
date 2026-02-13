@@ -2,7 +2,6 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
   name: eg-public-ovn
-  namespace: public-lb
 spec:
   provider:
     type: Kubernetes
