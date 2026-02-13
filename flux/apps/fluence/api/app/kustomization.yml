@@ -7,5 +7,4 @@ resources:
   - clusterrolebinding.yml
   - deployment.yml
   - service.yml
-  - service-api.yml
   - httproute.yml

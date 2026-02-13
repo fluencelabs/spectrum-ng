@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: controller
-          image: docker.fluence.dev/crd-api:0.1.0-rc0
+          image: docker.fluence.dev/crd-api:0.1.0-rc1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
