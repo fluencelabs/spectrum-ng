@@ -17,3 +17,4 @@ spec:
       backendRefs:
         - name: api
           port: 8080
+          namespace: fluence
