@@ -12,3 +12,19 @@ spec:
           public.kube-system.ovn.kubernetes.io/logical_switch: subnet-temp
           ovn.kubernetes.io/service_external_ip_from_subnet: subnet-temp
           ovn.kubernetes.io/vpc: ovn-cluster
+      patch:
+        type: StrategicMerge
+        value:
+          spec:
+            type: LoadBalancer
+            allocateLoadBalancerNodePorts: false
+            externalTrafficPolicy: Cluster
+            ports:
+              - name: http-10080
+                port: 10080
+                protocol: TCP
+                targetPort: 10080
+              - name: https-10443
+                port: 10443
+                protocol: TCP
+                targetPort: 10443
