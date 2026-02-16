@@ -7,7 +7,7 @@ spec:
   interval: 1m
   ref:
     # branch: main
-    branch: DOPS-409-temo-deploy
+    branch: DOPS-409-demo-deploy
   secretRef:
     name: lightmare-ssh-creds
   timeout: 60s
