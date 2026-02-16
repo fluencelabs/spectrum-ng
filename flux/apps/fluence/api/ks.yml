@@ -1,7 +1,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: fluence-api
+  name: fluence-api-rbac
   namespace: flux-system
 spec:
   interval: 1m0s
@@ -12,5 +12,23 @@ spec:
     kind: GitRepository
     name: spectrum
     namespace: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fluence-api
+  namespace: flux-system
+spec:
+  path: ./kustomize/api
+  prune: false
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: lightmare
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
   dependsOn:
     - name: fluence-crd
+    - name: fluence-api-rbac

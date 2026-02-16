@@ -1,0 +1,19 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: lightmare-repo
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    # branch: main
+    branch: DOPS-409-temo-deploy
+  secretRef:
+    name: lightmare-ssh-creds
+  timeout: 60s
+  url: ssh://git@github.com:22/fluencelabs/lightmare.git
+  ignore: |
+    # exclude all
+    /*
+    # include kustomize dir
+    !/kustomize   
