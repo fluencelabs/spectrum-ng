@@ -4,4 +4,4 @@ resources:
   - gateway-class.yml
   - gateway.yml
   - proxy.yml
-  - cloudless-dev.yml
+  - cloudless-dev-tls.yml
