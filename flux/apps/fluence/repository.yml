@@ -6,8 +6,8 @@ metadata:
 spec:
   interval: 1m
   ref:
-    branch: DOPS-409-dns
-    # tag: spectrum-stage
+    # branch: main
+    tag: spectrum-stage
   secretRef:
     name: lightmare-ssh-creds
   timeout: 60s
