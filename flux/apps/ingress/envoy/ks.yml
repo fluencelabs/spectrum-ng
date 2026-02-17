@@ -6,9 +6,9 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m0s
-  path: ./flux/apps/system/envoy/app
+  path: ./flux/apps/ingress/envoy/app
   prune: true
-  targetNamespace: system
+  targetNamespace: ingress
   sourceRef:
     kind: GitRepository
     name: spectrum
@@ -20,9 +20,9 @@ metadata:
   name: envoy-proxy
   namespace: flux-system
 spec:
-  path: ./flux/apps/system/envoy/proxy
+  path: ./flux/apps/ingress/envoy/proxy
   prune: true
-  targetNamespace: system
+  targetNamespace: ingress
   sourceRef:
     kind: GitRepository
     name: spectrum
