@@ -20,7 +20,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 2m0s
-  path: ./flux/apps/system/cert-manager/issuers
+  path: ./flux/apps/ingress/cert-manager/issuers
   prune: false
   targetNamespace: ingress
   sourceRef:
