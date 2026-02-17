@@ -11,6 +11,6 @@ spec:
     kind: GitRepository
     name: lightmare
     namespace: flux-system
-  interval: 1h
+  interval: 5h
   retryInterval: 2m
   timeout: 5m
