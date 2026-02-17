@@ -8,6 +8,7 @@ resources:
   - ../../flux/apps/kubevirt
   - ../../flux/apps/system
   - ../../flux/apps/storage
+  - ../../flux/apps/ingress
 
   - ../../flux/apps/lightmare
   - ../../flux/apps/fluence
