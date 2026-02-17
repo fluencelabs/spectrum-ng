@@ -7,11 +7,13 @@ spec:
     email: devops@fluence.one
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
-      name: letsencrypt-key
+      name: cloudless-dev-key
     solvers:
-    - http01:
-        gatewayHTTPRoute:
-          parentRefs:
-          - name: eg-gw
-            namespace: ingress
-            sectionName: http
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: external-dns-cloudflere
+              key: token
+        selector:
+          dnsZones:
+            - "cloudless.dev"
