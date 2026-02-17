@@ -4,3 +4,4 @@ resources:
   - gateway-class.yml
   - gateway.yml
   - proxy.yml
+  - crd-api-tls.yml
