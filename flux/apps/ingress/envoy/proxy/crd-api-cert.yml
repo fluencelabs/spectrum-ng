@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: crd-api-tls
+spec:
+  secretName: crd-api-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: cloudless-dev
+  dnsNames:
+  - crd-api.stage.cloudless.dev

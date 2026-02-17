@@ -17,8 +17,13 @@ spec:
       namespaces:
         from: All
   - name: https
-    protocol: HTTP
     port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: crt-api-tls
     allowedRoutes:
       namespaces:
         from: All
