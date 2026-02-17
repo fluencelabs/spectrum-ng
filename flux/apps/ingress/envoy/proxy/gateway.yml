@@ -23,7 +23,7 @@ spec:
       mode: Terminate
       certificateRefs:
       - kind: Secret
-        name: crt-api-tls
+        name: cloudless-dev-tls
     allowedRoutes:
       namespaces:
         from: All
