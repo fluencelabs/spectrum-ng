@@ -12,7 +12,7 @@ spec:
       - dns01:
           cloudflare:
             apiTokenSecretRef:
-              name: external-dns-cloudflere
+              name: external-dns-cloudflare
               key: token
         selector:
           dnsZones:
