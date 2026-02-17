@@ -15,7 +15,7 @@ spec:
       interval: 5m
   values:
     sources:
-      - service
+      - gateway-httproute
     policy: sync
     txtOwnerId: "K8S-KABAT-STAGE"
     domainFilters:
