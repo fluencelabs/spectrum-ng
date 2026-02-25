@@ -5,3 +5,6 @@ resources:
   - metrics-server.yml
   - victoriametrics.yml
   - grafana.yml
+  - external-dns.yml
+  - cert-manager.yml
+  - nfd.yml

@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cloudless-dev
+spec:
+  secretName: cloudless-dev-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: cloudless-dev
+  dnsNames:
+    - "*.stage.cloudless.dev"

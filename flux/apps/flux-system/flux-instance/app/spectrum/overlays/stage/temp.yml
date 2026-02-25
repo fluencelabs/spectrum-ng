@@ -1,0 +1,32 @@
+apiVersion: kubeovn.io/v1
+kind: ProviderNetwork
+metadata:
+  name: underlay
+spec:
+  defaultInterface: enp16s0f0
+---
+apiVersion: kubeovn.io/v1
+kind: Vlan
+metadata:
+  name: "121"
+spec:
+  id: 121
+  provider: underlay
+---
+apiVersion: kubeovn.io/v1
+kind: Subnet
+metadata:
+  name: subnet-temp
+spec:
+  cidrBlock: 109.205.50.168/29
+  default: false
+  enableLb: true
+  excludeIps:
+  - 109.205.50.169
+  gateway: 109.205.50.169
+  natOutgoing: false
+  private: false
+  protocol: IPv4
+  provider: public.kube-system.ovn
+  vlan: "121"
+  vpc: underlay

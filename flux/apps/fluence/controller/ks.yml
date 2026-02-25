@@ -1,0 +1,34 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fluence-controller-rbac
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./flux/apps/fluence/controller/app
+  prune: false
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fluence-controller
+  namespace: flux-system
+spec:
+  path: ./kustomize/controller
+  prune: false
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: lightmare
+    namespace: flux-system
+  interval: 5h
+  retryInterval: 2m
+  timeout: 5m
+  dependsOn:
+    - name: fluence-crd
+    - name: fluence-controller-rbac
