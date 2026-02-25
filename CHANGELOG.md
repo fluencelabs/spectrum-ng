@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.9...v0.1.10) (2026-02-25)
+
+
+### Bug Fixes
+
+* **lightmare:** fix overlay ([#79](https://github.com/fluencelabs/spectrum-ng/issues/79)) ([f1f76ac](https://github.com/fluencelabs/spectrum-ng/commit/f1f76acc637ee2650d48eddd799c2b7b95cb3def))
+* **lightmare:** remove version override for stage and testnet ([#78](https://github.com/fluencelabs/spectrum-ng/issues/78)) ([4948f33](https://github.com/fluencelabs/spectrum-ng/commit/4948f33f7a8cbc1d5f16e1dbbcd8cfca408bb5e5))
+* update lightmare to 0.7.17 ([#76](https://github.com/fluencelabs/spectrum-ng/issues/76)) ([2b3a55f](https://github.com/fluencelabs/spectrum-ng/commit/2b3a55f503b87d036f96836a5da99199e403064c))
+
 ## [0.1.9](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.8...v0.1.9) (2026-01-12)
 
 
