@@ -5,3 +5,4 @@ resources:
   - vm-operator
   - grafana-operator
   - alloy-operator
+  - nfd-operator
