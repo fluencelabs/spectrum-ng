@@ -3,4 +3,8 @@ kind: Namespace
 metadata:
   name: system
   labels:
+<<<<<<< Updated upstream
     pod-security.kubernetes.io/enforce: privileged
+=======
+    pod-security.kubernetes.io/enforce: privileged
+>>>>>>> Stashed changes
