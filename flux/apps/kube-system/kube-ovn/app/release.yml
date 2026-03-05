@@ -13,8 +13,8 @@ spec:
         name: kube-ovn
         namespace: flux-system
   values:
-    controller:
-      enableLbSvc: true
+    features:
+      enableLoadbalancerService: true
 
     images:
       kubeovn:
