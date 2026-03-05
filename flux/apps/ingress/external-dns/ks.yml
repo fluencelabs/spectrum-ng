@@ -16,3 +16,6 @@ spec:
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: false

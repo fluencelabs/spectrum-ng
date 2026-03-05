@@ -32,3 +32,11 @@ spec:
   timeout: 5m
   dependsOn:
     - name: envoy
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: false

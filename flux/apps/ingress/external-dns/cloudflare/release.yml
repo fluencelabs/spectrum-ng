@@ -17,7 +17,7 @@ spec:
     sources:
       - gateway-httproute
     policy: sync
-    txtOwnerId: "K8S-KABAT-STAGE"
+    txtOwnerId: "K8S-KABAT-${NETWORK}-${PROVIDER}"
     domainFilters:
       - "cloudless.dev"
     provider: cloudflare

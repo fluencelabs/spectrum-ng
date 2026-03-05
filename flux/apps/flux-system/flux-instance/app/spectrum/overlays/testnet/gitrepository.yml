@@ -4,4 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    tag: testnet
+    branch: DOPS-494
