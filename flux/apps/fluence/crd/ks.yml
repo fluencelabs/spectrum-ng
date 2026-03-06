@@ -4,12 +4,12 @@ metadata:
   name: fluence-crd
   namespace: flux-system
 spec:
-  path: ./kustomize/crd
+  path: ./flux/apps/fluence/controller/app
   prune: false
   targetNamespace: fluence
   sourceRef:
     kind: GitRepository
-    name: lightmare
+    name: spectrum
     namespace: flux-system
   interval: 5h
   retryInterval: 2m
