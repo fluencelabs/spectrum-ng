@@ -1,0 +1,17 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: api-jwt
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: api
+
+  jwt:
+    optional: false
+    providers:
+      - name: authentik
+        issuer: "https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/"
+        remoteJWKS:
+          uri: "https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/jwks/"

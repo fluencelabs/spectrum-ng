@@ -5,3 +5,17 @@ resources:
   - serviceaccount.yml
   - clusterrole.yml
   - clusterrolebinding.yml
+  - deployment.yml
+  - service.yml
+  - httproute.yml
+  - security-policy.yml
+
+configMapGenerator:
+  - name: api-config
+    envs:
+      - config.env
+
+images:
+- name: docker.fluence.dev/crd-api
+  newName: docker.fluence.dev/crd-api
+  newTag: main-1bab8b2-2929-1

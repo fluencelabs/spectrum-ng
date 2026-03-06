@@ -5,3 +5,15 @@ resources:
   - serviceaccount.yml
   - clusterrole.yml
   - clusterrolebinding.yml
+  - pvc.yml
+  - deployment.yml
+
+configMapGenerator:
+- envs:
+  - config.env
+  name: controller-config
+
+images:
+- name: docker.fluence.dev/crd-controller
+  newName: docker.fluence.dev/crd-controller
+  newTag: main-1bab8b2-2929-1

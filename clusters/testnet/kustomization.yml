@@ -12,3 +12,4 @@ resources:
   - ../../flux/apps/ingress
 
   - ../../flux/apps/lightmare
+  - ../../flux/apps/fluence
