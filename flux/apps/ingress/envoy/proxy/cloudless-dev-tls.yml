@@ -8,4 +8,4 @@ spec:
     kind: ClusterIssuer
     name: cloudless-dev
   dnsNames:
-    - "*.${NETWORK}.cloudless.dev"
+    - "*.${PROVIDER}-${NETWORK}.cloudless.dev"
