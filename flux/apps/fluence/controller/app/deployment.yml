@@ -33,7 +33,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS
-              value: '["subnet-temp"]'
+              value: ${PUBLIC_SUBNETS_LIST}
           envFrom:
             - configMapRef:
                 name: controller-config
