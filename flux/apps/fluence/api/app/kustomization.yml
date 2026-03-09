@@ -8,7 +8,7 @@ resources:
   - deployment.yml
   - service.yml
   - httproute.yml
-  - security-policy.yml
+  # - security-policy.yml
 
 configMapGenerator:
   - name: api-config
