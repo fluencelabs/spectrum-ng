@@ -4,7 +4,7 @@ metadata:
   name: fluence-crd
   namespace: flux-system
 spec:
-  path: ./flux/apps/fluence/controller/app
+  path: ./flux/apps/fluence/crd/app
   prune: false
   targetNamespace: fluence
   sourceRef:
