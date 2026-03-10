@@ -16,4 +16,5 @@ spec:
     /*
     # include kustomize dir
     !/kustomize   
+    !/charts
     !/charts/crd-operator   
