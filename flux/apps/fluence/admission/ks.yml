@@ -1,6 +1,21 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: fluence-admission-rbac
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./flux/apps/fluence/admission/app
+  prune: false
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: fluence-admission
   namespace: flux-system
 spec:
@@ -16,3 +31,4 @@ spec:
   timeout: 5m
   dependsOn:
     - name: fluence-crd
+    - name: fluence-admission-rbac
