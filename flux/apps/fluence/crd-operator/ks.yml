@@ -18,7 +18,7 @@ spec:
         name: spectrum-vars
         optional: false
       - kind: ConfigMap
-        name: lightmare-vars
+        name: spectrum-manual-vars
         optional: true
   dependsOn:
     - name: cert-manager
