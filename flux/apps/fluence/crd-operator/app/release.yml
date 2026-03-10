@@ -26,7 +26,7 @@ spec:
     controller:
       image:
         repository: "docker.fluence.dev/crd-controller"
-        tag: "main-e0b5702-2955-1"
+        tag: "main-9d59429-2970-1"
       config:
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
@@ -41,7 +41,7 @@ spec:
     api:
       image:
         repository: "docker.fluence.dev/crd-api"
-        tag: "main-e0b5702-2955-1"
+        tag: "main-9d59429-2970-1"
       gateway:
         name: eg-gw
         namespace: ingress
@@ -55,4 +55,4 @@ spec:
     admission:
       image:
         repository: "docker.fluence.dev/crd-admission"
-        tag: "main-e0b5702-2955-1"
+        tag: "main-9d59429-2970-1"
