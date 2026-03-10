@@ -49,8 +49,6 @@ spec:
       jwt:
         enabled: true
       config:
-        LTM_CRD_API__STORAGE__SSD: "lvm-thin-r1"
-        LTM_CRD_API__STORAGE__REPLICATED_SSD: "lvm-thin-r2"
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
 
