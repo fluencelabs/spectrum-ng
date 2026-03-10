@@ -10,5 +10,5 @@ roleRef:
   name: admission
 subjects:
   - kind: ServiceAccount
-    name: admission
+    name: admission-controller
     namespace: fluence
