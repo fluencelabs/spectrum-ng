@@ -3,7 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yml
   - repository.yml
-  - crd
-  - api
-  - controller
-  - admission
+  - crd-operator
+  # - crd
+  # - api
+  # - controller
+  # - admission

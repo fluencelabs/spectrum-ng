@@ -1,0 +1,58 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: crd-operator
+spec:
+  interval: 5m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/crd-operator
+      sourceRef:
+        kind: GitRepository
+        name: lightmare
+        namespace: flux-system
+      interval: 5m
+  values:
+    global:
+      network: ${NETWORK}
+      provider: ${PROVIDER}
+
+    controller:
+      image:
+        repository: "docker.fluence.dev/crd-controller"
+        tag: "main-e0b5702-2955-1"
+      config:
+        LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
+        LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
+        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-66cd1ddf-3f7e-4d1c-9439-714c15d971b7"]'
+      persistence:
+        enabled: true
+        storageClassName: lvm-thin-r1
+        accessModes:
+          - ReadWriteOnce
+        size: 1Gi
+
+    api:
+      image:
+        repository: "docker.fluence.dev/crd-api"
+        tag: "main-e0b5702-2955-1"
+      gateway:
+        name: eg-gw
+        namespace: ingress
+        sectionName: https
+      jwt:
+        enabled: true
+      config:
+        LTM_CRD_API__STORAGE__SSD: "lvm-thin-r1"
+        LTM_CRD_API__STORAGE__REPLICATED_SSD: "lvm-thin-r2"
+
+    admission:
+      image:
+        repository: "docker.fluence.dev/crd-admission"
+        tag: "main-e0b5702-2955-1"
