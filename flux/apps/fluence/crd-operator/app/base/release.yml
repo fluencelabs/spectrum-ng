@@ -37,7 +37,7 @@ spec:
         namespace: ingress
         sectionName: https
         hostnames:
-          - crd-api.${PROVIDER}-${NETWORK}.cloudless.dev
+          - crd-api.${NETWORK}-${PROVIDER}.cloudless.dev
       jwt:
         enabled: true
         issuer: https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/
