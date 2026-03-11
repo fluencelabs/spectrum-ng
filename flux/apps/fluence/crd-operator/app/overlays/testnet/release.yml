@@ -16,7 +16,7 @@ spec:
       sourceRef:
         kind: GitRepository
         name: lightmare
-        namespace: flux-system
+        namespace: fluence
       interval: 5m
   values:
     controller:

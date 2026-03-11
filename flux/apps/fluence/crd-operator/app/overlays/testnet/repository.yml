@@ -2,7 +2,6 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: lightmare
-  namespace: flux-system
 spec:
   interval: 1m
   ref:
