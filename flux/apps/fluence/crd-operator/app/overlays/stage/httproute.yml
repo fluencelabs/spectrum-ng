@@ -4,7 +4,7 @@ metadata:
   name: api-open
 spec:
   hostnames:
-    - crd-api.stage.cloudless.dev
+    - crd-api-open.stage-cloudless.cloudless.dev
   parentRefs:
     - name: eg-gw
       namespace: ingress
