@@ -4,8 +4,6 @@ metadata:
   name: crd-operator
 spec:
   interval: 5m
-  driftDetection:
-    mode: enabled
   install:
     remediation:
       retries: 3
