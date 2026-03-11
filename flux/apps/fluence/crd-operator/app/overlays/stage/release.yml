@@ -13,10 +13,21 @@ spec:
       interval: 1m
   values:
     controller:
+      image:
+        repository: "docker.fluence.dev/crd-controller"
+        tag: main-6b8c974-3034-1
       config:
         LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-temp"]'
 
     api:
+      image:
+        repository: "docker.fluence.dev/crd-api"
+        tag: main-6b8c974-3034-1
       config:
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
+
+    admission:
+      image:
+        repository: "docker.fluence.dev/crd-admission"
+        tag: main-6b8c974-3034-1
