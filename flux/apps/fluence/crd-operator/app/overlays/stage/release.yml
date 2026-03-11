@@ -10,7 +10,7 @@ spec:
         kind: GitRepository
         name: lightmare
         namespace: fluence
-      interval: 5m
+      interval: 1m
   values:
     controller:
       image:
