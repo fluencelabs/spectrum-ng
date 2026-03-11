@@ -6,7 +6,7 @@ metadata:
 spec:
   interval: 1m0s
   path: ./flux/apps/fluence/controller/app
-  prune: false
+  prune: true
   targetNamespace: fluence
   sourceRef:
     kind: GitRepository
@@ -20,7 +20,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./kustomize/controller
-  prune: false
+  prune: true
   targetNamespace: fluence
   sourceRef:
     kind: GitRepository

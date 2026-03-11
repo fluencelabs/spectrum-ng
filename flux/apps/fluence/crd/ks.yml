@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./kustomize/crd
-  prune: false
+  prune: true
   targetNamespace: fluence
   sourceRef:
     kind: GitRepository
