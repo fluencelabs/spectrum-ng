@@ -31,13 +31,6 @@ spec:
         size: 1Gi
 
     api:
-      gateway:
-        enabled: true
-        name: eg-gw
-        namespace: ingress
-        sectionName: https
-        hostnames:
-          - crd-api.${NETWORK}-${PROVIDER}.cloudless.dev
       config:
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
