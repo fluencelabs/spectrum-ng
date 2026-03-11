@@ -38,9 +38,6 @@ spec:
         sectionName: https
         hostnames:
           - crd-api.${NETWORK}-${PROVIDER}.cloudless.dev
-      jwt:
-        enabled: true
-        issuer: https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/
       config:
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
