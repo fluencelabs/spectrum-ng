@@ -14,6 +14,5 @@ spec:
   ignore: |
     # exclude all
     /*
-    # include kustomize dir
-    !/kustomize   
+    # include charts dir
     !/charts/crd-operator   

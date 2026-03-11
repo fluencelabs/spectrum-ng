@@ -1,0 +1,37 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: crd-operator
+spec:
+  interval: 5m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/crd-operator
+      sourceRef:
+        kind: GitRepository
+        name: lightmare
+        namespace: flux-system
+      interval: 5m
+  values:
+    controller:
+      image:
+        repository: "docker.fluence.dev/crd-controller"
+        tag: "main-9d59429-2970-1"
+      config:
+        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-66cd1ddf-3f7e-4d1c-9439-714c15d971b7"]'
+
+    api:
+      image:
+        repository: "docker.fluence.dev/crd-api"
+        tag: "main-9d59429-2970-1"
+
+    admission:
+      image:
+        repository: "docker.fluence.dev/crd-admission"
+        tag: "main-9d59429-2970-1"

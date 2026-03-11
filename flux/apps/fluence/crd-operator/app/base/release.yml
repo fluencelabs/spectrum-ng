@@ -19,18 +19,10 @@ spec:
         namespace: flux-system
       interval: 5m
   values:
-    global:
-      network: ${NETWORK}
-      provider: ${PROVIDER}
-
     controller:
-      image:
-        repository: "docker.fluence.dev/crd-controller"
-        tag: "main-9d59429-2970-1"
       config:
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
-        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-66cd1ddf-3f7e-4d1c-9439-714c15d971b7"]'
       persistence:
         enabled: true
         storageClassName: lvm-thin-r1
@@ -39,20 +31,16 @@ spec:
         size: 1Gi
 
     api:
-      image:
-        repository: "docker.fluence.dev/crd-api"
-        tag: "main-9d59429-2970-1"
       gateway:
+        enabled: true
         name: eg-gw
         namespace: ingress
         sectionName: https
+        hostnames:
+          - crd-api.${PROVIDER}-${NETWORK}.cloudless.dev
       jwt:
         enabled: true
+        issuer: https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/
       config:
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
-
-    admission:
-      image:
-        repository: "docker.fluence.dev/crd-admission"
-        tag: "main-9d59429-2970-1"
