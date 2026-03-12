@@ -18,6 +18,7 @@ spec:
         name: lightmare
         namespace: fluence
       interval: 5m
+      reconcileStrategy: Revision
   values:
     controller:
       # image:
