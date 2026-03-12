@@ -5,8 +5,7 @@ metadata:
 spec:
   interval: 1m
   ref:
-    # tag: spectrum-stage
-    branch: DOPS-497-rbac-naming-fix
+    tag: spectrum-stage
   secretRef:
     name: lightmare-ssh-creds
   timeout: 60s
