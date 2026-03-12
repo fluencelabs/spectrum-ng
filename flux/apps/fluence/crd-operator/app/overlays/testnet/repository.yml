@@ -1,17 +1,9 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
+kind: OCIRepository
 metadata:
-  name: lightmare
+  name: crd-operator
 spec:
-  interval: 1m
+  interval: 5m0s
+  url: oci://registry-1.docker.io/fluencelabs/crd-operator-chart
   ref:
-    tag: spectrum-stage
-  secretRef:
-    name: lightmare-ssh-creds
-  timeout: 60s
-  url: ssh://git@github.com:22/fluencelabs/lightmare.git
-  ignore: |
-    # exclude all
-    /*
-    # include charts dir
-    !/charts/crd-operator   
+    tag: 0.0.2

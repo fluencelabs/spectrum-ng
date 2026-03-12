@@ -14,15 +14,6 @@ spec:
       retryInterval: 5m
   driftDetection:
     mode: enabled
-
-  chart:
-    spec:
-      chart: ./charts/crd-operator
-      sourceRef:
-        kind: GitRepository
-        name: lightmare
-        namespace: flux-system
-      interval: 5m
   values:
     controller:
       config:

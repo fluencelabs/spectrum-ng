@@ -4,21 +4,10 @@ metadata:
   name: crd-operator
 spec:
   interval: 5m
-  install:
-    remediation:
-      retries: 3
-  upgrade:
-    remediation:
-      retries: 3
-  chart:
-    spec:
-      chart: ./charts/crd-operator
-      sourceRef:
-        kind: GitRepository
-        name: lightmare
-        namespace: fluence
-      interval: 5m
-      reconcileStrategy: Revision
+  chartRef:
+    kind: OCIRepository
+    name: crd-operator
+    namespace: fluence
   values:
     controller:
       config:
