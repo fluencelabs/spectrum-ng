@@ -5,7 +5,7 @@ metadata:
 spec:
   interval: 1m
   ref:
-    branch: DOPS-497
+    tag: spectrum-stage
   secretRef:
     name: lightmare-ssh-creds
   timeout: 60s
