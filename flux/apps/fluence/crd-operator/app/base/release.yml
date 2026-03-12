@@ -10,6 +10,8 @@ spec:
   upgrade:
     remediation:
       retries: 3
+  driftDetection:
+    mode: enabled
   chart:
     spec:
       chart: ./charts/crd-operator
