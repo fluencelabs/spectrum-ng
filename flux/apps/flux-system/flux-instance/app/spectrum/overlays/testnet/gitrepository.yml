@@ -4,5 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    # tag: testnet
-    branch: set-testnet-versions
+    tag: testnet
