@@ -10,7 +10,7 @@ kind: Subnet
 metadata:
   name: linstor
 spec:
-  cidrBlock: 10.17.147.0/24
+  cidrBlock: 10.118.147.0/24
   protocol: IPv4
   provider: linstor.storage.ovn
   logicalGateway: true
