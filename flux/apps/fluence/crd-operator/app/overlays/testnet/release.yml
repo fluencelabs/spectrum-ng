@@ -24,4 +24,4 @@ spec:
     admission:
       image:
         repository: "docker.fluence.dev/crd-admission"
-        tag: main-a930e27-3092-1
+        tag: "0.2.0"
