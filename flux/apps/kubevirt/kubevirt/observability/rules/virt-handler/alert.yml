@@ -10,6 +10,7 @@ spec:
         expr: (kube_daemonset_status_number_ready{namespace='kubevirt', daemonset='virt-handler'} - kube_daemonset_status_desired_number_scheduled{namespace='kubevirt', daemonset='virt-handler'}) != 0
         for: 15m
         labels:
+          team: spectrum-ng
           severity: warning
         annotations:
           summary: Some virt-handlers failed to roll out
@@ -19,6 +20,7 @@ spec:
         expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-handler-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-handler-.*"} [5m] ) ) >= 0.8
         for: 5m
         labels:
+          team: spectrum-ng
           severity: critical
         annotations:
           summary: More than 80% of the rest calls failed in virt-handler for the last 5 minutes

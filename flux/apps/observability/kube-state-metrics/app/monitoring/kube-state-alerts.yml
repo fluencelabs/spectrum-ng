@@ -19,6 +19,7 @@ spec:
         > 0.01
       for: 15m
       labels:
+        team: spectrum-ng
         severity: critical
 
     - alert: KubeStateMetricsWatchErrors
@@ -34,6 +35,7 @@ spec:
         > 0.01
       for: 15m
       labels:
+        team: spectrum-ng
         severity: critical
 
     - alert: KubeStateMetricsShardingMismatch
@@ -46,6 +48,7 @@ spec:
         stdvar (kube_state_metrics_total_shards{job="kube-state-metrics"}) by (cluster) != 0
       for: 15m
       labels:
+        team: spectrum-ng
         severity: critical
 
     - alert: KubeStateMetricsShardsMissing
@@ -60,4 +63,5 @@ spec:
         != 0
       for: 15m
       labels:
+        team: spectrum-ng
         severity: critical
