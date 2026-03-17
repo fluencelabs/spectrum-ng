@@ -10,7 +10,7 @@ spec:
         expr: kubevirt_virt_operator_up == 0
         for: 10m
         labels:
-          team: spectrum-ng
+          team: devops
           severity: critical
         annotations:
           summary: All virt-operator servers are down.
@@ -20,7 +20,7 @@ spec:
         expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_operator_up < 2)
         for: 60m
         labels:
-          team: spectrum-ng
+          team: devops
           severity: warning
         annotations:
           summary: More than one virt-operator should be running if more than one worker nodes exist.
@@ -30,7 +30,7 @@ spec:
         expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-operator-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-operator-.*"} [5m] ) ) >= 0.8
         for: 5m
         labels:
-          team: spectrum-ng
+          team: devops
           severity: critical
         annotations:
           summary: More than 80% of the rest calls failed in virt-operator for the last 5 minutes
@@ -58,7 +58,7 @@ spec:
         expr: kubevirt_virt_operator_leading == 0
         for: 10m
         labels:
-          team: spectrum-ng
+          team: devops
           severity: critical
         annotations:
           summary: No leading virt-operator was detected for the last 10 min.
