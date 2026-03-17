@@ -27,10 +27,10 @@ metadata:
   name: talos-override
 spec:
   podTemplate:
-    metadata:
-      annotations:
-        k8s.v1.cni.cncf.io/networks: storage/linstor
-        workload.default.ovn.kubernetes.io/logical_switch: linstor
+    # metadata:
+    #   annotations:
+    #     k8s.v1.cni.cncf.io/networks: storage/linstor
+    #     workload.default.ovn.kubernetes.io/logical_switch: linstor
     spec:
       initContainers:
         - name: drbd-shutdown-guard
