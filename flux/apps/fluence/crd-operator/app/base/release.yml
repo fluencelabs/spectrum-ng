@@ -16,9 +16,6 @@ spec:
     mode: enabled
   values:
     controller:
-      image:
-        repository: "docker.fluence.dev/crd-controller"
-        tag: "0.3.0"
       config:
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
@@ -30,14 +27,6 @@ spec:
         size: 1Gi
 
     api:
-      image:
-        repository: "docker.fluence.dev/crd-api"
-        tag: "0.5.0"
       config:
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
-
-    admission:
-      image:
-        repository: "docker.fluence.dev/crd-admission"
-        tag: "0.2.2"
