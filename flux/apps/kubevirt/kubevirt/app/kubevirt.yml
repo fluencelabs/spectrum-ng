@@ -10,3 +10,4 @@ spec:
         - AlignCPUs
         - NUMA
         - ExpandDisks
+        - CrossNamespaceVolumeDataSource
