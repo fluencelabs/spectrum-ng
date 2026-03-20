@@ -1,0 +1,97 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: flux-alerts
+spec:
+  groups:
+    - name: flux.alerts
+      rules:
+        - alert: HelmReleaseNotReady
+          expr: gotk_resource_info{customresource_kind="HelmRelease", ready!="True"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is in an unready state for more than 15 minutes."
+
+        - alert: GitRepositorySyncFailed
+          expr: gotk_resource_info{customresource_kind="GitRepository", ready!="True"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} sync failed"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has not been successfully synced for more than 15 minutes."
+
+        - alert: KustomizationNotApplied
+          expr: gotk_resource_info{customresource_kind="Kustomization", ready!="True"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not applied"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not successfully applied for more than 15 minutes."
+
+        - alert: HelmChartFailed
+          expr: gotk_resource_info{customresource_kind="HelmChart", ready!="True"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has failed"
+            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready for more than 15 minutes."
+
+        - alert: HelmReleaseSuspended
+          expr: gotk_resource_info{customresource_kind="HelmRelease", suspended="true"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+
+        - alert: GitRepositorySuspended
+          expr: gotk_resource_info{customresource_kind="GitRepository", suspended="true"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+
+        - alert: KustomizationSuspended
+          expr: gotk_resource_info{customresource_kind="Kustomization", suspended="true"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+
+        - alert: ImageRepositorySuspended
+          expr: gotk_resource_info{customresource_kind="ImageRepository", suspended="true"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "ImageRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "ImageRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+
+        - alert: HelmChartSuspended
+          expr: gotk_resource_info{customresource_kind="HelmChart", suspended="true"} > 0
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
