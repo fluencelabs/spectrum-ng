@@ -10,6 +10,7 @@ spec:
         expr: kube_ovn_log_file_size > 1073741824
         for: 30m
         labels:
+          team: devops
           severity: info
           component: ovn
         annotations:
@@ -20,6 +21,7 @@ spec:
         expr: log_file_size > 1073741824
         for: 30m
         labels:
+          team: devops
           severity: info
           component: ovs
         annotations:
@@ -30,6 +32,7 @@ spec:
         expr: kube_ovn_db_file_size > 10737418240
         for: 30m
         labels:
+          team: devops
           severity: warning
           component: ovn-db
         annotations:
@@ -48,6 +51,7 @@ spec:
           ) < 0.10
         for: 30m
         labels:
+          team: devops
           severity: warning
         annotations:
           summary: Public IPv4 pool below 10% free.
@@ -64,6 +68,7 @@ spec:
           ) < 0.02
         for: 10m
         labels:
+          team: devops
           severity: critical
         annotations:
           summary: Public IPv4 pool is nearly exhausted (<2% free).
@@ -74,6 +79,7 @@ spec:
         expr: kube_ovn_ovn_status == 0
         for: 2m
         labels:
+          team: devops
           severity: critical
           component: ovn
         annotations:
@@ -84,6 +90,7 @@ spec:
         expr: kube_ovn_db_status == 0
         for: 2m
         labels:
+          team: devops
           severity: critical
           component: ovn-db
         annotations:
@@ -94,6 +101,7 @@ spec:
         expr: kube_ovn_chassis_info == 0
         for: 2m
         labels:
+          team: devops
           severity: warning
           component: ovn-chassis
         annotations:
@@ -104,6 +112,7 @@ spec:
         expr: ovs_status == 0
         for: 2m
         labels:
+          team: devops
           severity: critical
           component: ovs
         annotations:
@@ -114,6 +123,7 @@ spec:
         expr: pinger_ovs_down == 1
         for: 1m
         labels:
+          team: devops
           severity: critical
           component: ovs
         annotations:
@@ -124,6 +134,7 @@ spec:
         expr: pinger_ovn_controller_down == 1
         for: 1m
         labels:
+          team: devops
           severity: critical
           component: ovn-controller
         annotations:
@@ -137,6 +148,7 @@ spec:
         expr: rate(kube_ovn_failed_req_count[5m]) > 0.1
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovn
         annotations:
@@ -147,6 +159,7 @@ spec:
         expr: rate(failed_req_count[5m]) > 0.1
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs
         annotations:
@@ -157,6 +170,7 @@ spec:
         expr: rate(interface_rx_errors[5m]) > 10
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs-interface
         annotations:
@@ -167,6 +181,7 @@ spec:
         expr: rate(interface_tx_errors[5m]) > 10
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs-interface
         annotations:
@@ -177,6 +192,7 @@ spec:
         expr: rate(interface_rx_dropped[5m]) > 50 or rate(interface_tx_dropped[5m]) > 50
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs-interface
         annotations:
@@ -189,6 +205,7 @@ spec:
         expr: pinger_apiserver_unhealthy == 1
         for: 2m
         labels:
+          team: devops
           severity: critical
           component: apiserver
         annotations:
@@ -199,6 +216,7 @@ spec:
         expr: histogram_quantile(0.99, rate(pinger_apiserver_latency_ms_bucket[5m])) > 1000
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: apiserver
         annotations:
@@ -209,6 +227,7 @@ spec:
         expr: pinger_internal_dns_unhealthy == 1
         for: 2m
         labels:
+          team: devops
           severity: warning
           component: dns
         annotations:
@@ -229,6 +248,7 @@ spec:
         expr: histogram_quantile(0.99, rate(pinger_internal_dns_latency_ms_bucket[5m])) > 500
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: dns
         annotations:
@@ -299,6 +319,7 @@ spec:
         expr: pinger_inconsistent_port_binding > 0
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovn
         annotations:
@@ -312,6 +333,7 @@ spec:
         expr: rate(dp_flows_lookup_missed[5m]) / rate(dp_flows_lookup_hit[5m]) > 0.5
         for: 10m
         labels:
+          team: devops
           severity: warning
           component: ovs-datapath
         annotations:
@@ -322,6 +344,7 @@ spec:
         expr: rate(dp_flows_lookup_lost[5m]) > 1
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs-datapath
         annotations:
@@ -332,6 +355,7 @@ spec:
         expr: dp_masks_hit_ratio < 1
         for: 10m
         labels:
+          team: devops
           severity: info
           component: ovs-datapath
         annotations:
@@ -345,6 +369,7 @@ spec:
         expr: histogram_quantile(0.99, rate(cni_op_latency_seconds_bucket[5m])) > 5
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: cni
         annotations:
@@ -355,6 +380,7 @@ spec:
         expr: rate(cni_wait_address_seconds_total[5m]) > 2
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: cni
         annotations:
@@ -365,6 +391,7 @@ spec:
         expr: histogram_quantile(0.99, rate(ovs_client_request_latency_milliseconds_bucket[5m])) > 1000
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovs-client
         annotations:
@@ -375,6 +402,7 @@ spec:
         expr: histogram_quantile(0.99, rate(rest_client_request_latency_seconds_bucket{job="kube-ovn-controller"}[5m])) > 5
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: controller
         annotations:
@@ -388,6 +416,7 @@ spec:
         expr: kube_ovn_cluster_log_not_committed > 100
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovn-cluster
         annotations:
@@ -398,6 +427,7 @@ spec:
         expr: kube_ovn_cluster_log_not_applied > 100
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovn-cluster
         annotations:
@@ -408,6 +438,7 @@ spec:
         expr: rate(kube_ovn_cluster_inbound_connections_error_total[5m]) > 0.1 or rate(kube_ovn_cluster_outbound_connections_error_total[5m]) > 0.1
         for: 5m
         labels:
+          team: devops
           severity: warning
           component: ovn-cluster
         annotations:
