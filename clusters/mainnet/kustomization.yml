@@ -9,5 +9,6 @@ resources:
   - ../../flux/apps/system
   - ../../flux/apps/observability
   - ../../flux/apps/storage
+  - ../../flux/apps/ingress
 
   - ../../flux/apps/lightmare
