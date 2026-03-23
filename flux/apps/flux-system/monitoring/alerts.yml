@@ -6,92 +6,132 @@ spec:
   groups:
     - name: flux.alerts
       rules:
+        - alert: FluxInstanceNotReady
+          expr: flux_instance_info{ready!="True", suspended!="True"} > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "FluxInstance {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "FluxInstance {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
+
+        - alert: KustomizationNotReady
+          expr: flux_resource_info{kind="Kustomization", ready!="True", suspended!="True"} > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
+
         - alert: HelmReleaseNotReady
-          expr: gotk_resource_info{customresource_kind="HelmRelease", ready!="True"} > 0
-          for: 5m
+          expr: flux_resource_info{kind="HelmRelease", ready!="True", suspended!="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: critical
           annotations:
             summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
-            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is in an unready state for more than 15 minutes."
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
 
-        - alert: GitRepositorySyncFailed
-          expr: gotk_resource_info{customresource_kind="GitRepository", ready!="True"} > 0
-          for: 5m
+        - alert: GitRepositoryNotReady
+          expr: flux_resource_info{kind="GitRepository", ready!="True", suspended!="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: critical
           annotations:
-            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} sync failed"
-            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has not been successfully synced for more than 15 minutes."
+            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
 
-        - alert: KustomizationNotApplied
-          expr: gotk_resource_info{customresource_kind="Kustomization", ready!="True"} > 0
-          for: 5m
-          labels:
-            team: devops
-            severity: critical
-          annotations:
-            summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not applied"
-            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not successfully applied for more than 15 minutes."
-
-        - alert: HelmChartFailed
-          expr: gotk_resource_info{customresource_kind="HelmChart", ready!="True"} > 0
-          for: 5m
-          labels:
-            team: devops
-            severity: critical
-          annotations:
-            summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has failed"
-            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready for more than 15 minutes."
-
-        - alert: HelmReleaseSuspended
-          expr: gotk_resource_info{customresource_kind="HelmRelease", suspended="true"} > 0
-          for: 5m
+        - alert: HelmChartNotReady
+          expr: flux_resource_info{kind="HelmChart", ready!="True", suspended!="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: warning
           annotations:
-            summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+            summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
 
-        - alert: GitRepositorySuspended
-          expr: gotk_resource_info{customresource_kind="GitRepository", suspended="true"} > 0
-          for: 5m
+        - alert: HelmRepositoryNotReady
+          expr: flux_resource_info{kind="HelmRepository", ready!="True", suspended!="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: warning
           annotations:
-            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+            summary: "HelmRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "HelmRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
+
+        - alert: OCIRepositoryNotReady
+          expr: flux_resource_info{kind="OCIRepository", ready!="True", suspended!="True"} > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "OCIRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready"
+            description: "OCIRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been unready for more than 10 minutes. reason={{ $labels.reason }} revision={{ $labels.revision }}"
+
+        - alert: FluxInstanceSuspended
+          expr: flux_instance_info{suspended="True"} > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "FluxInstance {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "FluxInstance {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
 
         - alert: KustomizationSuspended
-          expr: gotk_resource_info{customresource_kind="Kustomization", suspended="true"} > 0
-          for: 5m
+          expr: flux_resource_info{kind="Kustomization", suspended="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
 
-        - alert: ImageRepositorySuspended
-          expr: gotk_resource_info{customresource_kind="ImageRepository", suspended="true"} > 0
-          for: 5m
+        - alert: HelmReleaseSuspended
+          expr: flux_resource_info{kind="HelmRelease", suspended="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: warning
           annotations:
-            summary: "ImageRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "ImageRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+            summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+
+        - alert: GitRepositorySuspended
+          expr: flux_resource_info{kind="GitRepository", suspended="True"} > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
 
         - alert: HelmChartSuspended
-          expr: gotk_resource_info{customresource_kind="HelmChart", suspended="true"} > 0
-          for: 5m
+          expr: flux_resource_info{kind="HelmChart", suspended="True"} > 0
+          for: 10m
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended."
+            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+
+        - alert: FluxResourcesDegraded
+          expr: count(flux_resource_info{kind=~"Kustomization|HelmRelease|GitRepository|HelmChart|HelmRepository|OCIRepository", ready!="True", suspended!="True"}) > 3
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "Multiple Flux resources are not ready"
+            description: "More than 3 key Flux resources have been unready for more than 10 minutes."
