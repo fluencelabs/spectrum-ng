@@ -22,6 +22,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: warning
 
     - alert: NodeFilesystemSpaceFillingUp
@@ -40,6 +41,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: critical
 
     - alert: NodeFilesystemAlmostOutOfSpace
@@ -56,6 +58,7 @@ spec:
         )
       for: 30m
       labels:
+        team: devops
         severity: warning
 
     - alert: NodeFilesystemAlmostOutOfSpace
@@ -72,6 +75,7 @@ spec:
         )
       for: 30m
       labels:
+        team: devops
         severity: critical
 
     - alert: NodeFilesystemFilesFillingUp
@@ -90,6 +94,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: warning
 
     - alert: NodeFilesystemFilesFillingUp
@@ -108,6 +113,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: critical
 
     - alert: NodeFilesystemAlmostOutOfFiles
@@ -124,6 +130,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: warning
 
     - alert: NodeFilesystemAlmostOutOfFiles
@@ -140,6 +147,7 @@ spec:
         )
       for: 1h
       labels:
+        team: devops
         severity: critical
 
     - alert: NodeNetworkReceiveErrs
@@ -151,6 +159,7 @@ spec:
         rate(node_network_receive_errs_total{job="node"}[2m]) / rate(node_network_receive_packets_total{job="node"}[2m]) > 0.01
       for: 1h
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeNetworkTransmitErrs
@@ -162,6 +171,7 @@ spec:
         rate(node_network_transmit_errs_total{job="node"}[2m]) / rate(node_network_transmit_packets_total{job="node"}[2m]) > 0.01
       for: 1h
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeTextFileCollectorScrapeError
@@ -172,6 +182,7 @@ spec:
       expr: |
         node_textfile_scrape_error{job="node"} == 1
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeCPUHighUsage
@@ -183,6 +194,7 @@ spec:
         sum without(mode) (avg without (cpu) (rate(node_cpu_seconds_total{job="node", mode!~"idle|iowait"}[2m]))) * 100 > 90
       for: 15m
       labels:
+        team: devops
         severity: info
       
     - alert: NodeSystemSaturation
@@ -196,6 +208,7 @@ spec:
         / count without (cpu, mode) (node_cpu_seconds_total{job="node", mode="idle"}) > 2
       for: 15m
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeMemoryMajorPagesFaults
@@ -208,6 +221,7 @@ spec:
         rate(node_vmstat_pgmajfault{job="node"}[5m]) > 500
       for: 15m
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeMemoryHighUtilization
@@ -247,6 +261,7 @@ spec:
           )
       for: 15m
       labels:
+        team: devops
         severity: warning
       
     - alert: NodeDiskIOSaturation
@@ -259,4 +274,5 @@ spec:
         rate(node_disk_io_time_weighted_seconds_total{job="node", device!=""}[5m]) > 10
       for: 30m
       labels:
+        team: devops
         severity: warning

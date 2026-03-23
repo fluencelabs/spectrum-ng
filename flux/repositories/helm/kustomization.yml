@@ -6,3 +6,4 @@ resources:
   - victoriametrics.yml
   - grafana.yml
   - cert-manager.yml
+  - external-dns.yml

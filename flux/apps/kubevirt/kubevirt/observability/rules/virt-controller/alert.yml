@@ -10,6 +10,7 @@ spec:
         expr: kubevirt_virt_controller_ready <  kubevirt_virt_controller_up
         for: 10m
         labels:
+          team: devops
           severity: warning
         annotations:
           summary: Some virt controllers are running but not ready.
@@ -19,6 +20,7 @@ spec:
         expr: kubevirt_virt_controller_ready == 0
         for: 10m
         labels:
+          team: devops
           severity: critical
         annotations:
           summary: No ready virt-controller was detected for the last 10 min.
@@ -28,6 +30,7 @@ spec:
         expr: kubevirt_virt_controller_up == 0
         for: 10m
         labels:
+          team: devops
           severity: critical
         annotations:
           summary: No running virt-controller was detected for the last 10 min.
@@ -37,6 +40,7 @@ spec:
         expr: (kubevirt_allocatable_nodes > 1) and (kubevirt_virt_controller_ready < 2)
         for: 10m
         labels:
+          team: devops
           severity: warning
         annotations:
           summary: More than one virt-controller should be ready if more than one worker node.
@@ -46,6 +50,7 @@ spec:
         expr: sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*",code=~"(4|5)[0-9][0-9]"} [5m] ) )  /  sum ( rate ( kubevirt_rest_client_requests_total{namespace="kubevirt",pod=~"virt-controller-.*"} [5m] ) ) >= 0.8
         for: 5m
         labels:
+          team: devops
           severity: critical
         annotations:
           summary: More than 80% of the rest calls failed in virt-controller for the last 5 minutes
