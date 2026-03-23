@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - prometheus/
   - flux-operator.yml
+  - envoy-gateway.yml
