@@ -21,7 +21,6 @@ spec:
         name: spectrum-manual-vars
         optional: true
   dependsOn:
-    - name: cert-manager
     - name: envoy
     - name: kube-ovn-fluence-network
     - name: envoy-proxy
