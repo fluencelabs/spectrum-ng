@@ -1,0 +1,27 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: crd-operator
+spec:
+  interval: 5m
+  chartRef:
+    kind: OCIRepository
+    name: crd-operator
+    namespace: fluence
+  values:
+    controller:
+      config:
+        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-temp"]'
+      image:
+        repository: "docker.fluence.dev/crd-controller"
+        tag: "0.3.0"
+
+    api:
+      image:
+        repository: "docker.fluence.dev/crd-api"
+        tag: "0.5.0"
+
+    admission:
+      image:
+        repository: "docker.fluence.dev/crd-admission"
+        tag: "0.2.2"

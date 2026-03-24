@@ -10,5 +10,6 @@ resources:
   - ../../flux/apps/observability
   - ../../flux/apps/storage
   - ../../flux/apps/ingress
+  - ../../flux/apps/fluence
 
   - ../../flux/apps/lightmare
