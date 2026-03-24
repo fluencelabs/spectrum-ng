@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.9...v0.1.10) (2026-03-24)
+
+
+### Features
+
+* Deploy ~stable version of crd-operator on testnet ([#85](https://github.com/fluencelabs/spectrum-ng/issues/85)) ([467609d](https://github.com/fluencelabs/spectrum-ng/commit/467609da74a38013a97c0b611f0cb6f081df92e6))
+* Deploy crd-controller on stage and testnet ([#83](https://github.com/fluencelabs/spectrum-ng/issues/83)) ([84a47e9](https://github.com/fluencelabs/spectrum-ng/commit/84a47e987eb8de645b29405f5386f400aa460504))
+* Update crd-operator on testnet ([#102](https://github.com/fluencelabs/spectrum-ng/issues/102)) ([a8c4a68](https://github.com/fluencelabs/spectrum-ng/commit/a8c4a68ffc3480f88d3603fb44089b9a17970a32))
+* Update kube-ovn to 1.15.x ([#90](https://github.com/fluencelabs/spectrum-ng/issues/90)) ([5809253](https://github.com/fluencelabs/spectrum-ng/commit/58092539f95afcf2f1085815ba93ad178e2323db))
+
+
+### Bug Fixes
+
+* Bump cdi operator 1.63.0 -&gt; 1.64.0 ([#101](https://github.com/fluencelabs/spectrum-ng/issues/101)) ([79c5319](https://github.com/fluencelabs/spectrum-ng/commit/79c53196b1672fdaa08f0c3f0e20bd44925f7ecd))
+* **lightmare:** fix overlay ([#79](https://github.com/fluencelabs/spectrum-ng/issues/79)) ([f1f76ac](https://github.com/fluencelabs/spectrum-ng/commit/f1f76acc637ee2650d48eddd799c2b7b95cb3def))
+* **lightmare:** remove version override for stage and testnet ([#78](https://github.com/fluencelabs/spectrum-ng/issues/78)) ([4948f33](https://github.com/fluencelabs/spectrum-ng/commit/4948f33f7a8cbc1d5f16e1dbbcd8cfca408bb5e5))
+* update lightmare to 0.7.17 ([#76](https://github.com/fluencelabs/spectrum-ng/issues/76)) ([2b3a55f](https://github.com/fluencelabs/spectrum-ng/commit/2b3a55f503b87d036f96836a5da99199e403064c))
+
 ## [0.1.9](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.8...v0.1.9) (2026-01-12)
 
 
