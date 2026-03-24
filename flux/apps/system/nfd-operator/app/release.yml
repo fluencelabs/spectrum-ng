@@ -1,0 +1,44 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: node-feature-discovery
+spec:
+  interval: 10m
+  targetNamespace: system
+
+  chart:
+    spec:
+      chart: node-feature-discovery
+      sourceRef:
+        kind: HelmRepository
+        name: nfd
+        namespace: flux-system
+      interval: 1h
+      version: "0.18.3"
+
+  install:
+    createNamespace: true
+    crds: CreateReplace
+
+  upgrade:
+    crds: CreateReplace
+
+  values:
+    rbac:
+      create: true
+
+    serviceAccount:
+      create: true
+
+    master:
+      replicaCount: 1
+
+    worker:
+      tolerations:
+        - operator: Exists
+
+    topologyUpdater:
+      enable: false
+
+    gc:
+      enable: true

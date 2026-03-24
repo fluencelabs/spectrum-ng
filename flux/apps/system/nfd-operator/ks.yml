@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: nfd-operator
+  namespace: flux-system
+spec:
+  path: ./flux/apps/system/nfd-operator/app
+  prune: false
+  targetNamespace: system
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
