@@ -6,4 +6,4 @@ spec:
   interval: 5m0s
   url: oci://registry-1.docker.io/fluencelabs/crd-operator-chart
   ref:
-    tag: 0.0.2
+    tag: 0.0.4
