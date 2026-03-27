@@ -4,7 +4,7 @@ metadata:
   name: flux-observability
   namespace: flux-system
 spec:
-  path: ./flux/apps/flux/flux-observability/app
+  path: ./flux/apps/flux-system/flux-observability/app
   prune: true
   targetNamespace: flux-system
   sourceRef:
