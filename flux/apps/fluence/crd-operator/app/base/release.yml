@@ -3,15 +3,15 @@ kind: HelmRelease
 metadata:
   name: crd-operator
 spec:
-  interval: 5m
+  interval: 30s
   install:
     strategy:
       name: RetryOnFailure
-      retryInterval: 5m
+      retryInterval: 30s
   upgrade:
     strategy:
       name: RetryOnFailure
-      retryInterval: 5m
+      retryInterval: 30s
   driftDetection:
     mode: enabled
   values:
