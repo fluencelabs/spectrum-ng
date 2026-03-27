@@ -7,11 +7,11 @@ spec:
   install:
     strategy:
       name: RetryOnFailure
-      retryInterval: 5m
+      retryInterval: 30s
   upgrade:
     strategy:
       name: RetryOnFailure
-      retryInterval: 5m
+      retryInterval: 30s
   driftDetection:
     mode: enabled
   values:
