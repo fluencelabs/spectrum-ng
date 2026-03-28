@@ -2,6 +2,8 @@ apiVersion: kubevirt.io/v1
 kind: KubeVirt
 metadata:
   name: kubevirt
+  annotations:
+    alpha.kubevirt.io/EmulatorThreadCompleteToEvenParity: ""
 spec:
   configuration:
     developerConfiguration:
@@ -9,3 +11,4 @@ spec:
         - CPUManager
         - AlignCPUs
         - NUMA
+        - ExpandDisks
