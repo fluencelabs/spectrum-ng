@@ -12,3 +12,7 @@ spec:
         namespace: fluence
       interval: 1m
       reconcileStrategy: Revision
+  values:
+    controller:
+      persistence:
+        storageClassName: lvm-thin-r1
