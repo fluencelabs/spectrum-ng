@@ -23,7 +23,7 @@ spec:
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__SEARCHES: '[]'
       persistence:
         enabled: true
-        storageClassName: lvm-thin-r1
+        storageClassName: lvm-thin-r2
         accessModes:
           - ReadWriteOnce
         size: 1Gi
