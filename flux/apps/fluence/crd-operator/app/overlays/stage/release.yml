@@ -12,12 +12,3 @@ spec:
         namespace: fluence
       interval: 1m
       reconcileStrategy: Revision
-  values:
-    controller:
-      config:
-        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: '["subnet-temp"]'
-
-    api:
-      config:
-        LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
-        LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"

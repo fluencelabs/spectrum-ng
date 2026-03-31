@@ -19,6 +19,7 @@ spec:
       config:
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
+        LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: ${PUBLIC_SUBNET_LIST}
       persistence:
         enabled: true
         storageClassName: lvm-thin-r1
