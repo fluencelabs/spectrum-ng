@@ -4,4 +4,4 @@ resources:
   - namespace.yml
   - flux-instance
   - flux-operator
-  - monitoring
+  - flux-observability
