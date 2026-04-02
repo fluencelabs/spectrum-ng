@@ -1,0 +1,15 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: snapshot-controller
+spec:
+  interval: 50m
+  chart:
+    spec:
+      chart: charts/snapshot-controller
+      interval: 12h
+      sourceRef:
+        kind: GitRepository
+        name: piraeus-operator
+        namespace: flux-system
+      reconcileStrategy: Revision
