@@ -4,12 +4,11 @@ metadata:
   name: snapshot-controller
 spec:
   interval: 50m
+  chartRef:
+    kind: OCIRepository
+    name: piraeus-charts
+    namespace: flux-system
   chart:
     spec:
-      chart: charts/snapshot-controller
-      interval: 12h
-      sourceRef:
-        kind: GitRepository
-        name: piraeus-operator
-        namespace: flux-system
-      reconcileStrategy: Revision
+      chart: snapshot-controller
+      version: "2.1.1"

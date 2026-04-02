@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: piraeus-charts
+  namespace: flux-system
+spec:
+  interval: 12h
+  url: oci://ghcr.io/piraeusdatastore/helm-charts
+  ref:
+    semver: ">=2.1.1"

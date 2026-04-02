@@ -4,3 +4,4 @@ resources:
   - prometheus/
   - flux-operator.yml
   - envoy-gateway.yml
+  - piraeus-charts.yml
