@@ -8,3 +8,4 @@ resources:
   - external-dns.yml
   - cert-manager.yml
   - nfd.yml
+  - piraeus-charts.yml
