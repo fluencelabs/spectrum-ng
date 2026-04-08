@@ -15,3 +15,32 @@ spec:
         annotations:
           summary: "Virtual machine {{ $labels.name }} in namespace {{ $labels.namespace }} is paused"
           description: "VMI {{ $labels.name }} has been in Paused state for more than 1 minute"
+
+      - alert: VMIPodCrashLooping
+        expr: |
+          max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff", job="kube-state-metrics"}[5m])
+          * on(namespace, pod, cluster) group_left(owner_name)
+          topk by(namespace, pod, cluster) (1, kube_pod_owner{owner_kind="VirtualMachineInstance"})
+          >= 1
+        for: 5m
+        labels:
+          team: devops
+          severity: critical
+        annotations:
+          summary: "VMI pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} backing VMI {{ $labels.owner_name }} is in CrashLoopBackOff for more than 5 minutes"
+
+      - alert: VMIPodNotReady
+        expr: |
+          max by(namespace, pod, cluster) (
+            kube_pod_status_phase{job="kube-state-metrics", phase=~"Pending|Unknown|Failed"}
+          ) * on(namespace, pod, cluster) group_left(owner_name)
+          topk by(namespace, pod, cluster) (1, kube_pod_owner{owner_kind="VirtualMachineInstance"})
+          > 0
+        for: 10m
+        labels:
+          team: devops
+          severity: critical
+        annotations:
+          summary: "VMI pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready"
+          description: "Pod {{ $labels.pod }} backing VMI {{ $labels.owner_name }} has been in {{ $labels.phase }} state for more than 10 minutes"
