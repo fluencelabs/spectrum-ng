@@ -17,6 +17,7 @@ spec:
   values:
     controller:
       config:
+        LTM__LOG_FORMAT: json
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
         LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: ${PUBLIC_SUBNET_LIST}
@@ -30,5 +31,10 @@ spec:
 
     api:
       config:
+        LTM__LOG_FORMAT: json
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
         LTM_CRD_API__STORAGE__REPLICATED_NVME: "lvm-thin-r2"
+
+    admission:
+      config:
+        LTM__LOG_FORMAT: json

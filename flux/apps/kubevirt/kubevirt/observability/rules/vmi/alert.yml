@@ -1,0 +1,17 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kubevirt-vmi-alerts
+spec:
+  groups:
+    - name: kubevirt.vmi.alerts
+      rules:
+      - alert: VirtualMachinePaused
+        expr: kubevirt_vmi_phase_count{phase="Paused"} > 0
+        for: 1m
+        labels:
+          team: devops
+          severity: warning
+        annotations:
+          summary: "Virtual machine {{ $labels.name }} in namespace {{ $labels.namespace }} is paused"
+          description: "VMI {{ $labels.name }} has been in Paused state for more than 1 minute"
