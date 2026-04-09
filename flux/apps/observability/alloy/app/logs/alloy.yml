@@ -81,22 +81,15 @@ spec:
             selector = "{namespace=\"fluence\", container=~\"controller|api|admission-controller\"}"
             stage.json {
               expressions = {
-                level     = "level",
-                msg       = "fields.message",
-                timestamp = "timestamp",
+                level   = "level",
+                message = "fields.message",
               }
             }
             stage.labels {
               values = {
-                level = "level",
+                level   = "level",
+                message = "message",
               }
-            }
-            stage.output {
-              source = "msg"
-            }
-            stage.timestamp {
-              source = "timestamp"
-              format = "RFC3339Nano"
             }
           }
           forward_to = [loki.write.victorialogs.receiver]
