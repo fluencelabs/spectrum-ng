@@ -17,7 +17,6 @@ spec:
     security:
       admin_user: fluence
       admin_password: admin
-      disable_initial_admin_creation: "true"
     analytics:
       check_for_updates: "false"
     news:
