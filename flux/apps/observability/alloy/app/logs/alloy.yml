@@ -81,20 +81,14 @@ spec:
             selector = "{namespace=\"fluence\", container=~\"controller|api|admission-controller\"}"
             stage.json {
               expressions = {
-                level       = "level",
-                msg         = "fields.message",
-                timestamp   = "timestamp",
-                raw         = "",
+                level     = "level",
+                msg       = "fields.message",
+                timestamp = "timestamp",
               }
-            }
-            stage.template {
-              source   = "raw"
-              template = "{{ __line__ }}"
             }
             stage.labels {
               values = {
                 level = "level",
-                raw   = "raw",
               }
             }
             stage.output {
