@@ -72,6 +72,31 @@ spec:
 
         loki.source.kubernetes "pod_logs" {
           targets    = discovery.relabel.pod_logs.output
+          forward_to = [loki.process.crd_operator.receiver]
+        }
+
+        // PARSE JSON FOR CRD OPERATOR CONTAINERS
+        loki.process "crd_operator" {
+          stage.match {
+            selector = "{namespace=\"fluence\", container=~\"controller|api|admission-controller\"}"
+            stage.json {
+              expressions = {
+                level     = "level",
+                message   = "fields.message",
+                timestamp = "timestamp",
+              }
+            }
+            stage.labels {
+              values = {
+                level   = "level",
+                message = "message",
+              }
+            }
+            stage.timestamp {
+              source = "timestamp"
+              format = "RFC3339Nano"
+            }
+          }
           forward_to = [loki.write.victorialogs.receiver]
         }
 

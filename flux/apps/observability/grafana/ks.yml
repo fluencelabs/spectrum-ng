@@ -16,6 +16,7 @@ spec:
   timeout: 5m
   dependsOn:
     - name: grafana-operator-crd
+    - name: vm-stack
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

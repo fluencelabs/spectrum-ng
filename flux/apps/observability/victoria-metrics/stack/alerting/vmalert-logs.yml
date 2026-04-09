@@ -9,4 +9,9 @@ spec:
   notifier:
     url: "http://vmalertmanager-stack.observability.svc:9093"
   evaluationInterval: "30s"
-  selectAllByDefault: true
+  selectAllByDefault: false
+  ruleSelector:
+    matchLabels:
+      rule-type: vlogs
+  remoteWrite:
+    url: "http://vmsingle-stack.observability.svc:8429"

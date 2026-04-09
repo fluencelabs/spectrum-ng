@@ -25,3 +25,22 @@ spec:
     - name: envoy
     - name: kube-ovn-fluence-network
     - name: envoy-proxy
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crd-operator-observability
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./flux/apps/fluence/crd-operator/app/base/observability
+  prune: true
+  targetNamespace: fluence
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  dependsOn:
+    - name: crd-operator
+    - name: vm-stack
+    - name: grafana
