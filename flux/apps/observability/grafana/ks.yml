@@ -23,7 +23,7 @@ metadata:
   name: grafana-route
   namespace: flux-system
 spec:
-  suspend: false
+  suspend: true
   path: ./flux/apps/observability/grafana/route
   prune: true
   targetNamespace: observability
