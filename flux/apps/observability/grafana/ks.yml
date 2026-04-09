@@ -37,5 +37,8 @@ spec:
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
   dependsOn:
     - name: grafana
+    - name: envoy-proxy
