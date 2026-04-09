@@ -12,7 +12,7 @@ spec:
           - "container:crd-controller AND _json.level:(error OR warn)"
       rules:
         - alert: CrdControllerErrorLogs
-          expr: "* | count() by (level) > 0"
+          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
           for: 0s
           annotations:
             summary: "crd-controller {{ $labels.level }} logs detected"
@@ -27,7 +27,7 @@ spec:
           - "container:crd-api AND _json.level:(error OR warn)"
       rules:
         - alert: CrdApiErrorLogs
-          expr: "* | count() by (level) > 0"
+          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
           for: 0s
           annotations:
             summary: "crd-api {{ $labels.level }} logs detected"
@@ -42,7 +42,7 @@ spec:
           - "container:crd-admission AND _json.level:(error OR warn)"
       rules:
         - alert: CrdAdmissionErrorLogs
-          expr: "* | count() by (level) > 0"
+          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
           for: 0s
           annotations:
             summary: "crd-admission {{ $labels.level }} logs detected"
