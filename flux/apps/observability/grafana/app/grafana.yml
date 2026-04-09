@@ -10,11 +10,14 @@ spec:
       mode: "console"
     users:
       allow_sign_up: "false"
+      allow_org_create: "false"
     auth:
       disable_login_form: "false"
+      disable_signout_menu: "false"
     security:
       admin_user: fluence
       admin_password: admin
+      disable_initial_admin_creation: "true"
     analytics:
       check_for_updates: "false"
     news:
