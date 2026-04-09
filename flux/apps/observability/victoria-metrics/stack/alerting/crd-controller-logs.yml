@@ -1,0 +1,51 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: crd-operator-logs
+spec:
+  groups:
+    - name: crd-controller-logs
+      type: vlogs
+      interval: "30s"
+      params:
+        query:
+          - "container:crd-controller AND _json.level:(error OR warn)"
+      rules:
+        - alert: CrdControllerErrorLogs
+          expr: "count() by (level) > 0"
+          for: 0s
+          annotations:
+            summary: "crd-controller {{ $labels.level }} logs detected"
+            description: "crd-controller has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+          labels:
+            severity: warning
+    - name: crd-api-logs
+      type: vlogs
+      interval: "30s"
+      params:
+        query:
+          - "container:crd-api AND _json.level:(error OR warn)"
+      rules:
+        - alert: CrdApiErrorLogs
+          expr: "count() by (level) > 0"
+          for: 0s
+          annotations:
+            summary: "crd-api {{ $labels.level }} logs detected"
+            description: "crd-api has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+          labels:
+            severity: warning
+    - name: crd-admission-logs
+      type: vlogs
+      interval: "30s"
+      params:
+        query:
+          - "container:crd-admission AND _json.level:(error OR warn)"
+      rules:
+        - alert: CrdAdmissionErrorLogs
+          expr: "count() by (level) > 0"
+          for: 0s
+          annotations:
+            summary: "crd-admission {{ $labels.level }} logs detected"
+            description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+          labels:
+            severity: warning

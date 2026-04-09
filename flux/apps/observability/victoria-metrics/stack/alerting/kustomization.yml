@@ -3,4 +3,6 @@ kind: Kustomization
 resources:
   - vmalertmanager.yml
   - vmalert.yml
+  - vmalert-logs.yml
   - deadmanswitch.yml
+  - crd-controller-logs.yml

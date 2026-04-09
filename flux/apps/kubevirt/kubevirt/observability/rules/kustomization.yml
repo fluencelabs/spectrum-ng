@@ -5,3 +5,4 @@ resources:
   - virt-controller
   - virt-handler
   - virt-operator
+  - vmi
