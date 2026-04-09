@@ -82,7 +82,6 @@ spec:
             stage.json {
               expressions = {
                 level     = "level",
-                msg       = "fields.message",
                 timestamp = "timestamp",
               }
             }
@@ -90,9 +89,6 @@ spec:
               values = {
                 level = "level",
               }
-            }
-            stage.output {
-              source = "msg"
             }
             stage.timestamp {
               source = "timestamp"
