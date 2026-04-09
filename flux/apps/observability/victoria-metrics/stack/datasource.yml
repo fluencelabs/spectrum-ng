@@ -26,6 +26,7 @@ spec:
     access: proxy
     type: victoriametrics-logs-datasource
     name: VictoriaLogs
+    uid: victoria-logs
     url: http://vlogs-stack.observability.svc:9428
   instanceSelector:
     matchLabels:
