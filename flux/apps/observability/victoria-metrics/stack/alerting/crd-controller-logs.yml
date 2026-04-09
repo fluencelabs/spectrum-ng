@@ -11,10 +11,10 @@ spec:
       interval: "30s"
       params:
         query:
-          - "container:crd-controller AND _json.level:(error OR warn)"
+          - "container:controller AND namespace:fluence"
       rules:
         - alert: CrdControllerErrorLogs
-          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
+          expr: '* | unpack_json | filter level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-controller {{ $labels.level }} logs detected"
@@ -26,10 +26,10 @@ spec:
       interval: "30s"
       params:
         query:
-          - "container:crd-api AND _json.level:(error OR warn)"
+          - "container:api AND namespace:fluence"
       rules:
         - alert: CrdApiErrorLogs
-          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
+          expr: '* | unpack_json | filter level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-api {{ $labels.level }} logs detected"
@@ -41,10 +41,10 @@ spec:
       interval: "30s"
       params:
         query:
-          - "container:crd-admission AND _json.level:(error OR warn)"
+          - "container:admission-controller AND namespace:fluence"
       rules:
         - alert: CrdAdmissionErrorLogs
-          expr: "* | stats by (level) count(*) as hits | filter hits:>0"
+          expr: '* | unpack_json | filter level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-admission {{ $labels.level }} logs detected"
