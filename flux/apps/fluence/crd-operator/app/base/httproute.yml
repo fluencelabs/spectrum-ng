@@ -3,8 +3,9 @@ kind: HTTPRoute
 metadata:
   name: crd-operator-api
 spec:
-  hostnames: 
+  hostnames:
     - crd-api.${NETWORK}-${PROVIDER}.cloudless.dev
+    - crd-api.${CLUSTER_ID}.${NETWORK}.cloudless.dev
   parentRefs:
     - name: eg-gw
       namespace: ingress
