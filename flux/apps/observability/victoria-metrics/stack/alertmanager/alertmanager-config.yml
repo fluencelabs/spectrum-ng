@@ -4,4 +4,4 @@ metadata:
   name: alertmanager-config
 type: Opaque
 stringData:
-  alertmanager.yaml: "${alertmanager-config:?alertmanager-config key is required in spectrum-secrets}"
+  alertmanager.yaml: "${alertmanager_config:?alertmanager_config key is required in spectrum-secrets}"
