@@ -78,7 +78,7 @@ spec:
 
         - alert: FluxInstanceSuspended
           expr: flux_instance_info{suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
