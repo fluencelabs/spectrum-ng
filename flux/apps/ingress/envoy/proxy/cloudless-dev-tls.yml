@@ -9,3 +9,4 @@ spec:
     name: cloudless-dev
   dnsNames:
     - "*.${NETWORK}-${PROVIDER}.cloudless.dev"
+    - "*.${CLUSTER_ID}.${NETWORK}.cloudless.dev"

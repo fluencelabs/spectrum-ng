@@ -1,6 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - vmalert.yml
-  - vmalert-logs.yml
-  - deadmanswitch.yml
+  - vmalertmanager.yml
+  - alertmanager-config.yml
