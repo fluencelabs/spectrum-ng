@@ -4,6 +4,9 @@ metadata:
   name: stack
 spec:
   replicaCount: 1
+  externalLabels:
+    cluster_id: "${CLUSTER_ID}"
+    network: ${NETWORK}
   datasource:
     url: "http://vmsingle-stack.observability.svc:8429"
   notifier:

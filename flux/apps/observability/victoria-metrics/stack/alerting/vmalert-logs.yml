@@ -4,6 +4,9 @@ metadata:
   name: stack-logs
 spec:
   replicaCount: 1
+  externalLabels:
+    cluster_id: "${CLUSTER_ID}"
+    network: ${NETWORK}
   datasource:
     url: "http://vlogs-stack.observability.svc:9428"
   notifier:
