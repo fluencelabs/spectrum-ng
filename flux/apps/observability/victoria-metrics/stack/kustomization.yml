@@ -8,3 +8,4 @@ resources:
   - vmagent.yml
   - datasource.yml
   - alerting
+  - alertmanager
