@@ -78,7 +78,7 @@ spec:
 
         - alert: FluxInstanceSuspended
           expr: flux_instance_info{suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
@@ -88,43 +88,43 @@ spec:
 
         - alert: KustomizationSuspended
           expr: flux_resource_info{kind="Kustomization", suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 1 hour."
 
         - alert: HelmReleaseSuspended
           expr: flux_resource_info{kind="HelmRelease", suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 1 hour."
 
         - alert: GitRepositorySuspended
           expr: flux_resource_info{kind="GitRepository", suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 1 hour."
 
         - alert: HelmChartSuspended
           expr: flux_resource_info{kind="HelmChart", suspended="True"} > 0
-          for: 10m
+          for: 1h
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is suspended"
-            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
+            description: "HelmChart {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 1 hour."
 
         - alert: FluxResourcesDegraded
           expr: count(flux_resource_info{kind=~"Kustomization|HelmRelease|GitRepository|HelmChart|HelmRepository|OCIRepository", ready!="True", suspended!="True"}) > 3

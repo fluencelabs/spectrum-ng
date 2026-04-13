@@ -7,14 +7,17 @@ spec:
     - name: kubevirt.vmi.alerts
       rules:
       - alert: VirtualMachinePaused
-        expr: kubevirt_vmi_phase_count{phase="Paused"} > 0
+        expr: |
+          kubevirt_vm_info{status="Paused"}
+          * on(name, exported_namespace) group_left(vm_id, workspace_id)
+          kube_customresource_kubevirt_vm_annotation_info
         for: 1m
         labels:
           team: devops
           severity: warning
         annotations:
-          summary: "Virtual machine {{ $labels.name }} in namespace {{ $labels.namespace }} is paused"
-          description: "VMI {{ $labels.name }} has been in Paused state for more than 1 minute"
+          summary: "Virtual machine {{ $labels.name }} (vm_id={{ $labels.vm_id }}, workspace_id={{ $labels.workspace_id }}) is paused"
+          description: "VM {{ $labels.name }} has been in Paused state for more than 1 minute"
 
       - alert: VMIPodCrashLooping
         expr: |

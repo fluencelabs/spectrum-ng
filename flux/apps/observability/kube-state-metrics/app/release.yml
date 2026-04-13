@@ -14,3 +14,34 @@ spec:
     prometheus:
       monitor:
         enabled: true
+        additionalLabels:
+          scrape: "true"
+
+    rbac:
+      extraRules:
+        - apiGroups: ["kubevirt.io"]
+          resources: ["virtualmachines"]
+          verbs: ["list", "watch"]
+
+    customResourceState:
+      enabled: true
+      config:
+        spec:
+          resources:
+            - groupVersionKind:
+                group: kubevirt.io
+                version: v1
+                kind: VirtualMachine
+              labelsFromPath:
+                name: [metadata, name]
+                namespace: [metadata, namespace]
+                vm_id: [metadata, annotations, "vm.cloudless.dev/id"]
+                workspace_id: [metadata, annotations, "workspace.cloudless.dev/id"]
+              metrics:
+                - name: kubevirt_vm_annotation_info
+                  help: "KubeVirt VM annotation info"
+                  each:
+                    type: Info
+                    info:
+                      labelsFromPath:
+                        status: [status, printableStatus]
