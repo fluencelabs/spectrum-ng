@@ -4,3 +4,4 @@ metadata:
   name: kubevirt
   labels:
     pod-security.kubernetes.io/enforce: privileged
+    monitoring: enabled
