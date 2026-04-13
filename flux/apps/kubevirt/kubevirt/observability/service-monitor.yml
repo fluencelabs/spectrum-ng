@@ -1,16 +1,18 @@
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMServiceScrape
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
 metadata:
   name: kubevirt
+  labels:
+    scrape: "true"
 spec:
   selector:
     matchLabels:
       prometheus.kubevirt.io: "true"
   namespaceSelector:
     matchNames:
-      - kubevirt
+    - kubevirt
   endpoints:
-    - port: metrics
-      scheme: https
-      tlsConfig:
-        insecureSkipVerify: true
+  - port: metrics
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
