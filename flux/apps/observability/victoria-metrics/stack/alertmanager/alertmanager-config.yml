@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-config
+type: Opaque
+stringData:
+  alertmanager.yaml: "${alertmanager-config:?alertmanager-config key is required in spectrum-secrets}"
