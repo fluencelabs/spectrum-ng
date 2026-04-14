@@ -12,7 +12,7 @@ spec:
     controller:
       image:
         repository: "docker.fluence.dev/crd-controller"
-        tag: "0.6.5"
+        tag: "0.6.6"
       persistence:
         storageClassName: lvm-thin-r2
 
