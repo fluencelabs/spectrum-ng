@@ -5,6 +5,10 @@ metadata:
   annotations:
     netbird.io/expose: "true"
     netbird.io/groups: "grafana"
+    netbird.io/policy-name: "grafana-access"
+    netbird.io/policy-source-groups: "support,admins"
+    netbird.io/policy-protocol: "tcp"
+    netbird.io/policy-ports: "3000"
 spec:
   type: ExternalName
   externalName: grafana-service.observability.svc.cluster.local
