@@ -18,7 +18,6 @@ rules:
   - apiGroups: ["kubevirt.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
-  # TODO: replace with the actual cloudless CRD API group
   - apiGroups: ["cloudless.dev"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
