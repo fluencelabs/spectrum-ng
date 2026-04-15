@@ -4,6 +4,14 @@ metadata:
   name: flux-alerts
 spec:
   groups:
+    - name: flux.recording
+      rules:
+        # Add kustomization names here to exclude them from KustomizationSuspended alerts
+        - record: flux_kustomization_suspended_exceptions
+          expr: |
+            (flux_resource_info{kind="Kustomization", name="grafana-route"})
+            # To add more exceptions, use: or (flux_resource_info{kind="Kustomization", name="another-name"})
+
     - name: flux.alerts
       rules:
         - alert: FluxInstanceNotReady
@@ -87,7 +95,7 @@ spec:
             description: "FluxInstance {{ $labels.name }} in namespace {{ $labels.exported_namespace }} has been suspended for more than 10 minutes."
 
         - alert: KustomizationSuspended
-          expr: flux_resource_info{kind="Kustomization", suspended="True"} > 0
+          expr: flux_resource_info{kind="Kustomization", suspended="True"} > 0 unless on(kind, name) flux_kustomization_suspended_exceptions
           for: 1h
           labels:
             team: devops
