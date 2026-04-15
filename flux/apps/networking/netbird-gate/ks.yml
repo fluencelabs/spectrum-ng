@@ -5,6 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   path: ./flux/apps/networking/netbird-gate/app
+  prune: false
   sourceRef:
     kind: GitRepository
     name: spectrum
