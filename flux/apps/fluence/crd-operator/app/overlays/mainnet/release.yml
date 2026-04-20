@@ -12,14 +12,14 @@ spec:
     controller:
       image:
         repository: "docker.fluence.dev/crd-controller"
-        tag: "0.6.7"
+        tag: "0.6.8"
       persistence:
         storageClassName: lvm-thin-r2
 
     api:
       image:
         repository: "docker.fluence.dev/crd-api"
-        tag: "0.8.5"
+        tag: "0.8.6"
 
     admission:
       image:
