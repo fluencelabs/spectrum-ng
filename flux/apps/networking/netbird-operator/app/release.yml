@@ -25,7 +25,3 @@ spec:
   values:
     fullnameOverride: netbird-operator
     managementURL: "https://netbird.infrahub.cloudless.dev"
-    netbirdAPI:
-      keyFromSecret:
-        name: netbird-api-token
-        key: NB_API_KEY
