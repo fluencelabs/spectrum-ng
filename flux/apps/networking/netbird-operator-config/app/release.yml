@@ -28,10 +28,4 @@ spec:
     router:
       enabled: true
     kubernetesAPI:
-      enabled: true
-      groups:
-        - support
-        - admins
-      policies:
-        - k8s-api-readonly
-        - k8s-api-admin
+      enabled: false
