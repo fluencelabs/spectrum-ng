@@ -25,4 +25,6 @@ spec:
   values:
     fullnameOverride: netbird-operator
     netbirdAPI:
-      secretName: netbird-api-token
+      keyFromSecret:
+        name: netbird-api-token
+        key: NB_API_KEY
