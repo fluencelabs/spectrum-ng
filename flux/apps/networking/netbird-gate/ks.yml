@@ -13,9 +13,9 @@ spec:
   interval: 5m
   retryInterval: 1m
   timeout: 5m
-  targetNamespace: flux-system
+  targetNamespace: networking
   healthChecks:
     - apiVersion: v1
       kind: Secret
-      name: netbird-credentials
-      namespace: flux-system
+      name: netbird-setup-key
+      namespace: networking
