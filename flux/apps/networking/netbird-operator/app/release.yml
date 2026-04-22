@@ -25,6 +25,8 @@ spec:
   values:
     fullnameOverride: netbird-operator
     managementURL: "https://netbird.infrahub.cloudless.dev"
+    cluster:
+      name: "spectrum-${NETWORK}-${CLUSTER_ID}"
     netbirdAPI:
       keyFromSecret:
         name: netbird-api-token

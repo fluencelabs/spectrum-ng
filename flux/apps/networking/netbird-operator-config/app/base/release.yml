@@ -22,7 +22,7 @@ spec:
       retries: 3
   values:
     cluster:
-      name: "${CLUSTER_ID}"
+      name: "spectrum-${NETWORK}-${CLUSTER_ID}"
       dns: svc.cluster.local
     namespacedNetworks: false
     router:
