@@ -1,0 +1,15 @@
+apiVersion: netbird.io/v1
+kind: NBPolicy
+metadata:
+  name: spectrum-${NETWORK}-access
+spec:
+  name: "spectrum-${NETWORK}-access"
+  description: "Allow support and admins access to spectrum-${NETWORK} resources"
+  sourceGroups:
+    - support
+    - admins
+  destinationGroups:
+    - spectrum-${NETWORK}
+  bidirectional: false
+  protocols:
+    - tcp

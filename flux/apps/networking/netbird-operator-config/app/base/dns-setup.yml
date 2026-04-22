@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netbird-dns-setup
+  namespace: networking
+  annotations:
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+        - name: dns-setup
+          image: curlimages/curl:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              API_URL="https://netbird.infrahub.cloudless.dev/api"
+
+              # Auto-detect CoreDNS IP
+              COREDNS_IP=$(getent hosts kube-dns.kube-system.svc.cluster.local | awk '{print $1}')
+              if [ -z "$COREDNS_IP" ]; then
+                echo "Error: could not detect CoreDNS IP"
+                exit 1
+              fi
+              echo "Detected CoreDNS IP: $COREDNS_IP"
+
+              # Check if nameserver group already exists
+              EXISTING=$(curl -sf -H "Authorization: Token $NB_API_KEY" "$API_URL/dns/nameservers" | grep -o "\"name\":\"spectrum-${CLUSTER_ID}-${NETWORK}-dns\"" || true)
+              if [ -n "$EXISTING" ]; then
+                echo "Nameserver group already exists, skipping"
+                exit 0
+              fi
+
+              # Get support group ID
+              SUPPORT_GROUP_ID=$(curl -sf -H "Authorization: Token $NB_API_KEY" "$API_URL/groups?name=support" | sed -n 's/.*"id":"\([^"]*\)","name":"support".*/\1/p')
+              if [ -z "$SUPPORT_GROUP_ID" ]; then
+                echo "Error: support group not found"
+                exit 1
+              fi
+              echo "Found support group: $SUPPORT_GROUP_ID"
+
+              # Create nameserver group
+              curl -sf -X POST "$API_URL/dns/nameservers" \
+                -H "Authorization: Token $NB_API_KEY" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"spectrum-${CLUSTER_ID}-${NETWORK}-dns\",
+                  \"description\": \"DNS for spectrum ${NETWORK} cluster ${CLUSTER_ID}\",
+                  \"nameservers\": [{
+                    \"ip\": \"$COREDNS_IP\",
+                    \"ns_type\": \"udp\",
+                    \"port\": 53
+                  }],
+                  \"enabled\": true,
+                  \"groups\": [\"$SUPPORT_GROUP_ID\"],
+                  \"primary\": false,
+                  \"domains\": [\"${CLUSTER_ID}.${NETWORK}.fluence.nb\"],
+                  \"search_domains_enabled\": true
+                }"
+              echo ""
+              echo "Nameserver group created successfully"
+          env:
+            - name: NB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: netbird-api-token
+                  key: NB_API_KEY
+            - name: CLUSTER_ID
+              value: "${CLUSTER_ID}"
+            - name: NETWORK
+              value: "${NETWORK}"
+      restartPolicy: Never
