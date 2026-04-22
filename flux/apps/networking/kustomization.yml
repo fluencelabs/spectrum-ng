@@ -5,4 +5,5 @@ resources:
   - netbird-gate
   - netbird-operator
   - netbird-operator-config
+  - netbird-setup
   - netbird-services
