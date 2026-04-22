@@ -4,4 +4,4 @@ resources:
   - release.yml
   - groups.yml
   - policy.yml
-  - dns-setup.yml
+  - netbird-setup.yml
