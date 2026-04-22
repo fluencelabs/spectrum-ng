@@ -1,11 +1,11 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: netbird-services-grafana
+  name: netbird-setup
   namespace: flux-system
 spec:
-  path: ./flux/apps/networking/netbird-services/app/grafana
-  prune: true
+  path: ./flux/apps/networking/netbird-setup/app
+  prune: false
   targetNamespace: networking
   sourceRef:
     kind: GitRepository
@@ -23,5 +23,4 @@ spec:
         name: spectrum-manual-vars
         optional: true
   dependsOn:
-    - name: netbird-setup
-    - name: grafana
+    - name: netbird-operator-config

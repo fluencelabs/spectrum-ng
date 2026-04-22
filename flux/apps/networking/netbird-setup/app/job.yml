@@ -6,7 +6,7 @@ metadata:
   annotations:
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  backoffLimit: 3
+  backoffLimit: 5
   ttlSecondsAfterFinished: 300
   template:
     spec:
@@ -16,7 +16,7 @@ spec:
           command: ["python3", "-c"]
           args:
             - |
-              import json, os, urllib.request, urllib.error, ssl, socket
+              import json, os, urllib.request, urllib.error, ssl, socket, time
 
               API_URL = "https://netbird.infrahub.cloudless.dev/api"
               TOKEN = os.environ["NB_API_KEY"]
@@ -43,29 +43,35 @@ spec:
                       print(f"API error {e.code}: {e.read().decode()}")
                       raise
 
-              groups = api("GET", "groups")
-
-              def find_group(name):
+              def find_group(name, groups):
                   return next((g for g in groups if g["name"] == name), None)
 
-              support = find_group("support")
+              # Wait for router group to appear (operator creates it async)
+              router_group = None
+              for attempt in range(30):
+                  groups = api("GET", "groups")
+                  router_group = next(
+                      (g for g in groups
+                       if g["name"].startswith(f"spectrum-{NETWORK}-{CLUSTER_ID}")
+                       and g.get("peers_count", 0) > 0),
+                      None,
+                  )
+                  if router_group:
+                      break
+                  print(f"Waiting for router group... (attempt {attempt + 1}/30)")
+                  time.sleep(10)
+
+              if not router_group:
+                  raise SystemExit("Error: router group not found after 5 minutes")
+              print(f"Found router group: {router_group['name']} ({router_group['id']})")
+
+              support = find_group("support", groups)
               if not support:
                   raise SystemExit("Error: support group not found")
               print(f"Found support group: {support['id']}")
 
-              # Find router group (contains router peers)
-              router_group = next(
-                  (g for g in groups
-                   if g["name"].startswith(f"spectrum-{NETWORK}-{CLUSTER_ID}")
-                   and g.get("peers_count", 0) > 0),
-                  None,
-              )
-              if not router_group:
-                  raise SystemExit("Error: router group not found")
-              print(f"Found router group: {router_group['name']} ({router_group['id']})")
-
               # Find spectrum-{NETWORK} group
-              env_group = find_group(f"spectrum-{NETWORK}")
+              env_group = find_group(f"spectrum-{NETWORK}", groups)
               if not env_group:
                   raise SystemExit(f"Error: spectrum-{NETWORK} group not found")
               print(f"Found env group: {env_group['id']}")
