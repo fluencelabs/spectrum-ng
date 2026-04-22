@@ -36,8 +36,12 @@ spec:
                           "Content-Type": "application/json",
                       },
                   )
-                  with urllib.request.urlopen(req, context=ctx) as resp:
-                      return json.loads(resp.read())
+                  try:
+                      with urllib.request.urlopen(req, context=ctx) as resp:
+                          return json.loads(resp.read())
+                  except urllib.error.HTTPError as e:
+                      print(f"API error {e.code}: {e.read().decode()}")
+                      raise
 
               # Auto-detect CoreDNS IP
               import socket
