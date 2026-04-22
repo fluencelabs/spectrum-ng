@@ -51,7 +51,7 @@ spec:
                   raise SystemExit("Error: could not detect CoreDNS IP")
               print(f"Detected CoreDNS IP: {coredns_ip}")
 
-              ns_name = f"spectrum-{CLUSTER_ID}-{NETWORK}-dns"
+              ns_name = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-dns"
 
               # Check if nameserver group already exists
               nameservers = api("GET", "dns/nameservers")
