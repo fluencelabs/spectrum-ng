@@ -1,0 +1,146 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netbird-setup
+  namespace: networking
+  annotations:
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+        - name: setup
+          image: python:3-alpine
+          command: ["python3", "-c"]
+          args:
+            - |
+              import json, os, urllib.request, urllib.error, ssl, socket
+
+              API_URL = "https://netbird.infrahub.cloudless.dev/api"
+              TOKEN = os.environ["NB_API_KEY"]
+              CLUSTER_ID = os.environ["CLUSTER_ID"]
+              NETWORK = os.environ["NETWORK"]
+
+              ctx = ssl.create_default_context()
+
+              def api(method, path, data=None):
+                  body = json.dumps(data).encode() if data else None
+                  req = urllib.request.Request(
+                      f"{API_URL}/{path}",
+                      data=body,
+                      method=method,
+                      headers={
+                          "Authorization": f"Token {TOKEN}",
+                          "Content-Type": "application/json",
+                      },
+                  )
+                  try:
+                      with urllib.request.urlopen(req, context=ctx) as resp:
+                          return json.loads(resp.read())
+                  except urllib.error.HTTPError as e:
+                      print(f"API error {e.code}: {e.read().decode()}")
+                      raise
+
+              groups = api("GET", "groups")
+
+              def find_group(name):
+                  return next((g for g in groups if g["name"] == name), None)
+
+              support = find_group("support")
+              if not support:
+                  raise SystemExit("Error: support group not found")
+              print(f"Found support group: {support['id']}")
+
+              # Find router group (contains router peers)
+              router_group = next(
+                  (g for g in groups
+                   if g["name"].startswith(f"spectrum-{NETWORK}-{CLUSTER_ID}")
+                   and g.get("peers_count", 0) > 0),
+                  None,
+              )
+              if not router_group:
+                  raise SystemExit("Error: router group not found")
+              print(f"Found router group: {router_group['name']} ({router_group['id']})")
+
+              # Find spectrum-{NETWORK} group
+              env_group = find_group(f"spectrum-{NETWORK}")
+              if not env_group:
+                  raise SystemExit(f"Error: spectrum-{NETWORK} group not found")
+              print(f"Found env group: {env_group['id']}")
+
+              # --- 1. Add router peers to spectrum-{NETWORK} group ---
+              router_peer_ids = [p["id"] for p in router_group.get("peers", []) or []]
+              env_peer_ids = [p["id"] for p in env_group.get("peers", []) or []]
+              missing = [pid for pid in router_peer_ids if pid not in env_peer_ids]
+              if missing:
+                  all_peers = list(set(env_peer_ids + router_peer_ids))
+                  api("PUT", f"groups/{env_group['id']}", {
+                      "name": env_group["name"],
+                      "peers": all_peers,
+                  })
+                  print(f"Added {len(missing)} router peers to {env_group['name']}")
+              else:
+                  print(f"Router peers already in {env_group['name']}")
+
+              # --- 2. Create nameserver group ---
+              coredns_ip = socket.gethostbyname("kube-dns.kube-system.svc.cluster.local")
+              print(f"Detected CoreDNS IP: {coredns_ip}")
+
+              ns_name = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-dns"
+              nameservers = api("GET", "dns/nameservers")
+              if any(ns["name"] == ns_name for ns in nameservers):
+                  print("Nameserver group already exists, skipping")
+              else:
+                  result = api("POST", "dns/nameservers", {
+                      "name": ns_name,
+                      "description": f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}",
+                      "nameservers": [{
+                          "ip": coredns_ip,
+                          "ns_type": "udp",
+                          "port": 53,
+                      }],
+                      "enabled": True,
+                      "groups": [support["id"]],
+                      "primary": False,
+                      "domains": [f"{CLUSTER_ID}.{NETWORK}.fluence.nb"],
+                      "search_domains_enabled": True,
+                  })
+                  print(f"Nameserver group created: {result.get('id', 'ok')}")
+
+              # --- 3. Create service CIDR route ---
+              route_id = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-svc"
+              routes = api("GET", "routes")
+              if any(r.get("network_id") == route_id for r in routes):
+                  print("Route already exists, skipping")
+              else:
+                  octets = coredns_ip.split(".")
+                  base = f"{octets[0]}.{int(octets[1]) & 0xF0}.0.0"
+                  service_cidr = f"{base}/12"
+                  print(f"Detected service CIDR: {service_cidr}")
+
+                  result = api("POST", "routes", {
+                      "description": f"Service CIDR for spectrum {NETWORK} cluster {CLUSTER_ID}",
+                      "network_id": route_id,
+                      "network": service_cidr,
+                      "enabled": True,
+                      "peer_groups": [router_group["id"]],
+                      "metric": 9999,
+                      "masquerade": True,
+                      "groups": [support["id"]],
+                  })
+                  print(f"Route created: {result.get('id', 'ok')}")
+
+              print("Setup complete")
+          env:
+            - name: NB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: netbird-api-token
+                  key: NB_API_KEY
+            - name: CLUSTER_ID
+              value: "${CLUSTER_ID}"
+            - name: NETWORK
+              value: "${NETWORK}"
+      restartPolicy: Never

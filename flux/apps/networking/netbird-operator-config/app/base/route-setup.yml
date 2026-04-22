@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netbird-route-setup
+  namespace: networking
+  annotations:
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+        - name: route-setup
+          image: python:3-alpine
+          command: ["python3", "-c"]
+          args:
+            - |
+              import json, os, urllib.request, urllib.error, ssl, socket
+
+              API_URL = "https://netbird.infrahub.cloudless.dev/api"
+              TOKEN = os.environ["NB_API_KEY"]
+              CLUSTER_ID = os.environ["CLUSTER_ID"]
+              NETWORK = os.environ["NETWORK"]
+
+              ctx = ssl.create_default_context()
+
+              def api(method, path, data=None):
+                  body = json.dumps(data).encode() if data else None
+                  req = urllib.request.Request(
+                      f"{API_URL}/{path}",
+                      data=body,
+                      method=method,
+                      headers={
+                          "Authorization": f"Token {TOKEN}",
+                          "Content-Type": "application/json",
+                      },
+                  )
+                  try:
+                      with urllib.request.urlopen(req, context=ctx) as resp:
+                          return json.loads(resp.read())
+                  except urllib.error.HTTPError as e:
+                      print(f"API error {e.code}: {e.read().decode()}")
+                      raise
+
+              route_id = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-svc"
+
+              # Check if route already exists
+              routes = api("GET", "routes")
+              if any(r.get("network_id") == route_id for r in routes):
+                  print("Route already exists, skipping")
+                  raise SystemExit(0)
+
+              # Auto-detect service CIDR from CoreDNS IP
+              coredns_ip = socket.gethostbyname("kube-dns.kube-system.svc.cluster.local")
+              # Use /12 covering the service range
+              octets = coredns_ip.split(".")
+              base = f"{octets[0]}.{int(octets[1]) & 0xF0}.0.0"
+              service_cidr = f"{base}/12"
+              print(f"Detected service CIDR: {service_cidr}")
+
+              # Find router group
+              groups = api("GET", "groups")
+              router_group = next(
+                  (g for g in groups if "spectrum" in g["name"] and CLUSTER_ID[:8] in g["name"] and g.get("peers_count", 0) > 0),
+                  None,
+              )
+              if not router_group:
+                  raise SystemExit("Error: router group not found")
+              print(f"Found router group: {router_group['name']} ({router_group['id']})")
+
+              support = next((g for g in groups if g["name"] == "support"), None)
+              if not support:
+                  raise SystemExit("Error: support group not found")
+              print(f"Found support group: {support['id']}")
+
+              # Create route
+              result = api("POST", "routes", {
+                  "description": f"Service CIDR for spectrum {NETWORK} cluster {CLUSTER_ID}",
+                  "network_id": route_id,
+                  "network": service_cidr,
+                  "enabled": True,
+                  "peer_groups": [router_group["id"]],
+                  "metric": 9999,
+                  "masquerade": True,
+                  "groups": [support["id"]],
+              })
+              print(f"Route created: {result.get('id', 'ok')}")
+          env:
+            - name: NB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: netbird-api-token
+                  key: NB_API_KEY
+            - name: CLUSTER_ID
+              value: "${CLUSTER_ID}"
+            - name: NETWORK
+              value: "${NETWORK}"
+      restartPolicy: Never
