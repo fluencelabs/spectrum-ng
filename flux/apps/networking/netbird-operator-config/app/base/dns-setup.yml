@@ -12,56 +12,72 @@ spec:
     spec:
       containers:
         - name: dns-setup
-          image: curlimages/curl:latest
-          command: ["sh", "-c"]
+          image: python:3-alpine
+          command: ["python3", "-c"]
           args:
             - |
-              set -e
-              API_URL="https://netbird.infrahub.cloudless.dev/api"
+              import json, os, urllib.request, ssl
+
+              API_URL = "https://netbird.infrahub.cloudless.dev/api"
+              TOKEN = os.environ["NB_API_KEY"]
+              CLUSTER_ID = os.environ["CLUSTER_ID"]
+              NETWORK = os.environ["NETWORK"]
+
+              ctx = ssl.create_default_context()
+
+              def api(method, path, data=None):
+                  body = json.dumps(data).encode() if data else None
+                  req = urllib.request.Request(
+                      f"{API_URL}/{path}",
+                      data=body,
+                      method=method,
+                      headers={
+                          "Authorization": f"Token {TOKEN}",
+                          "Content-Type": "application/json",
+                      },
+                  )
+                  with urllib.request.urlopen(req, context=ctx) as resp:
+                      return json.loads(resp.read())
 
               # Auto-detect CoreDNS IP
-              COREDNS_IP=$(getent hosts kube-dns.kube-system.svc.cluster.local | awk '{print $1}')
-              if [ -z "$COREDNS_IP" ]; then
-                echo "Error: could not detect CoreDNS IP"
-                exit 1
-              fi
-              echo "Detected CoreDNS IP: $COREDNS_IP"
+              import socket
+              try:
+                  coredns_ip = socket.gethostbyname("kube-dns.kube-system.svc.cluster.local")
+              except socket.gaierror:
+                  raise SystemExit("Error: could not detect CoreDNS IP")
+              print(f"Detected CoreDNS IP: {coredns_ip}")
+
+              ns_name = f"spectrum-{CLUSTER_ID}-{NETWORK}-dns"
 
               # Check if nameserver group already exists
-              EXISTING=$(curl -sf -H "Authorization: Token $NB_API_KEY" "$API_URL/dns/nameservers" | grep -o "\"name\":\"spectrum-${CLUSTER_ID}-${NETWORK}-dns\"" || true)
-              if [ -n "$EXISTING" ]; then
-                echo "Nameserver group already exists, skipping"
-                exit 0
-              fi
+              nameservers = api("GET", "dns/nameservers")
+              if any(ns["name"] == ns_name for ns in nameservers):
+                  print("Nameserver group already exists, skipping")
+                  raise SystemExit(0)
 
               # Get support group ID
-              SUPPORT_GROUP_ID=$(curl -sf -H "Authorization: Token $NB_API_KEY" "$API_URL/groups?name=support" | sed -n 's/.*"id":"\([^"]*\)","name":"support".*/\1/p')
-              if [ -z "$SUPPORT_GROUP_ID" ]; then
-                echo "Error: support group not found"
-                exit 1
-              fi
-              echo "Found support group: $SUPPORT_GROUP_ID"
+              groups = api("GET", "groups")
+              support = next((g for g in groups if g["name"] == "support"), None)
+              if not support:
+                  raise SystemExit("Error: support group not found")
+              print(f"Found support group: {support['id']}")
 
               # Create nameserver group
-              curl -sf -X POST "$API_URL/dns/nameservers" \
-                -H "Authorization: Token $NB_API_KEY" \
-                -H "Content-Type: application/json" \
-                -d "{
-                  \"name\": \"spectrum-${CLUSTER_ID}-${NETWORK}-dns\",
-                  \"description\": \"DNS for spectrum ${NETWORK} cluster ${CLUSTER_ID}\",
-                  \"nameservers\": [{
-                    \"ip\": \"$COREDNS_IP\",
-                    \"ns_type\": \"udp\",
-                    \"port\": 53
+              result = api("POST", "dns/nameservers", {
+                  "name": ns_name,
+                  "description": f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}",
+                  "nameservers": [{
+                      "ip": coredns_ip,
+                      "ns_type": "udp",
+                      "port": 53,
                   }],
-                  \"enabled\": true,
-                  \"groups\": [\"$SUPPORT_GROUP_ID\"],
-                  \"primary\": false,
-                  \"domains\": [\"${CLUSTER_ID}.${NETWORK}.fluence.nb\"],
-                  \"search_domains_enabled\": true
-                }"
-              echo ""
-              echo "Nameserver group created successfully"
+                  "enabled": True,
+                  "groups": [support["id"]],
+                  "primary": False,
+                  "domains": [f"{CLUSTER_ID}.{NETWORK}.fluence.nb"],
+                  "search_domains_enabled": True,
+              })
+              print(f"Nameserver group created: {result.get('id', 'ok')}")
           env:
             - name: NB_API_KEY
               valueFrom:
