@@ -17,5 +17,5 @@ spec:
   healthChecks:
     - apiVersion: v1
       kind: Secret
-      name: netbird-setup-key
+      name: netbird-api-token
       namespace: networking
