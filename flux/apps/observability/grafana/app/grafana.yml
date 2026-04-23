@@ -5,6 +5,15 @@ metadata:
   labels:
     dashboards: "grafana"
 spec:
+  service:
+    spec:
+      ports:
+        - name: grafana
+          port: 3000
+          targetPort: 3000
+        - name: http
+          port: 80
+          targetPort: 3000
   config:
     log:
       mode: "console"
