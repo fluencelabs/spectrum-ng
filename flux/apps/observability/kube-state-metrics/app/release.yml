@@ -22,6 +22,9 @@ spec:
         - apiGroups: ["kubevirt.io"]
           resources: ["virtualmachines"]
           verbs: ["list", "watch"]
+        - apiGroups: ["cloudless.dev"]
+          resources: ["workspaces", "storages", "vpcs", "subnets", "public-ips", "virtualmachines", "security-groups"]
+          verbs: ["list", "watch"]
 
     customResourceState:
       enabled: true
@@ -45,3 +48,143 @@ spec:
                     info:
                       labelsFromPath:
                         status: [status, printableStatus]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: Workspace
+              labelsFromPath:
+                name: [metadata, name]
+              metrics:
+                - name: cloudless_workspace_condition
+                  help: "cloudless.dev Workspace condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: Storage
+              labelsFromPath:
+                name: [metadata, name]
+                workspace: [spec, workspace]
+              metrics:
+                - name: cloudless_storage_condition
+                  help: "cloudless.dev Storage condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: Vpc
+              labelsFromPath:
+                name: [metadata, name]
+                workspace: [spec, workspace]
+              metrics:
+                - name: cloudless_vpc_condition
+                  help: "cloudless.dev Vpc condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: Subnet
+              labelsFromPath:
+                name: [metadata, name]
+                workspace: [spec, workspace]
+              metrics:
+                - name: cloudless_subnet_condition
+                  help: "cloudless.dev Subnet condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: PublicIp
+              labelsFromPath:
+                name: [metadata, name]
+                workspace: [spec, workspace]
+              metrics:
+                - name: cloudless_publicip_condition
+                  help: "cloudless.dev PublicIp condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: VirtualMachine
+              labelsFromPath:
+                vm_id: [metadata, name]
+                workspace_id: [spec, workspace]
+                kubevirt_vm: [status, subresourceName ]
+              metrics:
+                - name: cloudless_vm_condition
+                  help: "cloudless.dev VirtualMachine condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            - groupVersionKind:
+                group: cloudless.dev
+                version: v1alpha1
+                kind: SecurityGroup
+              labelsFromPath:
+                name: [metadata, name]
+                workspace: [spec, workspace]
+              metrics:
+                - name: cloudless_securitygroup_condition
+                  help: "cloudless.dev SecurityGroup condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
