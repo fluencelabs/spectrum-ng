@@ -106,7 +106,7 @@ spec:
                   "enabled": True,
                   "groups": [support["id"]],
                   "primary": False,
-                  "domains": [f"{CLUSTER_ID}.{NETWORK}.fluence.internal"],
+                  "domains": [f"{CLUSTER_ID}.{NETWORK}.spectrum"],
                   "search_domains_enabled": True,
               }
               nameservers = api("GET", "dns/nameservers")

@@ -33,10 +33,11 @@ data:
         loadbalance
     }
 
-    ${CLUSTER_ID}.${NETWORK}.fluence.internal:53 {
+    ${CLUSTER_ID}.${NETWORK}.spectrum:53 {
         errors
         log
-        rewrite name regex ([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)\.${CLUSTER_ID}\.${NETWORK}\.fluence\.internal {1}.{2}.svc.cluster.local
+        rewrite name grafana.${CLUSTER_ID}.${NETWORK}.spectrum grafana-service.observability.svc.cluster.local
+        rewrite name regex ([a-zA-Z0-9-]+)\.([a-zA-Z0-9-]+)\.${CLUSTER_ID}\.${NETWORK}\.spectrum {1}.{2}.svc.cluster.local
         kubernetes cluster.local in-addr.arpa ip6.arpa {
             pods insecure
             fallthrough in-addr.arpa ip6.arpa
