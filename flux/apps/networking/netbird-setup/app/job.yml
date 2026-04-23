@@ -95,24 +95,27 @@ spec:
               print(f"Detected CoreDNS IP: {coredns_ip}")
 
               ns_name = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-dns"
+              ns_payload = {
+                  "name": ns_name,
+                  "description": f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}",
+                  "nameservers": [{
+                      "ip": coredns_ip,
+                      "ns_type": "udp",
+                      "port": 53,
+                  }],
+                  "enabled": True,
+                  "groups": [support["id"]],
+                  "primary": False,
+                  "domains": [f"{CLUSTER_ID}.{NETWORK}.fluence.internal"],
+                  "search_domains_enabled": True,
+              }
               nameservers = api("GET", "dns/nameservers")
-              if any(ns["name"] == ns_name for ns in nameservers):
-                  print("Nameserver group already exists, skipping")
+              existing = next((ns for ns in nameservers if ns["name"] == ns_name), None)
+              if existing:
+                  api("PUT", f"dns/nameservers/{existing['id']}", ns_payload)
+                  print(f"Nameserver group updated: {existing['id']}")
               else:
-                  result = api("POST", "dns/nameservers", {
-                      "name": ns_name,
-                      "description": f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}",
-                      "nameservers": [{
-                          "ip": coredns_ip,
-                          "ns_type": "udp",
-                          "port": 53,
-                      }],
-                      "enabled": True,
-                      "groups": [support["id"]],
-                      "primary": False,
-                      "domains": [f"{CLUSTER_ID}.{NETWORK}.fluence.nb"],
-                      "search_domains_enabled": True,
-                  })
+                  result = api("POST", "dns/nameservers", ns_payload)
                   print(f"Nameserver group created: {result.get('id', 'ok')}")
 
               # --- 3. Create service CIDR route ---
