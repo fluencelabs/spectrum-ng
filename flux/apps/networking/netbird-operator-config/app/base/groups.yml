@@ -1,0 +1,15 @@
+apiVersion: netbird.io/v1
+kind: NBGroup
+metadata:
+  name: spectrum-${NETWORK}
+  namespace: networking
+spec:
+  name: "spectrum-${NETWORK}"
+---
+apiVersion: netbird.io/v1
+kind: NBGroup
+metadata:
+  name: spectrum-${NETWORK}-${CLUSTER_ID}
+  namespace: networking
+spec:
+  name: "spectrum-${NETWORK}-${CLUSTER_ID}"

@@ -1,0 +1,21 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: netbird-gate
+  namespace: flux-system
+spec:
+  path: ./flux/apps/networking/netbird-gate/app
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 5m
+  retryInterval: 1m
+  timeout: 5m
+  targetNamespace: networking
+  healthChecks:
+    - apiVersion: v1
+      kind: Secret
+      name: netbird-api-token
+      namespace: networking

@@ -5,3 +5,4 @@ resources:
   - kube-ovn
   - multus
   - prometheus-crds
+  - coredns-custom
