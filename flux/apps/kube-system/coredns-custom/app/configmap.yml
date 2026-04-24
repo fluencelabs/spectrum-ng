@@ -36,7 +36,10 @@ data:
     ${CLUSTER_ID}.${NETWORK}.spectrum:53 {
         errors
         log
-        rewrite name regex ^([a-zA-Z0-9-]+)\.${CLUSTER_ID}\.${NETWORK}\.spectrum$ {1}.networking.svc.cluster.local
+        rewrite stop {
+          name regex ^([a-zA-Z0-9-]+)\.${CLUSTER_ID}\.${NETWORK}\.spectrum$ {1}.networking.svc.cluster.local
+          answer name ^([a-zA-Z0-9-]+)\.networking\.svc\.cluster\.local$ {1}.${CLUSTER_ID}.${NETWORK}.spectrum
+        }
         kubernetes cluster.local in-addr.arpa ip6.arpa {
             pods insecure
             fallthrough in-addr.arpa ip6.arpa
