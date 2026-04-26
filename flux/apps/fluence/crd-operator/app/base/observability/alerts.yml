@@ -56,8 +56,8 @@ spec:
       rules:
         - alert: CloudlessWorkspaceNotReady
           expr: |
-            kube_customresource_cloudless_workspace_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_workspace_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
@@ -67,8 +67,8 @@ spec:
 
         - alert: CloudlessVpcNotReady
           expr: |
-            kube_customresource_cloudless_vpc_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_vpc_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
@@ -78,8 +78,8 @@ spec:
 
         - alert: CloudlessSubnetNotReady
           expr: |
-            kube_customresource_cloudless_subnet_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_subnet_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
@@ -89,8 +89,8 @@ spec:
 
         - alert: CloudlessSecurityGroupNotReady
           expr: |
-            kube_customresource_cloudless_securitygroup_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_securitygroup_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
@@ -100,8 +100,8 @@ spec:
 
         - alert: CloudlessPublicIpNotReady
           expr: |
-            kube_customresource_cloudless_publicip_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_publicip_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
@@ -111,19 +111,19 @@ spec:
 
         - alert: CloudlessVirtualMachineNotReady
           expr: |
-            kube_customresource_cloudless_vm_condition{condition_type="Ready", condition_status!="True"}
+            kube_customresource_cloudless_vm_condition{condition_type="Ready"} != 1
           for: 10m
           labels:
             team: devops
             severity: critical
           annotations:
-            summary: "VirtualMachine {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
-            description: "cloudless.dev VirtualMachine {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 10 minutes"
+            summary: "VirtualMachine {{ $labels.vm_id }} (workspace={{ $labels.workspace_id }}) is not ready"
+            description: "cloudless.dev VirtualMachine {{ $labels.vm_id }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 10 minutes"
 
         - alert: CloudlessStorageNotReady
           expr: |
-            kube_customresource_cloudless_storage_condition{condition_type="Ready", condition_status!="True"}
-          for: 1m
+            kube_customresource_cloudless_storage_condition{condition_type="Ready"} != 1
+          for: 5m
           labels:
             team: devops
             severity: critical
