@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.2.0](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.10...v0.2.0) (2026-04-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Migrate to crd operator ([#105](https://github.com/fluencelabs/spectrum-ng/issues/105))
+
+### Features
+
+* add crd readiness metrics/alets ([#134](https://github.com/fluencelabs/spectrum-ng/issues/134)) ([9572986](https://github.com/fluencelabs/spectrum-ng/commit/9572986b0e6d48472485172ddb375e8b50e97e47))
+* add netbird operator stack for cluster mesh networking ([#128](https://github.com/fluencelabs/spectrum-ng/issues/128)) ([9d7e34a](https://github.com/fluencelabs/spectrum-ng/commit/9d7e34a8976daa465d5f61ed411921539c871831))
+* Migrate to crd operator ([#105](https://github.com/fluencelabs/spectrum-ng/issues/105)) ([774d17a](https://github.com/fluencelabs/spectrum-ng/commit/774d17a7efa12437f23a8a87de7e0ee9a01e4704))
+
+
+### Bug Fixes
+
+* add grafana http router ([9553003](https://github.com/fluencelabs/spectrum-ng/commit/955300360fc84f0a0844d78f59555e531250d682))
+* add grafana http router ([#114](https://github.com/fluencelabs/spectrum-ng/issues/114)) ([48785ca](https://github.com/fluencelabs/spectrum-ng/commit/48785ca65deb43ce162f7a1cca0e53da822e0050))
+* add observability on stage ([#113](https://github.com/fluencelabs/spectrum-ng/issues/113)) ([b2a364c](https://github.com/fluencelabs/spectrum-ng/commit/b2a364c840b648b8386f24f7fb5ca9b186d31fb7))
+* added a crd alerts ([#111](https://github.com/fluencelabs/spectrum-ng/issues/111)) ([482a69d](https://github.com/fluencelabs/spectrum-ng/commit/482a69da07cd8d419591e8878e722a6cf316edaf))
+* crd rules ([ee03233](https://github.com/fluencelabs/spectrum-ng/commit/ee03233d14176f72a477208e7b8b817f27dae5e3))
+* crd rules logql ([#119](https://github.com/fluencelabs/spectrum-ng/issues/119)) ([ee03233](https://github.com/fluencelabs/spectrum-ng/commit/ee03233d14176f72a477208e7b8b817f27dae5e3))
+* **crd:** update crd on mainnet ([#109](https://github.com/fluencelabs/spectrum-ng/issues/109)) ([adb8acb](https://github.com/fluencelabs/spectrum-ng/commit/adb8acb9e7e203f38aed54d771806715cf62dd56))
+* Fix flux observability ([#104](https://github.com/fluencelabs/spectrum-ng/issues/104)) ([9db5a2e](https://github.com/fluencelabs/spectrum-ng/commit/9db5a2e33c2749114c171954dec6331945382667))
+* improved vm paused alerts ([#125](https://github.com/fluencelabs/spectrum-ng/issues/125)) ([8d3d4b2](https://github.com/fluencelabs/spectrum-ng/commit/8d3d4b245bbdeee0b8ef45d2965ae8b1243ba3cf))
+* **lightmare:** update ([#107](https://github.com/fluencelabs/spectrum-ng/issues/107)) ([80302fb](https://github.com/fluencelabs/spectrum-ng/commit/80302fb808e8194fd073e6dc69d4edd3a8019c6a))
+* **netbird:** dns flow ([#135](https://github.com/fluencelabs/spectrum-ng/issues/135)) ([725c753](https://github.com/fluencelabs/spectrum-ng/commit/725c753e549df61a5e8a973d24eb01c1579422bd))
+* update crd on testnet ([#112](https://github.com/fluencelabs/spectrum-ng/issues/112)) ([259c41e](https://github.com/fluencelabs/spectrum-ng/commit/259c41eee8534f2132afc957d51de84bcb078ff9))
+* update lightmare ([#127](https://github.com/fluencelabs/spectrum-ng/issues/127)) ([ca0329c](https://github.com/fluencelabs/spectrum-ng/commit/ca0329c7a9f0b5525645eacb706f52578dcbe6c6))
+* update lightmare ([#130](https://github.com/fluencelabs/spectrum-ng/issues/130)) ([1a8d5ee](https://github.com/fluencelabs/spectrum-ng/commit/1a8d5ee827831b7f0d2256d5e152661e24de3161))
+* update lightmare ([#132](https://github.com/fluencelabs/spectrum-ng/issues/132)) ([2a46bf2](https://github.com/fluencelabs/spectrum-ng/commit/2a46bf25da38d460784d264649c6ed74ab498dbf))
+
 ## [0.1.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.9...v0.1.10) (2026-03-24)
 
 
