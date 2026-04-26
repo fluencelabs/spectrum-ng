@@ -51,3 +51,82 @@ spec:
             description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 30s"
           labels:
             severity: warning
+
+    - name: cloudless.crd.ready.alerts
+      rules:
+        - alert: CloudlessWorkspaceNotReady
+          expr: |
+            kube_customresource_cloudless_workspace_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Workspace {{ $labels.name }} is not ready"
+            description: "cloudless.dev Workspace {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+        - alert: CloudlessVpcNotReady
+          expr: |
+            kube_customresource_cloudless_vpc_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Vpc {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev Vpc {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+        - alert: CloudlessSubnetNotReady
+          expr: |
+            kube_customresource_cloudless_subnet_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Subnet {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev Subnet {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+        - alert: CloudlessSecurityGroupNotReady
+          expr: |
+            kube_customresource_cloudless_securitygroup_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "SecurityGroup {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev SecurityGroup {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+        - alert: CloudlessPublicIpNotReady
+          expr: |
+            kube_customresource_cloudless_publicip_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "PublicIp {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev PublicIp {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+        - alert: CloudlessVirtualMachineNotReady
+          expr: |
+            kube_customresource_cloudless_vm_condition{condition_type="Ready", condition_status!="True"}
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "VirtualMachine {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev VirtualMachine {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 10 minutes"
+
+        - alert: CloudlessStorageNotReady
+          expr: |
+            kube_customresource_cloudless_storage_condition{condition_type="Ready", condition_status!="True"}
+          for: 1m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Storage {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
+            description: "cloudless.dev Storage {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
