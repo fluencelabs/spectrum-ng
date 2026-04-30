@@ -30,6 +30,8 @@ spec:
         size: 1Gi
 
     api:
+      console:
+        publicUrl: wss://vm-console.${NETWORK}-${PROVIDER}.cloudless.dev
       config:
         LTM__LOG_FORMAT: json
         LTM_CRD_API__STORAGE__NVME: "lvm-thin-r1"
