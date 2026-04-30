@@ -16,6 +16,3 @@ spec:
     controller:
       persistence:
         storageClassName: lvm-thin-r1
-    api:
-      console:
-        publicUrl: wss://vm-console.stage-cloudless.cloudless.dev
