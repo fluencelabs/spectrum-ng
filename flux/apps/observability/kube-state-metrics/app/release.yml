@@ -63,6 +63,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -83,6 +84,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -103,6 +105,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -123,6 +126,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -143,6 +147,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -155,7 +160,7 @@ spec:
               labelsFromPath:
                 vm_id: [metadata, name]
                 workspace_id: [spec, workspace]
-                kubevirt_vm: [status, subresourceName ]
+                kubevirt_vm: [status, subresourceName]
               metrics:
                 - name: cloudless_vm_condition
                   help: "cloudless.dev VirtualMachine condition"
@@ -164,6 +169,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
@@ -184,6 +190,7 @@ spec:
                     gauge:
                       nilIsZero: true
                       path: [status, conditions]
+                      valueFrom: [status]
                       labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
