@@ -8,9 +8,9 @@ spec:
     optional: false
     providers:
       - name: authentik
-        issuer: https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/
+        issuer: https://authentik.cloudless.dev/application/o/vodopad-${NETWORK}/
         remoteJWKS:
-          uri: https://authentik.${NETWORK}.cloudless.dev/application/o/jwks/jwks/
+          uri: https://authentik.cloudless.dev/application/o/vodopad-${NETWORK}/jwks/
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
