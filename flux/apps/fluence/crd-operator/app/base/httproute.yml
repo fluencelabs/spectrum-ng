@@ -34,7 +34,7 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: crd-operator-vm-console
+        - name: crd-operator-vm-api
           namespace: fluence
           port: 8444
       matches:
