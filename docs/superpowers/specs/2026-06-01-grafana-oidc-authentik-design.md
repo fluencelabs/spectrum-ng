@@ -13,13 +13,15 @@ primary auth path. Roles are derived from Authentik group membership.
 ## Decisions (from brainstorming)
 
 1. **One Authentik application per network** — `spectrum-grafana-{testnet|mainnet|stage|dev}`.
-   Redirect URIs within a network cover all clusters of that network (regex over
-   `grafana.*.<network>`). Credentials are isolated per network.
+   Redirect URIs within a network cover all clusters of that network (regex
+   `^https?://grafana\.[^./]+\.<network>/login/generic_oauth$`). Credentials are isolated per network.
 2. **OIDC-only + `auto_login`** — local login form hidden; users are redirected
    straight to Authentik.
-3. **Roles by Authentik groups** — `spectrum-grafana-admins` → `Admin`, all other
-   authenticated users → `Viewer` (via `role_attribute_path` JMESPath over the
-   `groups` claim).
+3. **Roles by Authentik groups** — reuse the existing central groups (mapped to GitHub
+   teams `devops`/`devs` like everywhere else): `grafana-admins` → `Admin`,
+   `grafana-devs` → `Editor`, all other authenticated users → `Viewer` (via
+   `role_attribute_path` JMESPath over the `groups` claim). No grafana OIDC app exists
+   in infra yet; the monolithic `authentik_oidc_apps` grafana toggle is off.
 4. **Secret delivery via a new `spectrum-manual-secrets` Secret** — a Flux
    `substituteFrom` source (applied out-of-band at cluster bootstrap, not in git),
    parallel to the existing `spectrum-manual-vars` **ConfigMap**. `client_id` stays
@@ -62,45 +64,55 @@ Reachability requirements:
 
 ## Infra side (spec for the user to apply — NOT edited here)
 
-Per network, mirror the existing `tf_modules//authentik_oidc_app` pattern
-(see `infra/infrahub/terraform/authentik/stage_oidc.tf`, module ref `v0.0.10`):
+New file `infra/infrahub/terraform/authentik/spectrum_grafana_oidc.tf`, using the singular
+`tf_modules//authentik_oidc_app` module (ref `v0.0.10`, same as `vault_oidc.tf`), one app
+per network via `for_each`, publishing creds to the infrahub Vault (default `vault` provider):
 
 ```hcl
-module "spectrum_oidc_grafana_<network>" {
-  source = "git::ssh://git@github.com/fluencelabs/tf_modules.git//authentik_oidc_app?ref=v0.0.10"
+variable "spectrum_grafana_networks" {
+  type    = set(string)
+  default = ["testnet", "mainnet", "stage", "dev"]
+}
 
-  providers = { authentik = authentik, vault = vault.<network>, random = random }
+module "spectrum_grafana_oidc" {
+  source   = "git::ssh://git@github.com/fluencelabs/tf_modules.git//authentik_oidc_app?ref=v0.0.10"
+  for_each = var.spectrum_grafana_networks
 
-  authentik_url = "https://authentik.cloudless.dev"
-  name          = "Grafana (<network>)"
-  slug          = "spectrum-grafana-<network>"
+  providers = { authentik = authentik, vault = vault, random = random }
+
+  authentik_url = var.authentik_url
+  name          = "Grafana — Spectrum ${each.key}"
+  slug          = "spectrum-grafana-${each.key}"
   client_type   = "confidential"
 
   redirect_uris = [
     {
       matching_mode = "regex"
-      url           = "^http://grafana\\..*\\.<network>/login/generic_oauth$"
+      url           = "^https?://grafana\\.[^./]+\\.${each.key}/login/generic_oauth$"
     },
   ]
   scopes = ["openid", "profile", "email", "groups"]
 
   signing_key_name = var.signing_key_name
-  access_groups    = ["spectrum-grafana-admins", "spectrum-grafana-viewers"]
+  access_groups    = var.grafana_access_groups # existing ["grafana-admins", "grafana-devs"]
 
-  vault_path     = "security/authentik-oidc/grafana"
+  vault_path     = "security/authentik-oidc/spectrum-grafana-${each.key}"
   vault_kv_mount = var.vault_kv_mount
+
+  depends_on = [module.authentik_groups]
 }
 ```
 
-Outputs: `client_id` / `client_secret` published to the per-network Vault at
-`security/authentik-oidc/grafana`. The Authentik groups `spectrum-grafana-admins`
-and `spectrum-grafana-viewers` must exist (or be added to the managed groups module).
+Outputs: `client_id` / `client_secret` published to the infrahub Vault (mount
+`var.vault_kv_mount` = `authentik-oidc`) at `security/authentik-oidc/spectrum-grafana-<network>`.
+Groups `grafana-admins` / `grafana-devs` already exist (created by `module.authentik_groups`
+from `var.grafana_access_groups`; mapped to GitHub teams `devops`/`devs` in `local_group_mappings`).
 
 ## Secret bridge (manual bootstrap, out-of-band)
 
 Per spectrum cluster, at bootstrap (mirrors how `CLOUDFLARE_TOKEN` etc. are seeded):
-- Read `client_id` / `client_secret` from the network Vault path
-  `security/authentik-oidc/grafana`.
+- Read `client_id` / `client_secret` from the infrahub Vault (mount `authentik-oidc`) at
+  `security/authentik-oidc/spectrum-grafana-<network>`.
 - Put `GRAFANA_OIDC_CLIENT_ID` into the `spectrum-manual-vars` ConfigMap.
 - Put `GRAFANA_OIDC_CLIENT_SECRET` into the new `spectrum-manual-secrets` Secret.
 
@@ -138,7 +150,7 @@ stringData:
     - `login_attribute_path  = preferred_username`
     - `email_attribute_path  = email`
     - `name_attribute_path   = name`
-    - `role_attribute_path   = contains(groups[*], 'spectrum-grafana-admins') && 'Admin' || 'Viewer'`
+    - `role_attribute_path   = contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'`
     - `allow_assign_grafana_admin = "true"` (optional; only if the admins group should get server-admin)
   - Keep local admin as escape-hatch: `[security] admin_user`, `admin_password` sourced
     from env (`$__env{GF_SECURITY_ADMIN_PASSWORD}`) instead of plaintext `admin/admin`.

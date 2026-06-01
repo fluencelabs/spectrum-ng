@@ -235,7 +235,7 @@ Replace with:
       login_attribute_path: "preferred_username"
       email_attribute_path: "email"
       name_attribute_path: "name"
-      role_attribute_path: "contains(groups[*], 'spectrum-grafana-admins') && 'Admin' || 'Viewer'"
+      role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'"
       allow_assign_grafana_admin: "true"
       use_pkce: "true"
     security:
@@ -364,39 +364,49 @@ No commit (validation only).
 
 ## Appendix A — Infra side (user applies in `infra`, NOT this repo)
 
-Per network (`testnet`, `mainnet`, `stage`, `dev`), add to `infra/infrahub/terraform/authentik/`
-a module mirroring `stage_oidc.tf` (module ref `v0.0.10`):
+New file `infra/infrahub/terraform/authentik/spectrum_grafana_oidc.tf` (singular module,
+ref `v0.0.10`, same as `vault_oidc.tf`), one app per network, creds to the infrahub Vault:
 
 ```hcl
-module "spectrum_oidc_grafana_<network>" {
-  source = "git::ssh://git@github.com/fluencelabs/tf_modules.git//authentik_oidc_app?ref=v0.0.10"
-  providers = { authentik = authentik, vault = vault.<network>, random = random }
+variable "spectrum_grafana_networks" {
+  type    = set(string)
+  default = ["testnet", "mainnet", "stage", "dev"]
+}
 
-  authentik_url = "https://authentik.cloudless.dev"
-  name          = "Grafana (<network>)"
-  slug          = "spectrum-grafana-<network>"
+module "spectrum_grafana_oidc" {
+  source   = "git::ssh://git@github.com/fluencelabs/tf_modules.git//authentik_oidc_app?ref=v0.0.10"
+  for_each = var.spectrum_grafana_networks
+
+  providers = { authentik = authentik, vault = vault, random = random }
+
+  authentik_url = var.authentik_url
+  name          = "Grafana — Spectrum ${each.key}"
+  slug          = "spectrum-grafana-${each.key}"
   client_type   = "confidential"
 
   redirect_uris = [
-    { matching_mode = "regex", url = "^http://grafana\\..*\\.<network>/login/generic_oauth$" },
+    { matching_mode = "regex", url = "^https?://grafana\\.[^./]+\\.${each.key}/login/generic_oauth$" },
   ]
   scopes           = ["openid", "profile", "email", "groups"]
   signing_key_name = var.signing_key_name
-  access_groups    = ["spectrum-grafana-admins", "spectrum-grafana-viewers"]
+  access_groups    = var.grafana_access_groups # existing ["grafana-admins", "grafana-devs"]
 
-  vault_path     = "security/authentik-oidc/grafana"
+  vault_path     = "security/authentik-oidc/spectrum-grafana-${each.key}"
   vault_kv_mount = var.vault_kv_mount
+
+  depends_on = [module.authentik_groups]
 }
 ```
 
-Prereqs: Authentik groups `spectrum-grafana-admins` / `spectrum-grafana-viewers` exist;
-the module publishes `client_id`/`client_secret` to the per-network Vault at
-`security/authentik-oidc/grafana`.
+Prereqs: groups `grafana-admins` / `grafana-devs` already exist (created by
+`module.authentik_groups` from `var.grafana_access_groups`; mapped to GitHub `devops`/`devs`).
+The module publishes `client_id`/`client_secret` to the infrahub Vault at
+`security/authentik-oidc/spectrum-grafana-<network>`.
 
 ## Appendix B — Bootstrap secret seeding (out-of-band, per spectrum cluster)
 
 At cluster bootstrap (same mechanism that seeds `CLOUDFLARE_TOKEN` etc.):
-- Read `client_id` / `client_secret` from the network Vault `security/authentik-oidc/grafana`.
+- Read `client_id` / `client_secret` from the infrahub Vault `security/authentik-oidc/spectrum-grafana-<network>`.
 - `spectrum-manual-vars` **ConfigMap**: set `GRAFANA_OIDC_CLIENT_ID=<client_id>`.
 - `spectrum-manual-secrets` **Secret** (new substitution source; create if absent): set
   `GRAFANA_OIDC_CLIENT_SECRET=<client_secret>` and `GRAFANA_ADMIN_PASSWORD=<chosen break-glass pw>`.

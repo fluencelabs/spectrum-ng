@@ -35,7 +35,7 @@ spec:
       login_attribute_path: "preferred_username"
       email_attribute_path: "email"
       name_attribute_path: "name"
-      role_attribute_path: "contains(groups[*], 'spectrum-grafana-admins') && 'Admin' || 'Viewer'"
+      role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'"
       allow_assign_grafana_admin: "true"
       use_pkce: "true"
     security:
