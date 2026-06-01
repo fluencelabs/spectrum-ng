@@ -25,3 +25,8 @@ spec:
       image:
         repository: "docker.fluence.dev/crd-admission"
         tag: "0.3.4"
+
+    vmApi:
+      image:
+        repository: "docker.fluence.dev/crd-vm-api"
+        tag: "0.1.0"
