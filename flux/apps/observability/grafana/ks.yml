@@ -14,6 +14,17 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
+      - kind: Secret
+        name: spectrum-manual-secrets
+        optional: true
   dependsOn:
     - name: grafana-operator-crd
     - name: vm-stack
