@@ -152,12 +152,12 @@ stringData:
     - `name_attribute_path   = name`
     - `role_attribute_path   = contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'`
     - `allow_assign_grafana_admin = "true"` (optional; only if the admins group should get server-admin)
-  - Keep local admin as escape-hatch: `[security] admin_user`, `admin_password` sourced
-    from env (`$__env{GF_SECURITY_ADMIN_PASSWORD}`) instead of plaintext `admin/admin`.
+  - **No `[security] admin_user/admin_password`** — grafana-operator (v5) auto-generates a
+    random admin password into the managed Secret `grafana-admin-credentials` (ns observability,
+    keys `GF_SECURITY_ADMIN_USER`/`GF_SECURITY_ADMIN_PASSWORD`). That is the break-glass account;
+    no manual password, nothing in git.
 - `spec.deployment.spec.template.spec.containers[name=grafana].env`:
   - `GF_OAUTH_CLIENT_SECRET` ← `secretKeyRef` `grafana-oidc.client_secret`
-  - `GF_SECURITY_ADMIN_PASSWORD` ← `secretKeyRef` (admin escape-hatch; from
-    `spectrum-manual-secrets` baked secret or a dedicated secret)
 
 ### 3. `flux/apps/observability/grafana/app/kustomization.yml`
 
@@ -173,8 +173,9 @@ stringData:
 ## Escape-hatch & known risks
 
 - **No fallback form with `auto_login`.** If Authentik is unreachable, append
-  `?disableAutoLogin` (e.g. `http://grafana.<cid>.<net>/login?disableAutoLogin`) to
-  show the local form; the local `admin` (env-sourced password) remains the break-glass account.
+  `?disableAutoLogin` (e.g. `http://grafana.<cid>.<net>/login?disableAutoLogin`) to show the local
+  form; log in with the operator-generated creds from Secret `grafana-admin-credentials`
+  (`kubectl -n observability get secret grafana-admin-credentials -o jsonpath='{.data.GF_SECURITY_ADMIN_PASSWORD}' | base64 -d`).
 - **[[Authentik HTTP3 Flakiness]]** — browser→Authentik over the public edge can fail
   with `ERR_CONNECTION_CLOSED` (QUIC bug); `auto_login` makes this blocking for login.
   The `disableAutoLogin` + local admin path is the mitigation. Curl/server-side token

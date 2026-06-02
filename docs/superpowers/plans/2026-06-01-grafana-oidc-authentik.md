@@ -10,6 +10,13 @@
 
 Spec: `docs/superpowers/specs/2026-06-01-grafana-oidc-authentik-design.md`
 
+> **UPDATE (2026-06-02, PR #140 `bd4feeb`):** the local-admin handling below is superseded.
+> We do NOT set `[security] admin_user/admin_password` and do NOT use `GF_SECURITY_ADMIN_PASSWORD` /
+> `GRAFANA_ADMIN_PASSWORD` / the `admin_password` Secret key. grafana-operator v5 auto-generates a
+> random admin password into the managed Secret `grafana-admin-credentials` (break-glass). Ignore
+> the `admin_password`/`GF_SECURITY_ADMIN_PASSWORD` bits in Tasks 2/4/5 and Appendix B; the
+> `grafana-oidc` Secret holds only `client_secret`.
+
 ---
 
 ## File Structure
@@ -409,11 +416,11 @@ At cluster bootstrap (same mechanism that seeds `CLOUDFLARE_TOKEN` etc.):
 - Read `client_id` / `client_secret` from the infrahub Vault `security/authentik-oidc/spectrum-grafana-<network>`.
 - `spectrum-manual-vars` **ConfigMap**: set `GRAFANA_OIDC_CLIENT_ID=<client_id>`.
 - `spectrum-manual-secrets` **Secret** (new substitution source; create if absent): set
-  `GRAFANA_OIDC_CLIENT_SECRET=<client_secret>` and `GRAFANA_ADMIN_PASSWORD=<chosen break-glass pw>`.
+  `GRAFANA_OIDC_CLIENT_SECRET=<client_secret>`. (No `GRAFANA_ADMIN_PASSWORD` — admin is operator-generated.)
 
 ## Operations — login & break-glass
 
 - Normal: open `http://grafana.<cluster_id>.<network>/` → redirected to Authentik → back to Grafana.
 - Break-glass (Authentik down, incl. [[Authentik HTTP3 Flakiness]]): open
-  `http://grafana.<cluster_id>.<network>/login?disableAutoLogin` → local form → log in as
-  `fluence` with `GF_SECURITY_ADMIN_PASSWORD`.
+  `http://grafana.<cluster_id>.<network>/login?disableAutoLogin` → local form → log in with the
+  operator-generated creds: `kubectl -n observability get secret grafana-admin-credentials -o jsonpath='{.data.GF_SECURITY_ADMIN_USER}' | base64 -d` (and `…GF_SECURITY_ADMIN_PASSWORD…`).
