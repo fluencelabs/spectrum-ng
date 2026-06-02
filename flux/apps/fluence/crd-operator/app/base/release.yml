@@ -38,3 +38,7 @@ spec:
     admission:
       config:
         LTM__LOG_FORMAT: json
+
+    vmApi:
+      config:
+        LTM__LOG_FORMAT: json
