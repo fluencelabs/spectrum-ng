@@ -38,9 +38,10 @@ spec:
       role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'"
       allow_assign_grafana_admin: "true"
       use_pkce: "true"
-    security:
-      admin_user: fluence
-      admin_password: "$__env{GF_SECURITY_ADMIN_PASSWORD}"
+    # No [security] admin_user/admin_password: grafana-operator auto-generates a random
+    # admin password into the managed Secret `grafana-admin-credentials` (ns observability,
+    # keys GF_SECURITY_ADMIN_USER/GF_SECURITY_ADMIN_PASSWORD). This is the break-glass account
+    # (login form hidden by auto_login; reach it via /login?disableAutoLogin).
     analytics:
       check_for_updates: "false"
     news:
@@ -65,11 +66,6 @@ spec:
                     secretKeyRef:
                       name: grafana-oidc
                       key: client_secret
-                - name: GF_SECURITY_ADMIN_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: grafana-oidc
-                      key: admin_password
           securityContext:
             fsGroup: 1001
             runAsGroup: 1001
