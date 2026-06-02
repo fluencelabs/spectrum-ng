@@ -30,3 +30,5 @@ spec:
       image:
         repository: "docker.fluence.dev/crd-vm-api"
         tag: "0.1.0"
+      jwt:
+        jwksUrl: "https://api.testnet.fluence.dev/v1/internal/.well_known/jwks.json"

@@ -16,3 +16,7 @@ spec:
     controller:
       persistence:
         storageClassName: lvm-thin-r1
+
+    vmApi:
+      jwt:
+        jwksUrl: "https://api.stage.fluence.dev/v1/internal/.well_known/jwks.json"
