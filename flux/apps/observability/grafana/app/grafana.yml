@@ -13,7 +13,10 @@ spec:
           targetPort: 3000
   config:
     server:
-      root_url: "http://grafana.${CLUSTER_ID}.${NETWORK}"
+      # Grafana is reached over NetBird at its svc-FQDN (confirmed: resolves + /api/health 200).
+      # Same on every spectrum cluster (the netbird-exposed `grafana` svc lives in `networking`).
+      # NOT grafana.${CLUSTER_ID}.${NETWORK} (CLUSTER_ID isn't even in spectrum-vars).
+      root_url: "http://grafana.networking.svc.cluster.local"
     log:
       mode: "console"
     users:
