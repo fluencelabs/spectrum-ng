@@ -13,10 +13,10 @@ spec:
           targetPort: 3000
   config:
     server:
-      # Grafana is reached over NetBird at its svc-FQDN (confirmed: resolves + /api/health 200).
-      # Same on every spectrum cluster (the netbird-exposed `grafana` svc lives in `networking`).
-      # NOT grafana.${CLUSTER_ID}.${NETWORK} (CLUSTER_ID isn't even in spectrum-vars).
-      root_url: "http://grafana.networking.svc.cluster.local"
+      # Per-cluster NetBird name (multiple spectrum clusters → the svc-FQDN collides). Reachable via
+      # the spectrum coredns-custom zone <CLUSTER_ID>.<NETWORK>.spectrum -> *.networking.svc.cluster.local.
+      # Confirmed: grafana.<cluster_id>.<network>.spectrum resolves + /api/health 200.
+      root_url: "http://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
     log:
       mode: "console"
     users:
