@@ -29,7 +29,11 @@ spec:
       client_id: "${GRAFANA_OIDC_CLIENT_ID}"
       client_secret: "$__env{GF_OAUTH_CLIENT_SECRET}"
       scopes: "openid profile email groups"
-      auth_url: "https://authentik.cloudless.dev/application/o/authorize/"
+      # Browser leg over the internal NetBird host (private CA) to bypass the public Cloudflare/QUIC
+      # edge ([[Authentik HTTP3 Flakiness]]). Operator laptops must trust the authentik-internal-ca
+      # root. token/api are server-side from the Grafana pod and stay on the public host (curl is
+      # unaffected by the QUIC bug; the pod can't resolve the infrahub svc-FQDN cross-cluster).
+      auth_url: "https://authentik-fluence.networking.svc.cluster.local/application/o/authorize/"
       token_url: "https://authentik.cloudless.dev/application/o/token/"
       api_url: "https://authentik.cloudless.dev/application/o/userinfo/"
       login_attribute_path: "preferred_username"
