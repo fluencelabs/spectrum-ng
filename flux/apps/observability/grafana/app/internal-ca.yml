@@ -1,0 +1,41 @@
+# Internal CA for the mesh-only grafana hostname grafana.<cluster_id>.<network>.spectrum.
+# Spectrum has only the ACME/cloudless-dev ClusterIssuer (public *.cloudless.dev), which can't
+# issue for a .spectrum name. Mirror the authentik-internal-ca pattern: self-signed Issuer ->
+# CA root Certificate -> CA Issuer. Operator laptops must trust this CA root (secret
+# grafana-internal-ca, key ca.crt) to get a clean https in the browser — same as they already
+# do for authentik-internal-ca.
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: grafana-internal-selfsigned
+  namespace: observability
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-internal-ca
+  namespace: observability
+spec:
+  isCA: true
+  commonName: grafana-internal-ca
+  secretName: grafana-internal-ca
+  duration: 87600h # 10y
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: grafana-internal-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: grafana-internal-ca
+  namespace: observability
+spec:
+  ca:
+    secretName: grafana-internal-ca

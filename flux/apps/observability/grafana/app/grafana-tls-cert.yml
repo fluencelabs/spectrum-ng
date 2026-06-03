@@ -1,0 +1,22 @@
+# Leaf cert for the mesh-only hostname grafana.<cluster_id>.<network>.spectrum, signed by
+# grafana-internal-ca. ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
+# (spectrum-vars + spectrum-manual-vars). Consumed by the grafana pod (native TLS), mounted
+# from secret grafana-spectrum-tls.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-spectrum-tls
+  namespace: observability
+spec:
+  secretName: grafana-spectrum-tls
+  duration: 2160h # 90d
+  renewBefore: 360h
+  commonName: grafana.${CLUSTER_ID}.${NETWORK}.spectrum
+  dnsNames:
+    - grafana.${CLUSTER_ID}.${NETWORK}.spectrum
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: grafana-internal-ca
+    kind: Issuer

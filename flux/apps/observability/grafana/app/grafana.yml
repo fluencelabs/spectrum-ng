@@ -8,15 +8,20 @@ spec:
   service:
     spec:
       ports:
-        - name: http
-          port: 80
+        - name: https
+          port: 443
           targetPort: 3000
   config:
     server:
-      # Per-cluster NetBird name (multiple spectrum clusters → the svc-FQDN collides). Reachable via
-      # the spectrum coredns-custom zone <CLUSTER_ID>.<NETWORK>.spectrum -> *.networking.svc.cluster.local.
-      # Confirmed: grafana.<cluster_id>.<network>.spectrum resolves + /api/health 200.
-      root_url: "http://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
+      # Per-cluster NetBird name; reached in-mesh via the spectrum coredns-custom zone
+      # <CLUSTER_ID>.<NETWORK>.spectrum (CNAME -> grafana.networking.svc.cluster.local).
+      # Native TLS: grafana serves https on :3000 with the grafana-internal-ca leaf cert, so the
+      # browser opens https://grafana.<cluster_id>.<network>.spectrum directly (spectrum uses Envoy
+      # Gateway, not nginx ingress). Operator laptops must trust the grafana-internal-ca root.
+      protocol: "https"
+      cert_file: "/etc/grafana-tls/tls.crt"
+      cert_key: "/etc/grafana-tls/tls.key"
+      root_url: "https://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
     log:
       mode: "console"
     users:
@@ -60,8 +65,13 @@ spec:
         spec:
           containers:
             - name: grafana
+              # grafana now serves https on :3000, so the readiness probe must use HTTPS.
               readinessProbe:
                 failureThreshold: 3
+                httpGet:
+                  path: /api/health
+                  port: 3000
+                  scheme: HTTPS
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
@@ -73,6 +83,14 @@ spec:
                     secretKeyRef:
                       name: grafana-oidc
                       key: client_secret
+              volumeMounts:
+                - name: grafana-tls
+                  mountPath: /etc/grafana-tls
+                  readOnly: true
+          volumes:
+            - name: grafana-tls
+              secret:
+                secretName: grafana-spectrum-tls
           securityContext:
             fsGroup: 1001
             runAsGroup: 1001
