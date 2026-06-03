@@ -12,3 +12,10 @@ spec:
         - AlignCPUs
         - NUMA
         - ExpandDisks
+        # Enable storage live-migration: lets KubeVirt mirror disks onto a new
+        # PVC on a running VM (libvirt drive-mirror), so RWO→RWX conversion and
+        # storage-class moves don't need downtime. Requires VolumesUpdateStrategy
+        # set on the VM (`spec.updateVolumesStrategy: Migration`) plus a target
+        # PVC with the desired accessModes/storageClass.
+        - VolumesUpdateStrategy
+        - VolumeMigration
