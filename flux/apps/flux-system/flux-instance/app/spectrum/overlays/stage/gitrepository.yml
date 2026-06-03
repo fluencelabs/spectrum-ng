@@ -1,7 +1,11 @@
+# !!! DO NOT MERGE TO main !!!
+# TEMPORARY: stage flux is pointed at the feature branch to test WIP (grafana https + B1 unified CA
+# + netbird egress) before merging PR #140. REVERT this back to `branch: main` BEFORE merging the PR,
+# otherwise main's stage cluster will permanently track a (possibly deleted) feature branch.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: spectrum
 spec:
   ref:
-    branch: main
+    branch: feat/grafana-oidc-authentik
