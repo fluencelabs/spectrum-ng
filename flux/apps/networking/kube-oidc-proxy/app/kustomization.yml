@@ -6,3 +6,5 @@ resources:
   - tls-cert.yml
   - rbac-proxy.yml
   - rbac-users.yml
+  - deployment.yml
+  - service.yml

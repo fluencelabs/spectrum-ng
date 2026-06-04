@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-oidc-proxy
+  namespace: kube-oidc-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-oidc-proxy
+  template:
+    metadata:
+      labels:
+        app: kube-oidc-proxy
+    spec:
+      serviceAccountName: kube-oidc-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          # jetstack repo archived 2024-05; this is the last published tag and is what the Tremolo
+          # maintained fork's Helm chart still defaults to. TODO(pre-merge): pin by @sha256 digest.
+          image: quay.io/jetstack/kube-oidc-proxy:v0.3.0
+          command: ["kube-oidc-proxy"]
+          args:
+            - "--secure-port=443"
+            - "--tls-cert-file=/etc/oidc/tls/tls.crt"
+            - "--tls-private-key-file=/etc/oidc/tls/tls.key"
+            # Browser + token legs go to the mesh-only host authentik.infra (no QUIC edge bug);
+            # the netbird sidecar gives this pod mesh reachability to fetch discovery/JWKS.
+            - "--oidc-issuer-url=https://authentik.infra/application/o/${KUBE_OIDC_SLUG}/"
+            - "--oidc-client-id=${KUBE_OIDC_CLIENT_ID}"
+            - "--oidc-username-claim=preferred_username"
+            - "--oidc-groups-claim=groups"
+            # authentik.infra serves a Fluence-chain cert; trust the mesh root mounted below.
+            - "--oidc-ca-file=/etc/oidc/authentik-ca/ca.crt"
+          ports:
+            - name: https
+              containerPort: 443
+            - name: probe
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/oidc/tls
+              readOnly: true
+            - name: authentik-ca
+              mountPath: /etc/oidc/authentik-ca
+              readOnly: true
+      volumes:
+        - name: tls
+          secret:
+            secretName: kube-oidc-proxy-tls
+        - name: authentik-ca
+          # Bootstrap secret: the Fluence Mesh Root used to verify authentik.infra's served cert.
+          # Hand-delivered into this namespace (key: ca.crt). See docs/kube-oidc-proxy-access.md.
+          secret:
+            secretName: kube-oidc-proxy-authentik-ca
