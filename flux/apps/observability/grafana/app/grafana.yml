@@ -39,7 +39,11 @@ spec:
       allow_sign_up: "false"
       allow_org_create: "false"
     auth:
-      disable_login_form: "true"
+      # Keep the username/password form available for the break-glass admin. auto_login below still
+      # redirects normal users straight to OIDC; disabling the form entirely would make the
+      # break-glass account unreachable (?disableAutoLogin stops the redirect but does NOT bring the
+      # hidden form back). Reach the form at /login?disableAutoLogin=true.
+      disable_login_form: "false"
       disable_signout_menu: "false"
     auth.generic_oauth:
       enabled: "true"
@@ -64,8 +68,8 @@ spec:
       use_pkce: "true"
     # No [security] admin_user/admin_password: grafana-operator auto-generates a random
     # admin password into the managed Secret `grafana-admin-credentials` (ns observability,
-    # keys GF_SECURITY_ADMIN_USER/GF_SECURITY_ADMIN_PASSWORD). This is the break-glass account
-    # (login form hidden by auto_login; reach it via /login?disableAutoLogin).
+    # keys GF_SECURITY_ADMIN_USER/GF_SECURITY_ADMIN_PASSWORD). This is the break-glass account;
+    # reach the login form at /login?disableAutoLogin=true (form kept by disable_login_form: false).
     analytics:
       check_for_updates: "false"
     news:
