@@ -4,3 +4,5 @@ resources:
   - namespace.yml
   - fluence-intermediate-issuer.yml
   - tls-cert.yml
+  - rbac-proxy.yml
+  - rbac-users.yml

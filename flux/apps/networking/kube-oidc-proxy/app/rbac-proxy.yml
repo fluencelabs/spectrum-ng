@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-oidc-proxy
+  namespace: kube-oidc-proxy
+---
+# The proxy authenticates to the real apiserver as this SA, then sets impersonation headers based
+# on the validated OIDC token. Scope strictly to users/groups (+ token extras) — this ClusterRole
+# is the impersonation blast radius. It deliberately does NOT grant impersonate on serviceaccounts.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-oidc-proxy
+rules:
+  - apiGroups: [""]
+    resources: ["users", "groups"]
+    verbs: ["impersonate"]
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["userextras/scopes", "userextras/remote-client-ip"]
+    verbs: ["impersonate"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-oidc-proxy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-oidc-proxy
+subjects:
+  - kind: ServiceAccount
+    name: kube-oidc-proxy
+    namespace: kube-oidc-proxy
