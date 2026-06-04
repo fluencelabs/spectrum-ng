@@ -71,8 +71,23 @@ spec:
     news:
       news_feed_enabled: "false"
 
+  # Persistent data dir so a pod restart doesn't wipe the operator-pushed datasources/dashboards.
+  # grafana keeps them in sqlite under /var/lib/grafana; the operator default is an emptyDir, so every
+  # pod recreate left Grafana blank until the operator re-pushed on its next resync. RWO volume → pair
+  # with Recreate strategy below so a rollout releases the volume before the new pod attaches.
+  persistentVolumeClaim:
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: lvm-thin-r1
+
   deployment:
     spec:
+      strategy:
+        type: Recreate
       template:
         spec:
           containers:
