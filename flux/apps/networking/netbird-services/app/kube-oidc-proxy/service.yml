@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-oidc-proxy
+  annotations:
+    netbird.io/expose: "true"
+    netbird.io/resource-name: "k8s.${CLUSTER_ID}.${NETWORK}"
+    netbird.io/groups: "spectrum-${NETWORK}"
+    netbird.io/policy-name: "k8s-access"
+    netbird.io/policy-source-groups: "support,admins"
+    netbird.io/policy-protocol: "tcp"
+    netbird.io/policy-ports: "443"
+spec:
+  type: ExternalName
+  externalName: kube-oidc-proxy.kube-oidc-proxy.svc.cluster.local
+  ports:
+    - protocol: TCP
+      port: 443
