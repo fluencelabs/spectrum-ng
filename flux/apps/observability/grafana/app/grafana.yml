@@ -5,6 +5,17 @@ metadata:
   labels:
     dashboards: "grafana"
 spec:
+  # grafana-operator (ns system) reaches this instance over the in-cluster Service DNS
+  # https://grafana-service.observability.svc:3000 to fetch version + provision datasources/folders/
+  # dashboards. The served leaf is valid only for the mesh name grafana.<id>.<net>.spectrum, and the
+  # per-cluster mesh intermediate is name-constrained to *.<id>.<net>.spectrum — so the operator's
+  # TLS verify fails (x509: not permitted by constraint) and NOTHING gets provisioned (Grafana shows
+  # no logs/metrics while browser login via the mesh name still works). insecureSkipVerify scopes the
+  # skip to this operator->Service hop only (pod-to-pod, one CNI); the served cert and the browser leg
+  # are untouched. We do NOT widen the mesh CA name constraints (.svc is non-unique across clusters).
+  client:
+    tls:
+      insecureSkipVerify: true
   service:
     spec:
       ports:
