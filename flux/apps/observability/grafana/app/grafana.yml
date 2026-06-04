@@ -114,10 +114,18 @@ spec:
                 - name: grafana-tls
                   mountPath: /etc/grafana-tls
                   readOnly: true
+                # Mount the PVC at grafana's data dir. spec.persistentVolumeClaim only CREATES the
+                # claim (grafana-pvc); the operator does not auto-rewire the grafana-data volume, so
+                # we override it below from the default emptyDir to the PVC.
+                - name: grafana-data
+                  mountPath: /var/lib/grafana
           volumes:
             - name: grafana-tls
               secret:
                 secretName: grafana-spectrum-tls
+            - name: grafana-data
+              persistentVolumeClaim:
+                claimName: grafana-pvc
           securityContext:
             fsGroup: 1001
             runAsGroup: 1001
