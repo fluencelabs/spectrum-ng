@@ -1,0 +1,147 @@
+# Self-rotates the spectrum cluster's netbird operator PAT, in-cluster, with no infrahub/Vault
+# dependency. Spectrum clusters have no ESO/Vault, so the operator token (secret
+# networking/netbird-api-token, key NB_API_KEY) is a hand-seeded admin PAT for the per-cluster
+# service user `spectrum-<network>`. This CronJob uses the CURRENT PAT to mint the next one for the
+# same service user (admin PAT can create its own user's tokens — verified), writes it back into the
+# secret, restarts the operator (it reads the token at start), and revokes aged-out tokens.
+# Self-sustaining as long as it runs within the validity window; if the PAT ever fully expires
+# (cluster down > REVOKE window), re-bootstrap a PAT into the secret by hand.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: netbird-token-rotate
+  namespace: networking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: netbird-token-rotate
+  namespace: networking
+rules:
+  # Update the operator token secret.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  # Restart the operator + watch the rollout.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: netbird-token-rotate
+  namespace: networking
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: netbird-token-rotate
+subjects:
+  - kind: ServiceAccount
+    name: netbird-token-rotate
+    namespace: networking
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: netbird-token-rotate
+  namespace: networking
+spec:
+  schedule: "0 3 * * 0" # weekly, Sun 03:00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          serviceAccountName: netbird-token-rotate
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: rotate
+              image: alpine/k8s:1.30.13
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: NETBIRD_API
+                  value: https://netbird.infrahub.cloudless.dev/api
+                - name: SERVICE_USER
+                  value: spectrum-${NETWORK}
+                - name: PAT_EXPIRES_IN_DAYS
+                  value: "90"
+                - name: RENEW_AFTER_DAYS
+                  value: "30"
+                - name: REVOKE_AFTER_DAYS
+                  value: "40"
+                - name: NB_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: netbird-api-token
+                      key: NB_API_KEY
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -o pipefail
+                  API="$NETBIRD_API"; T="$NB_API_KEY"
+                  [ -n "$T" ] || { echo "NB_API_KEY empty"; exit 1; }
+
+                  USER_ID=$(curl -sf -H "Authorization: Token $T" "$API/users?service_user=true" \
+                    | jq -r --arg n "$SERVICE_USER" '[.[]|select(.is_service_user==true and .name==$n)]|(.[0].id // empty)')
+                  [ -n "$USER_ID" ] || { echo "service user $SERVICE_USER not found"; exit 1; }
+                  echo "service user $SERVICE_USER id=$USER_ID"
+
+                  TOKENS=$(curl -sf -H "Authorization: Token $T" "$API/users/$USER_ID/tokens")
+                  NEWEST_AGE=$(echo "$TOKENS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end')
+                  if [ "$NEWEST_AGE" != "-1" ] && [ "$NEWEST_AGE" -lt $((RENEW_AFTER_DAYS*86400)) ]; then
+                    echo "newest token ${NEWEST_AGE}s old (< ${RENEW_AFTER_DAYS}d), nothing to do"
+                    exit 0
+                  fi
+
+                  DATED="$SERVICE_USER-$(date -u +%Y%m%d)"
+                  RESP=$(curl -sf -X POST -H "Authorization: Token $T" -H "Content-Type: application/json" \
+                    -d "{\"name\":\"$DATED\",\"expires_in\":$PAT_EXPIRES_IN_DAYS}" "$API/users/$USER_ID/tokens")
+                  NEWPAT=$(echo "$RESP" | jq -r '.plain_token // .personal_access_token.plain_token // empty')
+                  NEWID=$(echo "$RESP" | jq -r '.personal_access_token.id // .id // empty')
+                  [ -n "$NEWPAT" ] || { echo "mint failed (body suppressed); keys=$(echo "$RESP" | jq -r 'keys|join(",")' 2>/dev/null)"; exit 1; }
+                  echo "minted $DATED id=$NEWID"
+
+                  if ! kubectl -n networking create secret generic netbird-api-token \
+                    --from-literal=NB_API_KEY="$NEWPAT" --dry-run=client -o yaml | kubectl -n networking apply -f -; then
+                    echo "secret update failed; revoking just-minted $NEWID"
+                    [ -n "$NEWID" ] && curl -sf -X DELETE -H "Authorization: Token $T" "$API/users/$USER_ID/tokens/$NEWID" >/dev/null || true
+                    exit 1
+                  fi
+                  echo "secret netbird-api-token updated"
+
+                  kubectl -n networking rollout restart deploy/netbird-operator
+                  kubectl -n networking rollout status deploy/netbird-operator --timeout=5m
+
+                  CUTOFF=$(( $(date -u +%s) - REVOKE_AFTER_DAYS*86400 ))
+                  echo "$TOKENS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601) < $c) | .id' \
+                  | while read -r OLD; do
+                    [ -z "$OLD" ] && continue
+                    [ "$OLD" = "$NEWID" ] && continue
+                    curl -sf -X DELETE -H "Authorization: Token $T" "$API/users/$USER_ID/tokens/$OLD" >/dev/null \
+                      && echo "revoked old $OLD" || echo "warn: revoke failed $OLD"
+                  done
+                  echo "rotation complete"

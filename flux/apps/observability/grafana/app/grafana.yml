@@ -5,42 +5,149 @@ metadata:
   labels:
     dashboards: "grafana"
 spec:
+  # Don't let the operator manage the admin-credentials secret — its default is the static admin/admin,
+  # which Grafana 11.x then force-changes on first login. The grafana-admin-bootstrap Job seeds a
+  # random password instead (see admin-bootstrap.yml); admin user/password are wired into the
+  # deployment env below from that same secret.
+  disableDefaultAdminSecret: true
+
+  # grafana-operator (ns system) reaches this instance over the in-cluster Service DNS
+  # https://grafana-service.observability.svc:3000 to fetch version + provision datasources/folders/
+  # dashboards. The served leaf is valid only for the mesh name grafana.<id>.<net>.spectrum, and the
+  # per-cluster mesh intermediate is name-constrained to *.<id>.<net>.spectrum — so the operator's
+  # TLS verify fails (x509: not permitted by constraint) and NOTHING gets provisioned (Grafana shows
+  # no logs/metrics while browser login via the mesh name still works). insecureSkipVerify scopes the
+  # skip to this operator->Service hop only (pod-to-pod, one CNI); the served cert and the browser leg
+  # are untouched. We do NOT widen the mesh CA name constraints (.svc is non-unique across clusters).
+  client:
+    tls:
+      insecureSkipVerify: true
   service:
     spec:
       ports:
-        - name: http
-          port: 80
+        - name: https
+          port: 443
           targetPort: 3000
   config:
+    server:
+      # Per-cluster NetBird name; reached in-mesh via the spectrum coredns-custom zone
+      # <CLUSTER_ID>.<NETWORK>.spectrum (CNAME -> grafana.networking.svc.cluster.local).
+      # Native TLS: grafana serves https on :3000 with the grafana-internal-ca leaf cert, so the
+      # browser opens https://grafana.<cluster_id>.<network>.spectrum directly (spectrum uses Envoy
+      # Gateway, not nginx ingress). Operator laptops must trust the grafana-internal-ca root.
+      protocol: "https"
+      cert_file: "/etc/grafana-tls/tls.crt"
+      cert_key: "/etc/grafana-tls/tls.key"
+      root_url: "https://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
     log:
       mode: "console"
     users:
       allow_sign_up: "false"
       allow_org_create: "false"
     auth:
+      # Keep the username/password form available for the break-glass admin. auto_login below still
+      # redirects normal users straight to OIDC; disabling the form entirely would make the
+      # break-glass account unreachable (?disableAutoLogin stops the redirect but does NOT bring the
+      # hidden form back). Reach the form at /login?disableAutoLogin=true.
       disable_login_form: "false"
       disable_signout_menu: "false"
-    security:
-      admin_user: fluence
-      admin_password: admin
+    auth.generic_oauth:
+      enabled: "true"
+      name: "Authentik"
+      auto_login: "true"
+      client_id: "${GRAFANA_OIDC_CLIENT_ID}"
+      client_secret: "$__env{GF_OAUTH_CLIENT_SECRET}"
+      scopes: "openid profile email groups"
+      # Browser leg goes to the mesh-only authentik.infra (dedicated internal OIDC host with its own
+      # GitHub App + brand, so the GitHub callback returns to authentik.infra and the session cookie
+      # stays intact). Operator laptops resolve it over NetBird and trust the Fluence mesh root CA.
+      # token/api stay on the public host: they're server-side from the Grafana pod (which doesn't
+      # join the mesh), and the public edge is fine for non-browser, non-QUIC server calls.
+      auth_url: "https://authentik.infra/application/o/authorize/"
+      token_url: "https://authentik.cloudless.dev/application/o/token/"
+      api_url: "https://authentik.cloudless.dev/application/o/userinfo/"
+      login_attribute_path: "preferred_username"
+      email_attribute_path: "email"
+      name_attribute_path: "name"
+      role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-devs') && 'Editor' || 'Viewer'"
+      allow_assign_grafana_admin: "true"
+      use_pkce: "true"
+    # No [security] admin_user/admin_password: grafana-operator auto-generates a random
+    # admin password into the managed Secret `grafana-admin-credentials` (ns observability,
+    # keys GF_SECURITY_ADMIN_USER/GF_SECURITY_ADMIN_PASSWORD). This is the break-glass account;
+    # reach the login form at /login?disableAutoLogin=true (form kept by disable_login_form: false).
     analytics:
       check_for_updates: "false"
     news:
       news_feed_enabled: "false"
 
+  # Persistent data dir so a pod restart doesn't wipe the operator-pushed datasources/dashboards.
+  # grafana keeps them in sqlite under /var/lib/grafana; the operator default is an emptyDir, so every
+  # pod recreate left Grafana blank until the operator re-pushed on its next resync. RWO volume → pair
+  # with Recreate strategy below so a rollout releases the volume before the new pod attaches.
+  persistentVolumeClaim:
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: lvm-thin-r1
+
   deployment:
     spec:
+      strategy:
+        type: Recreate
       template:
         spec:
           containers:
             - name: grafana
+              # grafana now serves https on :3000, so the readiness probe must use HTTPS.
               readinessProbe:
                 failureThreshold: 3
+                httpGet:
+                  path: /api/health
+                  port: 3000
+                  scheme: HTTPS
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop:
                   - ALL
+              env:
+                - name: GF_OAUTH_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-oidc
+                      key: client_secret
+                # Admin creds wired explicitly because disableDefaultAdminSecret stops the operator
+                # from injecting them. Seeded (random) by the grafana-admin-bootstrap Job.
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-credentials
+                      key: GF_SECURITY_ADMIN_USER
+                - name: GF_SECURITY_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-credentials
+                      key: GF_SECURITY_ADMIN_PASSWORD
+              volumeMounts:
+                - name: grafana-tls
+                  mountPath: /etc/grafana-tls
+                  readOnly: true
+                # Mount the PVC at grafana's data dir. spec.persistentVolumeClaim only CREATES the
+                # claim (grafana-pvc); the operator does not auto-rewire the grafana-data volume, so
+                # we override it below from the default emptyDir to the PVC.
+                - name: grafana-data
+                  mountPath: /var/lib/grafana
+          volumes:
+            - name: grafana-tls
+              secret:
+                secretName: grafana-spectrum-tls
+            - name: grafana-data
+              persistentVolumeClaim:
+                claimName: grafana-pvc
           securityContext:
             fsGroup: 1001
             runAsGroup: 1001

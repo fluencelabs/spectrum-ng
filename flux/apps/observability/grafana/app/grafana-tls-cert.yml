@@ -1,0 +1,24 @@
+# Leaf cert for the mesh-only hostname grafana.<cluster_id>.<network>.spectrum, signed by the
+# fluence-intermediate Issuer (the per-cluster intermediate of the single Fluence Mesh Root —
+# B1 unified CA). ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
+# (spectrum-vars + spectrum-manual-vars). Consumed by the grafana pod (native TLS), mounted
+# from secret grafana-spectrum-tls. The served tls.crt is leaf+intermediate, so a client trusting
+# the Fluence Mesh Root validates the chain.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-spectrum-tls
+  namespace: observability
+spec:
+  secretName: grafana-spectrum-tls
+  duration: 2160h # 90d
+  renewBefore: 360h
+  commonName: grafana.${CLUSTER_ID}.${NETWORK}.spectrum
+  dnsNames:
+    - grafana.${CLUSTER_ID}.${NETWORK}.spectrum
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: fluence-intermediate
+    kind: Issuer

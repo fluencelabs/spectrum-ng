@@ -1,0 +1,15 @@
+# B1 unified CA. This cluster's intermediate CA — signed by the single Fluence Mesh Root (on
+# infrahub) and name-constrained to <cluster_id>.<network>.spectrum — is hand-delivered into the
+# secret `fluence-mesh-intermediate` (cert+key; NOT in git, a bootstrap secret like
+# netbird-api-token). cert-manager issues leaves (grafana, …) from it LOCALLY; each leaf chains
+# leaf -> Fluence Intermediate -> Fluence Mesh Root, so operator laptops only need to trust the one
+# Fluence Mesh Root. The intermediate's private key lives only here + infrahub (copy-flow); the root
+# key never leaves infrahub.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: fluence-intermediate
+  namespace: observability
+spec:
+  ca:
+    secretName: fluence-mesh-intermediate

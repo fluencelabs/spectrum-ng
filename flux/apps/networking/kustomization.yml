@@ -7,3 +7,4 @@ resources:
   - netbird-operator-config
   - netbird-setup
   - netbird-services
+  - netbird-token-rotate
