@@ -1,10 +1,15 @@
-# Generates a random Grafana admin password in-cluster (spectrum-ng has no Vault/ESO).
-# grafana-operator's "default" admin-credentials secret is admin/admin, which (a) is a static
-# default and (b) makes Grafana 11.x force a password change on first login. With
-# spec.disableDefaultAdminSecret: true on the Grafana CR the operator stops managing the secret,
-# and this one-shot Job seeds a random password into grafana-admin-credentials (idempotent: only
-# when missing or still the literal default "admin"), then restarts Grafana so it adopts it.
-# The password value never lives in git. Re-bootstrap by deleting the secret + re-running the Job.
+# Gives Grafana a random admin password in-cluster (spectrum-ng has no Vault/ESO).
+#
+# grafana-operator's "default" admin-credentials secret is the static admin/admin, which Grafana 11.x
+# then force-changes on first login. We set spec.disableDefaultAdminSecret on the CR and seed a random
+# password here instead; the CR wires GF_SECURITY_ADMIN_USER/PASSWORD into the deployment from this
+# secret. Grafana applies GF_SECURITY_ADMIN_PASSWORD at FIRST DB init, so on a fresh data dir the admin
+# password becomes this random value (no forced change; the operator, which auths with this secret,
+# matches). NOTE: the password is only adopted on a fresh grafana DB — if the PVC already holds an
+# admin user, recreate it once (delete the grafana-pvc + pod) so first-init picks this up.
+#
+# Idempotent: generates a password only when the secret is missing or still the literal "admin".
+# The password value never lives in git.
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -18,15 +23,9 @@ metadata:
   name: grafana-admin-bootstrap
   namespace: observability
 rules:
-  # Seed/refresh the admin credentials secret.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "create", "update", "patch"]
-  # Restart Grafana (delete the pod; the operator-owned Deployment recreates it — a plain
-  # `rollout restart` is reverted by the operator).
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -45,11 +44,12 @@ subjects:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: grafana-admin-bootstrap
+  # Versioned name: Job specs are immutable, bump the suffix when the script changes.
+  name: grafana-admin-seed-1
   namespace: observability
 spec:
   backoffLimit: 3
-  activeDeadlineSeconds: 300
+  activeDeadlineSeconds: 180
   ttlSecondsAfterFinished: 600
   template:
     spec:
@@ -62,7 +62,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: bootstrap
+        - name: seed
           image: alpine/k8s:1.30.13
           securityContext:
             allowPrivilegeEscalation: false
@@ -92,5 +92,3 @@ spec:
                 --from-literal=GF_SECURITY_ADMIN_PASSWORD="$PW" \
                 --dry-run=client -o yaml | kubectl -n "$NS" apply -f -
               echo "seeded random admin password (len ${#PW})"
-              kubectl -n "$NS" delete pod -l app=grafana --ignore-not-found
-              echo "restarted grafana to adopt the new password"
