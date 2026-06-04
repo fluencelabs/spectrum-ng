@@ -37,11 +37,12 @@ spec:
       client_id: "${GRAFANA_OIDC_CLIENT_ID}"
       client_secret: "$__env{GF_OAUTH_CLIENT_SECRET}"
       scopes: "openid profile email groups"
-      # Browser leg over the internal NetBird host (private CA) to bypass the public Cloudflare/QUIC
-      # edge ([[Authentik HTTP3 Flakiness]]). Operator laptops must trust the authentik-internal-ca
-      # root. token/api are server-side from the Grafana pod and stay on the public host (curl is
-      # unaffected by the QUIC bug; the pod can't resolve the infrahub svc-FQDN cross-cluster).
-      auth_url: "https://authentik-fluence.networking.svc.cluster.local/application/o/authorize/"
+      # Browser leg goes to the mesh-only authentik.infra (dedicated internal OIDC host with its own
+      # GitHub App + brand, so the GitHub callback returns to authentik.infra and the session cookie
+      # stays intact). Operator laptops resolve it over NetBird and trust the Fluence mesh root CA.
+      # token/api stay on the public host: they're server-side from the Grafana pod (which doesn't
+      # join the mesh), and the public edge is fine for non-browser, non-QUIC server calls.
+      auth_url: "https://authentik.infra/application/o/authorize/"
       token_url: "https://authentik.cloudless.dev/application/o/token/"
       api_url: "https://authentik.cloudless.dev/application/o/userinfo/"
       login_attribute_path: "preferred_username"
