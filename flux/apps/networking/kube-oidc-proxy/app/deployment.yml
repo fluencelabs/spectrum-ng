@@ -66,6 +66,44 @@ spec:
             - name: authentik-ca
               mountPath: /etc/oidc/authentik-ca
               readOnly: true
+        # Sidecar: joins the NetBird mesh (group spectrum-${NETWORK}) so the proxy container — which
+        # shares this pod's network namespace — can resolve and reach authentik.infra for OIDC
+        # discovery/JWKS. NetBird needs root + NET_ADMIN + /dev/net/tun for its WireGuard interface,
+        # so it overrides the hardened pod-level securityContext for this container only.
+        - name: netbird
+          image: netbirdio/netbird:0.28.4
+          env:
+            - name: NB_MANAGEMENT_URL
+              value: "https://netbird.infrahub.cloudless.dev"
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kube-oidc-proxy-netbird-setupkey
+                  key: NB_SETUP_KEY
+            - name: NB_HOSTNAME
+              value: "kube-oidc-proxy-${CLUSTER_ID}"
+            # Run NetBird's embedded DNS resolver on a fixed local address the proxy container
+            # targets via the pod dnsConfig below.
+            - name: NB_DNS_RESOLVER_ADDRESS
+              value: "127.0.0.1:5353"
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              add: ["NET_ADMIN"]
+          volumeMounts:
+            - name: nb-tun
+              mountPath: /dev/net/tun
+            - name: nb-state
+              mountPath: /var/lib/netbird
+      # Prepend NetBird's resolver so the proxy container resolves *.spectrum / authentik.infra.
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+        options:
+          - name: ndots
+            value: "1"
       volumes:
         - name: tls
           secret:
@@ -75,3 +113,9 @@ spec:
           # Hand-delivered into this namespace (key: ca.crt). See docs/kube-oidc-proxy-access.md.
           secret:
             secretName: kube-oidc-proxy-authentik-ca
+        - name: nb-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        - name: nb-state
+          emptyDir: {}
