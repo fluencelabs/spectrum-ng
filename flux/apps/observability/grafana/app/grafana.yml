@@ -5,6 +5,12 @@ metadata:
   labels:
     dashboards: "grafana"
 spec:
+  # Don't let the operator manage the admin-credentials secret — its default is the static admin/admin,
+  # which Grafana 11.x then force-changes on first login. The grafana-admin-bootstrap Job seeds a
+  # random password instead (see admin-bootstrap.yml); admin user/password are wired into the
+  # deployment env below from that same secret.
+  disableDefaultAdminSecret: true
+
   # grafana-operator (ns system) reaches this instance over the in-cluster Service DNS
   # https://grafana-service.observability.svc:3000 to fetch version + provision datasources/folders/
   # dashboards. The served leaf is valid only for the mesh name grafana.<id>.<net>.spectrum, and the
@@ -114,6 +120,18 @@ spec:
                     secretKeyRef:
                       name: grafana-oidc
                       key: client_secret
+                # Admin creds wired explicitly because disableDefaultAdminSecret stops the operator
+                # from injecting them. Seeded (random) by the grafana-admin-bootstrap Job.
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-credentials
+                      key: GF_SECURITY_ADMIN_USER
+                - name: GF_SECURITY_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-credentials
+                      key: GF_SECURITY_ADMIN_PASSWORD
               volumeMounts:
                 - name: grafana-tls
                   mountPath: /etc/grafana-tls

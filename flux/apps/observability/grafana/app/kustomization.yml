@@ -5,4 +5,5 @@ resources:
   - grafana-tls-cert.yml
   - grafana.yml
   - oidc-secret.yml
+  - admin-bootstrap.yml
   - folders/
