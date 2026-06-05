@@ -19,3 +19,25 @@ spec:
         - path:
             type: PathPrefix
             value: /
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: crd-operator-vm-api
+spec:
+  hostnames:
+    - vm-api.${NETWORK}-${PROVIDER}.cloudless.dev
+    - vm-api.${CLUSTER_ID}.${NETWORK}.cloudless.dev
+  parentRefs:
+    - name: eg-gw
+      namespace: ingress
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: crd-operator-vm-api
+          namespace: fluence
+          port: 8444
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
