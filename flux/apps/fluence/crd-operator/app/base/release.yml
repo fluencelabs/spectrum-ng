@@ -42,3 +42,8 @@ spec:
     vmApi:
       config:
         LTM__LOG_FORMAT: json
+      jwt:
+        # vodopad signs vm-access JWTs with `iss: "vodopad"`; vm-api validates
+        # `iss` against this exact string. Same in every env (the per-env
+        # bit lives in jwksUrl, which points at each env's vodopad JWKS).
+        issuer: "vodopad"

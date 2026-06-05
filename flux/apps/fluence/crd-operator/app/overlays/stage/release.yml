@@ -18,5 +18,8 @@ spec:
         storageClassName: lvm-thin-r1
 
     vmApi:
+      image:
+        repository: "docker.fluence.dev/crd-vm-api"
+        tag: "0.1.0"
       jwt:
         jwksUrl: "https://api.stage.fluence.dev/v1/internal/.well_known/jwks.json"
