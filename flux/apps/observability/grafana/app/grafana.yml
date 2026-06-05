@@ -65,7 +65,7 @@ spec:
       #     `netbird.io/setup-key` (deployment below). The sidecar runs as root and rewrites the pod's
       #     shared /etc/resolv.conf, so the grafana container resolves authentik.infra and routes to it
       #     over the mesh — NO dnsConfig / hand-rolled sidecar needed. VALIDATED on the stage cluster
-      #     2026-06-05 (getent + OIDC discovery 200; see authentik-infra-backchannel.md).
+      #     2026-06-05 (getent + OIDC discovery 200; see PR #142).
       # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (infra Issuer
       # fluence-root-ca; chain leaf->root, no intermediate — confirmed issuer=CN=Fluence Mesh Root CA).
       # Grafana's server-side OAuth client must trust that root explicitly; mounted from the bootstrap
