@@ -7,7 +7,12 @@ spec:
   chart:
     spec:
       chart: kubernetes-operator
-      version: 0.2.2
+      # 0.3.x adds the SetupKey (v1alpha1) controller that auto-mints+rotates NetBird setup keys via
+      # NB_API_KEY (used by the Grafana OIDC back-channel sidecar — see
+      # flux/apps/observability/grafana/app/netbird-setupkey.yml). 0.3.1 is the last tag on this
+      # HelmRepository (0.4.0+ moved to an OCI registry + renamed chart). Legacy v1 CRDs
+      # (NBRoutingPeer/NBResource/NBPolicy) are unchanged. Validated on stage 2026-06-05.
+      version: 0.3.1
       sourceRef:
         kind: HelmRepository
         name: netbirdio
