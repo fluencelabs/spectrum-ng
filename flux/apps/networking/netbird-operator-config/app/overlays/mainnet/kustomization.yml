@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - ../../base
 patches:
-  - path: release.yml
+  - path: router-patch.yml
