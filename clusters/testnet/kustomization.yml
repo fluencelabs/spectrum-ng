@@ -10,4 +10,5 @@ resources:
   - ../../flux/apps/storage
   - ../../flux/apps/ingress
   - ../../flux/apps/observability
+  - ../../flux/apps/networking
   - ../../flux/apps/fluence
