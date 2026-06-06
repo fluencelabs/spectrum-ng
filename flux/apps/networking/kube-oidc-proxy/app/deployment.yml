@@ -30,9 +30,9 @@ spec:
       # CONTAINER below instead. PSA on this namespace is `privileged` (see namespace.yml).
       containers:
         - name: proxy
-          # jetstack repo archived 2024-05; this is the last published tag and is what the Tremolo
-          # maintained fork's Helm chart still defaults to. Pinned by digest (tag v0.3.0).
-          image: quay.io/jetstack/kube-oidc-proxy:v0.3.0@sha256:e045b26eb6dfb176310b38e30a66c2c4ffc0c1a75a1c60fa3ccf63bfbf2393a7
+          # Tremolo Security maintained fork (jetstack's repo was archived 2024-05). Actively built
+          # (docker.io/tremolosecurity/kube-oidc-proxy, multi-arch amd64/arm64). Pinned by digest (tag 1.0.12).
+          image: docker.io/tremolosecurity/kube-oidc-proxy:1.0.12@sha256:d7747f308042216acd31eb48af4baefb2f508afc2023736451931b2d323907e9
           command: ["kube-oidc-proxy"]
           args:
             - "--secure-port=443"
