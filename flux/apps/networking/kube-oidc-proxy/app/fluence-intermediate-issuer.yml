@@ -1,0 +1,13 @@
+# Per-cluster intermediate CA (signed by the single Fluence Mesh Root), name-constrained to
+# <cluster_id>.<network>.spectrum. The cert+key live in the bootstrap secret
+# `fluence-mesh-intermediate` (NOT in git; hand-delivered into this namespace, like
+# netbird-api-token). cert-manager issues the proxy leaf from it locally. Mirrors the Grafana
+# fluence-intermediate Issuer in flux/apps/observability/grafana/app/.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: fluence-intermediate
+  namespace: kube-oidc-proxy
+spec:
+  ca:
+    secretName: fluence-mesh-intermediate
