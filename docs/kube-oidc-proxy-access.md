@@ -68,24 +68,24 @@ users:
           - --oidc-use-pkce
           - --oidc-extra-scope=profile
           - --oidc-extra-scope=email
+          - --oidc-extra-scope=groups
 ```
 
-> Do **not** add `--oidc-extra-scope=groups`: Authentik has no default scope named `groups`. The
-> `groups` claim (and `preferred_username`) are delivered by the default **`profile`** scope mapping
-> — see the infra checklist. First `kubectl` call opens a browser to `authentik.infra`; kubelogin
-> caches the token.
+> The central Authentik has a `groups` scope mapping (Grafana and Vault use it), so request
+> `groups` — the proxy's `--oidc-groups-claim=groups` reads it from the id_token. First `kubectl`
+> call opens a browser to `authentik.infra`; kubelogin caches the token.
 
 ## Required per-cluster Flux vars (spectrum-manual-vars ConfigMap)
 
 | Var | Example | Purpose |
 |---|---|---|
-| `KUBE_OIDC_SLUG` | `kube` | Authentik application slug → issuer path (defaults to `kube` in-manifest) |
-| `KUBE_OIDC_CLIENT_ID` | `<uuid>` | Authentik OIDC client id (public client) |
+| `KUBE_OIDC_SLUG` | `spectrum-kube-stage` | Authentik application slug → issuer path. Matches the infra TF app slug `spectrum-kube-<network>`. |
+| `KUBE_OIDC_CLIENT_ID` | `<uuid>` | Authentik OIDC client id (public client). Copy from Vault `security/authentik-oidc/spectrum-kube-<network>`. |
 
 > ⚠️ **Both keys MUST be present before this app reconciles.** Flux substitutes undefined vars with an
 > empty string (no build error), so a missing `KUBE_OIDC_CLIENT_ID` yields an empty `--oidc-client-id`
-> and OIDC discovery fails silently at pod startup. `KUBE_OIDC_SLUG` has an in-manifest default
-> (`kube`); `KUBE_OIDC_CLIENT_ID` does not.
+> and OIDC discovery fails silently at pod startup. The in-manifest default `KUBE_OIDC_SLUG:=kube` is
+> only a fallback — set it explicitly to `spectrum-kube-<network>`.
 
 ## Bootstrap secret (out-of-band, NOT in git)
 
@@ -102,20 +102,18 @@ users:
 > `netbird-setupkey.yml`) — nothing hand-delivered. The sidecar is auto-injected via the
 > `netbird.io/setup-key` pod annotation.
 
-## Infra-side checklist (Authentik — done by the infra owner)
+## Infra-side (provisioned as code — `terraform apply` by the infra owner)
 
-- Authentik application + OIDC provider for kube-oidc-proxy:
-  - **public client + PKCE** (no client secret),
-  - redirect URIs (kubelogin defaults): `http://localhost:8000` **and** `http://localhost:18000`
-    (host is `localhost`, both ports — the second is kubelogin's fallback when 8000 is busy),
-  - issuer host `authentik.infra`,
-  - **Selected scopes include the default `profile` mapping** (it emits
-    `"groups": [group.name …]` and `preferred_username`),
-  - **enable "Include claims in id_token"** (Advanced protocol settings) — without it the `groups`
-    and `preferred_username` claims go only to userinfo/access_token, which kube-oidc-proxy never
-    reads (it validates the id_token). This is the silent authenticated-but-Forbidden failure mode.
-- Authentik groups `k8s-admins`, `k8s-viewers` with membership (the proxy prefixes them to
-  `oidc:k8s-admins` / `oidc:k8s-viewers` for RBAC).
+The Authentik app + groups are defined in **`infra/infrahub/terraform/authentik/spectrum_kube_oidc.tf`**
+(mirrors the spectrum-grafana app): public client + PKCE, slug `spectrum-kube-<network>`, mesh login
+flow `authentik-infra-authentication`, redirects `http://localhost:{8000,18000}`, scopes
+`openid profile email groups`, access groups `k8s-admins`/`k8s-viewers` (GitHub-team-backed via
+`local_group_mappings`: `devops`/`devs`). After `terraform apply`:
+
+1. Copy `client_id` from Vault `security/authentik-oidc/spectrum-kube-<network>` →
+   `spectrum-manual-vars` `KUBE_OIDC_CLIENT_ID`; set `KUBE_OIDC_SLUG=spectrum-kube-<network>`.
+   (Public client → no `client_secret` to copy.)
+2. NetBird needs no extra policy — `authentik.infra`'s NBResource source group is `All`.
 
 > NetBird: no extra policy needed — `authentik.infra`'s NBResource policy source group is `All`, so
 > the auto-injected sidecar peer can reach it out of the box (same as Grafana's back-channel).
@@ -138,7 +136,8 @@ openssl s_client -connect k8s.<id>.<net>.spectrum:443 -servername k8s.<id>.<net>
 # 4. The id_token actually carries groups + preferred_username (catches the missing-claim case that
 #    RBAC smoke tests cannot distinguish from an RBAC misconfig)
 kubectl oidc-login get-token --oidc-issuer-url=https://authentik.infra/application/o/<slug>/ \
-  --oidc-client-id=<client_id> --oidc-use-pkce --oidc-extra-scope=profile --oidc-extra-scope=email \
+  --oidc-client-id=<client_id> --oidc-use-pkce \
+  --oidc-extra-scope=profile --oidc-extra-scope=email --oidc-extra-scope=groups \
   | jq -r .status.token | cut -d. -f2 | base64 -d 2>/dev/null | jq '{groups, preferred_username}'
 
 # 5. RBAC: admin can write, viewer is read-only
