@@ -11,4 +11,11 @@ resources:
   - ../../flux/apps/ingress
   - ../../flux/apps/observability
   - ../../flux/apps/networking
+  # stage-only: kube-oidc-proxy. The Authentik app `spectrum-kube-stage` exists only on stage
+  # (infra spectrum_kube_networks=["stage"]) and its bootstrap secret / KUBE_OIDC_* vars are
+  # stage-only, so gate it here instead of the shared networking aggregator — otherwise
+  # testnet/mainnet would get a broken (cert-pending / discovery-404) kube-oidc-proxy.
+  # To extend to other networks: add them to spectrum_kube_networks + bootstrap, then move these
+  # two entries into the shared flux/apps/networking aggregators.
+  - ../../flux/apps/networking/kube-oidc-proxy
   - ../../flux/apps/fluence
