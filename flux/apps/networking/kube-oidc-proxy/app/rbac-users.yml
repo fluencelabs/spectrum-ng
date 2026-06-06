@@ -1,30 +1,33 @@
 # Authentik group -> cluster access. Groups arrive as Impersonate-Group headers from the OIDC
-# `groups` claim, prefixed with "oidc:" by the proxy (--oidc-groups-prefix). The subject names below
-# MUST carry that prefix and MUST match the resourceNames allowlist in rbac-proxy.yml. cluster-admin
-# and view are built-in ClusterRoles. To add an editor tier: bind built-in `edit` to oidc:k8s-editors
-# AND add oidc:k8s-editors to the rbac-proxy.yml groups resourceNames.
+# `groups` claim, prefixed with "oidc:" by the proxy (--oidc-groups-prefix). Subjects MUST carry that
+# prefix and MUST match the resourceNames allowlist in rbac-proxy.yml.
+#
+# We gate on the base role groups `devops` / `dev` (always populated from GitHub teams
+# fluencelabs/devops & /devs), NOT dedicated k8s-admins/k8s-viewers: the dedicated groups were new
+# and Authentik did not retro-assign them to existing users on re-login, which blocked access. The
+# Authentik app access policy (infra spectrum_kube_oidc.tf) also gates on devops/dev to match.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: k8s-admins
+  name: spectrum-kube-admins
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
   - kind: Group
-    name: oidc:k8s-admins
+    name: oidc:devops
     apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: k8s-viewers
+  name: spectrum-kube-viewers
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
   - kind: Group
-    name: oidc:k8s-viewers
+    name: oidc:dev
     apiGroup: rbac.authorization.k8s.io
