@@ -2,7 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ks.yml
-  # Mesh exposure Flux Kustomization (NBResource for k8s.<id>.<net>.spectrum). Co-located here — and
-  # its spec.path still points at netbird-services/app/kube-oidc-proxy — so the whole kube-oidc-proxy
-  # feature is gated by a single dir include in clusters/stage (stage-only).
+  # Mesh exposure Flux Kustomization (NBResource for k8s.<id>.<net>.spectrum). Co-located here (its
+  # spec.path still points at netbird-services/app/kube-oidc-proxy) so the whole kube-oidc-proxy
+  # feature is one dir, included from the shared flux/apps/networking aggregator → deploys on every
+  # cluster that has networking (stage/testnet/mainnet; dev has no networking). Per-cluster prereqs:
+  # Authentik app spectrum-kube-<network> (infra spectrum_kube_networks), KUBE_OIDC_* in
+  # spectrum-manual-vars, and the fluence-mesh-intermediate bootstrap secret in this namespace.
   - netbird-ks.yml
