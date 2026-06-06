@@ -1,0 +1,35 @@
+# NetBird setup key for the Grafana pod's injected sidecar (OIDC back-channel to authentik.infra).
+#
+# Two resources, both consumed by the netbird-operator (>=0.3.x, see HelmRelease bump in
+# flux/apps/networking/netbird-operator):
+#
+#  1. SetupKey (netbird.io/v1alpha1) — the operator MINTS a reusable+ephemeral setup key via the
+#     NetBird API (its NB_API_KEY) and writes it into a Secret it owns named `setup-key-<name>`
+#     (key `setup-key`), and rotates it. Nothing is hand-created or copied.
+#  2. NBSetupKey (netbird.io/v1, legacy) — references that minted Secret so the legacy
+#     annotation-based pod injection (`netbird.io/setup-key: grafana` on the Grafana pod template)
+#     works. We use the legacy annotation path because the v1alpha1 SidecarProfile (label-based)
+#     injection is NOT wired in the operator webhook on 0.3.1 (verified on stage: the webhook ran
+#     but did not inject); the annotation path does work.
+#
+# authentik.infra's NBResource policy source group is `All`, so this peer is permitted to reach it
+# with no extra autoGroups/policy. Do NOT force-remove the netbird CR finalizers on teardown.
+---
+apiVersion: netbird.io/v1alpha1
+kind: SetupKey
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  name: spectrum-${NETWORK}-grafana
+  ephemeral: true
+---
+apiVersion: netbird.io/v1
+kind: NBSetupKey
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  secretKeyRef:
+    name: setup-key-grafana # operator-owned Secret minted by the SetupKey above
+    key: setup-key

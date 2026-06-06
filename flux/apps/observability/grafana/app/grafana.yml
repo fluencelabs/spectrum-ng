@@ -58,14 +58,22 @@ spec:
       client_id: "${GRAFANA_OIDC_CLIENT_ID}"
       client_secret: "$__env{GF_OAUTH_CLIENT_SECRET}"
       scopes: "openid profile email groups"
-      # Browser leg goes to the mesh-only authentik.infra (dedicated internal OIDC host with its own
-      # GitHub App + brand, so the GitHub callback returns to authentik.infra and the session cookie
-      # stays intact). Operator laptops resolve it over NetBird and trust the Fluence mesh root CA.
-      # token/api stay on the public host: they're server-side from the Grafana pod (which doesn't
-      # join the mesh), and the public edge is fine for non-browser, non-QUIC server calls.
+      # ALL THREE legs now target the mesh-only authentik.infra — no dependency on the public edge.
+      #   - auth_url (browser leg): the operator laptop resolves authentik.infra over NetBird.
+      #   - token_url / api_url (server-side, from the Grafana pod): the pod is joined to the mesh by a
+      #     NetBird sidecar that the netbird-operator (>=0.3.x) injects via the pod annotation
+      #     `netbird.io/setup-key` (deployment below). The sidecar runs as root and rewrites the pod's
+      #     shared /etc/resolv.conf, so the grafana container resolves authentik.infra and routes to it
+      #     over the mesh — NO dnsConfig / hand-rolled sidecar needed. VALIDATED on the stage cluster
+      #     2026-06-05 (getent + OIDC discovery 200; see PR #142).
+      # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (infra Issuer
+      # fluence-root-ca; chain leaf->root, no intermediate — confirmed issuer=CN=Fluence Mesh Root CA).
+      # Grafana's server-side OAuth client must trust that root explicitly; mounted from the ca.crt of
+      # the fluence-mesh-intermediate secret (= the public Fluence Mesh Root cert; see deployment volumes).
       auth_url: "https://authentik.infra/application/o/authorize/"
-      token_url: "https://authentik.cloudless.dev/application/o/token/"
-      api_url: "https://authentik.cloudless.dev/application/o/userinfo/"
+      token_url: "https://authentik.infra/application/o/token/"
+      api_url: "https://authentik.infra/application/o/userinfo/"
+      tls_client_ca: "/etc/fluence-ca/root.crt"
       login_attribute_path: "preferred_username"
       email_attribute_path: "email"
       name_attribute_path: "name"
@@ -99,6 +107,18 @@ spec:
       strategy:
         type: Recreate
       template:
+        metadata:
+          annotations:
+            # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook.
+            # The value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected
+            # `netbird` container joins the mesh and — running as root (see the securityContext split
+            # below) — creates the WireGuard interface AND rewrites the pod's shared /etc/resolv.conf,
+            # so the grafana container resolves & routes the mesh-only authentik.infra for the OIDC
+            # token/userinfo back-channel. No dnsConfig and no hand-rolled sidecar.
+            # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
+            # stuck (Init / no sandbox) under kube-ovn here; a regular container works (grafana
+            # re-reads resolv.conf once netbird is up, per glibc).
+            netbird.io/setup-key: grafana
         spec:
           containers:
             - name: grafana
@@ -109,8 +129,17 @@ spec:
                   path: /api/health
                   port: 3000
                   scheme: HTTPS
+              # runAsUser/runAsGroup/runAsNonRoot live on THIS container, NOT pod-level: the
+              # operator-injected netbird sidecar inherits pod-level securityContext, and it MUST run
+              # as root (to create the WireGuard interface and write /etc/resolv.conf). A pod-level
+              # runAsNonRoot/runAsUser:1001 made the sidecar crash (mkdir /var/log/netbird + bind
+              # /var/run/netbird.sock: permission denied). Keeping it here leaves grafana as 1001 while
+              # the sidecar runs root. PSA on observability is `privileged`, so root is permitted.
               securityContext:
                 allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 1001
+                runAsGroup: 1001
                 capabilities:
                   drop:
                   - ALL
@@ -136,6 +165,11 @@ spec:
                 - name: grafana-tls
                   mountPath: /etc/grafana-tls
                   readOnly: true
+                # Fluence Mesh Root (public cert) so the server-side OAuth client trusts
+                # authentik.infra (tls_client_ca above). See volumes.fluence-ca.
+                - name: fluence-ca
+                  mountPath: /etc/fluence-ca
+                  readOnly: true
                 # Mount the PVC at grafana's data dir. spec.persistentVolumeClaim only CREATES the
                 # claim (grafana-pvc); the operator does not auto-rewire the grafana-data volume, so
                 # we override it below from the default emptyDir to the PVC.
@@ -148,8 +182,20 @@ spec:
             - name: grafana-data
               persistentVolumeClaim:
                 claimName: grafana-pvc
+            # Fluence Mesh Root (public CA cert) for tls_client_ca — sourced from the ca.crt of the
+            # fluence-mesh-intermediate bootstrap secret (already required on every cluster; its ca.crt
+            # IS the self-signed CN=Fluence Mesh Root CA). Reusing it avoids a second hand-delivered
+            # object: a missing standalone configmap wedged the grafana pod in ContainerCreating
+            # (8h outage on stage 2026-06-05). Projected to root.crt to match tls_client_ca above.
+            - name: fluence-ca
+              secret:
+                secretName: fluence-mesh-intermediate
+                items:
+                  - key: ca.crt
+                    path: root.crt
           securityContext:
+            # Only fsGroup at pod level (RWO PVC group ownership). runAsUser/runAsGroup/runAsNonRoot
+            # are set on the grafana CONTAINER instead, so the operator-injected netbird sidecar (which
+            # inherits pod-level securityContext) is free to run as root — required for WireGuard + the
+            # /etc/resolv.conf rewrite.
             fsGroup: 1001
-            runAsGroup: 1001
-            runAsNonRoot: true
-            runAsUser: 1001

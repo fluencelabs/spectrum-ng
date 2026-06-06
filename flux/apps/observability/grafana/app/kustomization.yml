@@ -4,6 +4,7 @@ resources:
   - fluence-intermediate-issuer.yml
   - grafana-tls-cert.yml
   - grafana.yml
+  - netbird-setupkey.yml
   - oidc-secret.yml
   - admin-bootstrap.yml
   - folders/
