@@ -1,0 +1,8 @@
+# mainnet: pin the routing peer to 1 replica (was router.replicas=1 on the old config chart, #144).
+apiVersion: netbird.io/v1
+kind: NBRoutingPeer
+metadata:
+  name: router
+  namespace: networking
+spec:
+  replicas: 1
