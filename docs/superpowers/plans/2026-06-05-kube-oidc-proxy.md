@@ -318,7 +318,11 @@ git commit -m "wip"
 
 ## Task 5: Deployment (proxy container) + Service + OIDC env
 
-> **Decision — `system:` escalation guard (spec §7):** use `--oidc-username-prefix` / `--oidc-groups-prefix` left EMPTY (no prefix) but rely on apiserver's built-in protection: the apiserver refuses impersonating `system:masters` unless the proxy SA is explicitly granted it (it is not). RBAC subjects use bare `k8s-admins`/`k8s-viewers`. If in-cluster testing shows group collisions, revisit prefixes (would require updating Task 4 subjects to the prefixed names).
+> **Decision — `system:` escalation guard (spec §7) — UPDATED after review:** there is NO apiserver
+> built-in refusal of `system:masters` for an SA granted unscoped `impersonate groups`, and v0.3.0 has
+> no `system:` guard of its own. Set `--oidc-username-prefix=oidc:` / `--oidc-groups-prefix=oidc:` AND
+> bind RBAC to the prefixed subjects (`oidc:k8s-admins`/`oidc:k8s-viewers`) AND restrict the proxy
+> ClusterRole's `groups` impersonate via `resourceNames` (those two plus `system:authenticated`).
 
 **Files:**
 - Create: `flux/apps/networking/kube-oidc-proxy/app/deployment.yml`
@@ -760,7 +764,7 @@ Per cluster `spectrum-manual-vars` ConfigMap:
 
 ## Infra-side checklist (Authentik / NetBird — done by infra owner)
 - Authentik application + OIDC provider for kube-oidc-proxy: **public client + PKCE**,
-  redirect URIs for kubelogin (`http://localhost:8000` and `http://127.0.0.1:18000` by default),
+  redirect URIs for kubelogin (`http://localhost:8000` and `http://localhost:18000` — both `localhost`),
   emits the `groups` claim.
 - Authentik groups `k8s-admins`, `k8s-viewers` with membership.
 - NetBird access policy allowing the sidecar peer's group → `authentik.infra:443`.
