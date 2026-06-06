@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-oidc-proxy
+  labels:
+    # The netbird-operator-injected sidecar runs as root (WireGuard + /etc/resolv.conf rewrite), which
+    # Talos's default PSA "baseline" profile forbids. Raise this namespace to "privileged" admission
+    # (same as the observability namespace, which hosts Grafana's identical mesh back-channel).
+    pod-security.kubernetes.io/enforce: privileged

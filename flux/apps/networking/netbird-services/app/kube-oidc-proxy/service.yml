@@ -1,0 +1,22 @@
+# Name MUST equal the first label of the mesh hostname (k8s.<id>.<net>.spectrum). The cluster CoreDNS
+# resolves the .spectrum zone with a template: `<label>.<id>.<net>.spectrum` -> CNAME
+# `<label>.networking.svc.cluster.local`. So mesh clients reach the proxy only if a Service named
+# `k8s` exists in `networking` (mirrors grafana: Service `grafana` for grafana.<id>.<net>.spectrum).
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s
+  annotations:
+    netbird.io/expose: "true"
+    netbird.io/resource-name: "k8s.${CLUSTER_ID}.${NETWORK}"
+    netbird.io/groups: "spectrum-${NETWORK}"
+    netbird.io/policy-name: "k8s-access"
+    netbird.io/policy-source-groups: "support,admins"
+    netbird.io/policy-protocol: "tcp"
+    netbird.io/policy-ports: "443"
+spec:
+  type: ExternalName
+  externalName: kube-oidc-proxy.kube-oidc-proxy.svc.cluster.local
+  ports:
+    - protocol: TCP
+      port: 443

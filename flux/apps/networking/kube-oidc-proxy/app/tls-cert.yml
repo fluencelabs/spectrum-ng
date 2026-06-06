@@ -1,0 +1,23 @@
+# Leaf cert for the mesh-only hostname k8s.<cluster_id>.<network>.spectrum, signed by the
+# fluence-intermediate Issuer. ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
+# (spectrum-vars + spectrum-manual-vars). Consumed by the kube-oidc-proxy pod (native TLS),
+# mounted from secret kube-oidc-proxy-tls. The served tls.crt is leaf+intermediate, so a client
+# trusting the Fluence Mesh Root validates the chain. Mirrors grafana-tls-cert.yml.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kube-oidc-proxy-tls
+  namespace: kube-oidc-proxy
+spec:
+  secretName: kube-oidc-proxy-tls
+  duration: 2160h # 90d
+  renewBefore: 360h
+  commonName: k8s.${CLUSTER_ID}.${NETWORK}.spectrum
+  dnsNames:
+    - k8s.${CLUSTER_ID}.${NETWORK}.spectrum
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: fluence-intermediate
+    kind: Issuer

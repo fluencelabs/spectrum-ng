@@ -1,0 +1,104 @@
+# Publishes kube-oidc-proxy under its per-cluster mesh name k8s.<cluster_id>.<network>.spectrum as
+# a netbird DIRECT resource (exact-match DNS). Same approach as the grafana NBResource setup: the
+# operator can't set the .spectrum address from the Service annotation (it always builds
+# <svc>.<ns>.svc.cluster.local) and the netbird network ID is generated per-cluster, so this Job
+# reads the network ID from the operator-managed router NBRoutingPeer and applies an NBResource.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-oidc-proxy-nbresource-setup
+  namespace: networking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kube-oidc-proxy-nbresource-setup
+  namespace: networking
+rules:
+  - apiGroups: ["netbird.io"]
+    resources: ["nbroutingpeers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["netbird.io"]
+    resources: ["nbresources"]
+    verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-oidc-proxy-nbresource-setup
+  namespace: networking
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kube-oidc-proxy-nbresource-setup
+subjects:
+  - kind: ServiceAccount
+    name: kube-oidc-proxy-nbresource-setup
+    namespace: networking
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-oidc-proxy-nbresource-setup
+  namespace: networking
+  annotations:
+    # A Job pod template is immutable; let Flux recreate it on spec changes.
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: kube-oidc-proxy-nbresource-setup
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: setup
+          image: alpine/k8s:1.30.13
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: HOME
+              value: /tmp
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              # Wait for the operator-managed routing peer to publish the network ID.
+              NETID=""
+              for i in $(seq 1 30); do
+                NETID=$(kubectl -n networking get nbroutingpeer router -o jsonpath='{.status.networkID}' 2>/dev/null || true)
+                [ -n "$${NETID}" ] && break
+                echo "waiting for NBRoutingPeer networkID... ($i/30)"
+                sleep 10
+              done
+              [ -n "$${NETID}" ] || { echo "ERROR: NBRoutingPeer networkID not found"; exit 1; }
+              echo "networkID=$${NETID}"
+
+              # metadata.name and spec.name are distinct from the operator's annotation-driven
+              # resource (named "kube-oidc-proxy", from the Service netbird.io/resource-name) to avoid
+              # the operator's DuplicateName guard — mirrors grafana (grafana vs grafana-spectrum).
+              # spec.address is the .spectrum name clients actually use (operator can't set it).
+              cat <<EOF | kubectl apply -f -
+              apiVersion: netbird.io/v1
+              kind: NBResource
+              metadata:
+                name: kube-oidc-proxy-spectrum
+                namespace: networking
+              spec:
+                name: k8s-spectrum.${CLUSTER_ID}.${NETWORK}
+                address: k8s.${CLUSTER_ID}.${NETWORK}.spectrum
+                networkID: $${NETID}
+                groups:
+                  - spectrum-${NETWORK}
+              EOF
+              echo "applied NBResource kube-oidc-proxy-spectrum -> k8s.${CLUSTER_ID}.${NETWORK}.spectrum"
