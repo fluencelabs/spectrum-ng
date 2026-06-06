@@ -1,0 +1,19 @@
+# Routing peer for this cluster's mesh.
+#
+# Replaces the old `netbird-operator-config` Helm chart (chart 0.1.0, not republished for 0.4.0+).
+# With our values that chart only ever rendered this single NBRoutingPeer named `router` (router
+# .enabled=true, kubernetesAPI off, no chart-managed policies). The 0.6.0 operator still reconciles
+# the legacy netbird.io/v1 NBRoutingPeer kind, so we inline it directly.
+#
+# Keep the name `router` and namespace `networking`: the grafana NBResource setup Job
+# (flux/apps/networking/netbird-services/.../resource-setup.yml) reads `.status.networkID` off
+# `nbroutingpeer router` in `networking`. The netbird.io/cleanup finalizer is operator-owned — do
+# NOT force-remove it (deleting/recreating this peer changes the networkID and breaks the NBResource).
+# Per-env replica count is patched in by the overlays.
+apiVersion: netbird.io/v1
+kind: NBRoutingPeer
+metadata:
+  name: router
+  namespace: networking
+  finalizers:
+    - netbird.io/cleanup

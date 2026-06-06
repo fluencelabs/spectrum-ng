@@ -6,13 +6,12 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: kubernetes-operator
-      # 0.3.x adds the SetupKey (v1alpha1) controller that auto-mints+rotates NetBird setup keys via
-      # NB_API_KEY (used by the Grafana OIDC back-channel sidecar — see
-      # flux/apps/observability/grafana/app/netbird-setupkey.yml). 0.3.1 is the last tag on this
-      # HelmRepository (0.4.0+ moved to an OCI registry + renamed chart). Legacy v1 CRDs
-      # (NBRoutingPeer/NBResource/NBPolicy) are unchanged. Validated on stage 2026-06-05.
-      version: 0.3.1
+      # 0.4.0+ renamed the chart (kubernetes-operator -> netbird-operator) and publishes it to the
+      # OCI registry referenced by the `netbirdio` HelmRepository. SetupKey (v1alpha1) + legacy v1
+      # CRDs (NBRoutingPeer/NBResource/NBPolicy/NBGroup/NBSetupKey) used elsewhere in this repo are
+      # all still served by 0.6.0. New in 0.4.0+: an admission webhook (see values.webhook below).
+      chart: netbird-operator
+      version: "0.6.0"
       sourceRef:
         kind: HelmRepository
         name: netbirdio
@@ -28,11 +27,30 @@ spec:
       strategy: rollback
       retries: 3
   values:
-    fullnameOverride: netbird-operator
     managementURL: "https://netbird.infrahub.cloudless.dev"
     cluster:
       name: "spectrum-${NETWORK}-${CLUSTER_ID}"
+      dns: svc.cluster.local
     netbirdAPI:
       keyFromSecret:
         name: netbird-api-token
         key: NB_API_KEY
+    operator:
+      # fullnameOverride moved under operator.* in the renamed chart. Keep the prior name so the
+      # Deployment/Service/RBAC upgrade in place rather than getting recreated under a new name.
+      fullnameOverride: netbird-operator
+    webhook:
+      # The chart self-provisions a selfSigned cert-manager Issuer + Certificate and wires the
+      # webhook CA via cert-manager.io/inject-ca-from (cert-manager + cainjector are already
+      # installed, see flux/apps/ingress/cert-manager). No issuer wiring needed from us.
+      enableCertManager: true
+      # The mutating webhook intercepts ALL pod CREATE cluster-wide to do sidecar injection. Use
+      # Ignore so a transiently-unavailable operator never blocks pod scheduling cluster-wide (with
+      # the default Fail it would). Injection still happens whenever the webhook is up.
+      failurePolicy: Ignore
+    # We expose mesh resources via explicit NBResource CRs (see netbird-services), not the chart's
+    # Service-annotation ingress path; and we don't use Gateway API here.
+    ingress:
+      enabled: false
+    gatewayAPI:
+      enabled: false
