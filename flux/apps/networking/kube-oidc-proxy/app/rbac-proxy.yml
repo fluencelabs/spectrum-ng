@@ -21,6 +21,13 @@ rules:
   - apiGroups: [""]
     resources: ["users", "groups"]
     verbs: ["impersonate"]
+  # The proxy forwards token user-extras as Impersonate-Extra-* headers; the apiserver requires the SA
+  # to be authorized for each. Modern OIDC tokens carry `authentication.kubernetes.io/credential-id`
+  # (the token JTI, for audit) — without this grant every request 403s ("Forbidden"). Value is
+  # per-token, so it is left unrestricted (the key, not the value, is what matters).
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["userextras/authentication.kubernetes.io/credential-id"]
+    verbs: ["impersonate"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
