@@ -84,17 +84,21 @@ spec:
               [ -n "$${NETID}" ] || { echo "ERROR: NBRoutingPeer networkID not found"; exit 1; }
               echo "networkID=$${NETID}"
 
+              # metadata.name and spec.name are distinct from the operator's annotation-driven
+              # resource (named "kube-oidc-proxy", from the Service netbird.io/resource-name) to avoid
+              # the operator's DuplicateName guard — mirrors grafana (grafana vs grafana-spectrum).
+              # spec.address is the .spectrum name clients actually use (operator can't set it).
               cat <<EOF | kubectl apply -f -
               apiVersion: netbird.io/v1
               kind: NBResource
               metadata:
-                name: kube-oidc-proxy
+                name: kube-oidc-proxy-spectrum
                 namespace: networking
               spec:
-                name: k8s.${CLUSTER_ID}.${NETWORK}
+                name: k8s-spectrum.${CLUSTER_ID}.${NETWORK}
                 address: k8s.${CLUSTER_ID}.${NETWORK}.spectrum
                 networkID: $${NETID}
                 groups:
                   - spectrum-${NETWORK}
               EOF
-              echo "applied NBResource kube-oidc-proxy -> k8s.${CLUSTER_ID}.${NETWORK}.spectrum"
+              echo "applied NBResource kube-oidc-proxy-spectrum -> k8s.${CLUSTER_ID}.${NETWORK}.spectrum"

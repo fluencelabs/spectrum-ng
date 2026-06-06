@@ -1,6 +1,8 @@
 # Authentik group -> cluster access. Groups arrive as Impersonate-Group headers from the OIDC
-# `groups` claim; the values are Authentik-controlled (not user-forgeable). cluster-admin/view are
-# the built-in ClusterRoles. To add an editor tier later, add a binding to the built-in `edit` role.
+# `groups` claim, prefixed with "oidc:" by the proxy (--oidc-groups-prefix). The subject names below
+# MUST carry that prefix and MUST match the resourceNames allowlist in rbac-proxy.yml. cluster-admin
+# and view are built-in ClusterRoles. To add an editor tier: bind built-in `edit` to oidc:k8s-editors
+# AND add oidc:k8s-editors to the rbac-proxy.yml groups resourceNames.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -11,7 +13,7 @@ roleRef:
   name: cluster-admin
 subjects:
   - kind: Group
-    name: k8s-admins
+    name: oidc:k8s-admins
     apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -24,5 +26,5 @@ roleRef:
   name: view
 subjects:
   - kind: Group
-    name: k8s-viewers
+    name: oidc:k8s-viewers
     apiGroup: rbac.authorization.k8s.io

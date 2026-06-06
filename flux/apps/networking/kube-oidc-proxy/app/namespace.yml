@@ -2,3 +2,9 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kube-oidc-proxy
+  labels:
+    # The netbird sidecar needs NET_ADMIN + hostPath /dev/net/tun; Talos enforces the PSA "baseline"
+    # profile by default, which forbids both. Raise this namespace to "privileged" admission (mirrors
+    # flux/apps/networking/namespace.yml). The proxy and sidecar must share a pod (mesh reachability),
+    # so they cannot be split into a separate hardened namespace without redesigning JWKS reachability.
+    pod-security.kubernetes.io/enforce: privileged

@@ -23,8 +23,8 @@ spec:
       containers:
         - name: proxy
           # jetstack repo archived 2024-05; this is the last published tag and is what the Tremolo
-          # maintained fork's Helm chart still defaults to. TODO(pre-merge): pin by @sha256 digest.
-          image: quay.io/jetstack/kube-oidc-proxy:v0.3.0
+          # maintained fork's Helm chart still defaults to. Pinned by digest (tag v0.3.0).
+          image: quay.io/jetstack/kube-oidc-proxy:v0.3.0@sha256:e045b26eb6dfb176310b38e30a66c2c4ffc0c1a75a1c60fa3ccf63bfbf2393a7
           command: ["kube-oidc-proxy"]
           args:
             - "--secure-port=443"
@@ -32,10 +32,18 @@ spec:
             - "--tls-private-key-file=/etc/oidc/tls/tls.key"
             # Browser + token legs go to the mesh-only host authentik.infra (no QUIC edge bug);
             # the netbird sidecar gives this pod mesh reachability to fetch discovery/JWKS.
-            - "--oidc-issuer-url=https://authentik.infra/application/o/${KUBE_OIDC_SLUG}/"
+            # KUBE_OIDC_SLUG defaults to "kube"; KUBE_OIDC_CLIENT_ID has no safe default and MUST be
+            # set in spectrum-manual-vars (Flux blanks undefined vars -> empty client-id breaks OIDC).
+            - "--oidc-issuer-url=https://authentik.infra/application/o/${KUBE_OIDC_SLUG:=kube}/"
             - "--oidc-client-id=${KUBE_OIDC_CLIENT_ID}"
             - "--oidc-username-claim=preferred_username"
             - "--oidc-groups-claim=groups"
+            # Prefix every OIDC identity so a token can NEVER land on a privileged system:* name
+            # (e.g. an Authentik group literally named "system:masters"). v0.3.0 does NOT guard this
+            # itself. Coupled with rbac-users.yml subjects (oidc:k8s-admins/oidc:k8s-viewers) and the
+            # groups resourceNames allowlist in rbac-proxy.yml — all three MUST change together.
+            - "--oidc-username-prefix=oidc:"
+            - "--oidc-groups-prefix=oidc:"
             # authentik.infra serves a Fluence-chain cert; trust the mesh root mounted below.
             - "--oidc-ca-file=/etc/oidc/authentik-ca/ca.crt"
           ports:
@@ -43,18 +51,30 @@ spec:
               containerPort: 443
             - name: probe
               containerPort: 8080
+          # /ready calls AuthenticateToken and stays 503 until OIDC discovery (via the sidecar mesh)
+          # succeeds, then latches ready=true. readiness alone removes the pod from endpoints during a
+          # transient authentik.infra outage and self-heals. A startupProbe gives the mesh+OIDC a
+          # generous cold-start budget. No livenessProbe on /ready: a restart would reset the
+          # in-process discovery retry and the warm sidecar mesh — counterproductive (upstream ships
+          # readiness-only for this reason).
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /ready
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -82,8 +102,10 @@ spec:
                   key: NB_SETUP_KEY
             - name: NB_HOSTNAME
               value: "kube-oidc-proxy-${CLUSTER_ID}"
-            # Run NetBird's embedded DNS resolver on a fixed local address the proxy container
-            # targets via the pod dnsConfig below.
+            # NetBird's embedded DNS resolver listen address. NOTE: the cross-container DNS wiring
+            # (how the proxy container resolves authentik.infra via this resolver) is the one item
+            # pending an in-cluster decision — see docs/.../specs §8 open item. Do not treat the
+            # dnsConfig below as validated.
             - name: NB_DNS_RESOLVER_ADDRESS
               value: "127.0.0.1:5353"
           securityContext:
@@ -91,12 +113,18 @@ spec:
             runAsUser: 0
             capabilities:
               add: ["NET_ADMIN"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
           volumeMounts:
             - name: nb-tun
               mountPath: /dev/net/tun
             - name: nb-state
               mountPath: /var/lib/netbird
-      # Prepend NetBird's resolver so the proxy container resolves *.spectrum / authentik.infra.
+      # PENDING in-cluster decision (see specs §8): this dnsConfig is not yet validated.
       dnsPolicy: ClusterFirst
       dnsConfig:
         nameservers:
