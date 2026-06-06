@@ -6,5 +6,6 @@ resources:
   - tls-cert.yml
   - rbac-proxy.yml
   - rbac-users.yml
+  - netbird-setupkey.yml
   - deployment.yml
   - service.yml

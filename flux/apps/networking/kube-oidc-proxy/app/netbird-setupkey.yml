@@ -1,0 +1,33 @@
+# NetBird setup key for the proxy pod's injected sidecar (OIDC back-channel to authentik.infra).
+# Mirrors flux/apps/observability/grafana/app/netbird-setupkey.yml (PR #142).
+#
+# Two resources, both consumed by the netbird-operator (>=0.3.x):
+#  1. SetupKey (netbird.io/v1alpha1) — the operator MINTS a reusable+ephemeral setup key via the
+#     NetBird API (its NB_API_KEY) and writes it into a Secret it owns named `setup-key-<name>`
+#     (key `setup-key`), and rotates it. Nothing is hand-created or copied.
+#  2. NBSetupKey (netbird.io/v1, legacy) — references that minted Secret so the legacy
+#     annotation-based pod injection (`netbird.io/setup-key: kube-oidc-proxy` on the pod template)
+#     works. The v1alpha1 SidecarProfile (label-based) injection is NOT wired in the operator webhook
+#     on 0.3.1; the annotation path is.
+#
+# authentik.infra's NBResource policy source group is `All`, so this peer is permitted to reach it
+# with no extra autoGroups/policy. Do NOT force-remove the netbird CR finalizers on teardown.
+---
+apiVersion: netbird.io/v1alpha1
+kind: SetupKey
+metadata:
+  name: kube-oidc-proxy
+  namespace: kube-oidc-proxy
+spec:
+  name: spectrum-${NETWORK}-kube-oidc-proxy
+  ephemeral: true
+---
+apiVersion: netbird.io/v1
+kind: NBSetupKey
+metadata:
+  name: kube-oidc-proxy
+  namespace: kube-oidc-proxy
+spec:
+  secretKeyRef:
+    name: setup-key-kube-oidc-proxy # operator-owned Secret minted by the SetupKey above
+    key: setup-key

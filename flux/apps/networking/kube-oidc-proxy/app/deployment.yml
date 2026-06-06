@@ -12,14 +12,22 @@ spec:
     metadata:
       labels:
         app: kube-oidc-proxy
+      annotations:
+        # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook. The
+        # value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected `netbird`
+        # container joins the mesh and — running as root — creates the WireGuard interface AND rewrites
+        # the pod's shared /etc/resolv.conf, so the proxy container resolves & routes the mesh-only
+        # authentik.infra for OIDC discovery/JWKS. No dnsConfig and no hand-rolled sidecar. Mirrors the
+        # Grafana OIDC back-channel (PR #142, validated on stage 2026-06-05).
+        # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
+        # stuck (Init / no sandbox) under kube-ovn; a regular container works (the proxy re-reads
+        # resolv.conf once netbird is up, per glibc).
+        netbird.io/setup-key: kube-oidc-proxy
     spec:
       serviceAccountName: kube-oidc-proxy
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
-        runAsGroup: 65532
-        seccompProfile:
-          type: RuntimeDefault
+      # No pod-level securityContext: the operator-injected netbird sidecar inherits pod-level context
+      # and MUST run as root (WireGuard + /etc/resolv.conf rewrite). Hardening is set on the proxy
+      # CONTAINER below instead. PSA on this namespace is `privileged` (see namespace.yml).
       containers:
         - name: proxy
           # jetstack repo archived 2024-05; this is the last published tag and is what the Tremolo
@@ -30,10 +38,10 @@ spec:
             - "--secure-port=443"
             - "--tls-cert-file=/etc/oidc/tls/tls.crt"
             - "--tls-private-key-file=/etc/oidc/tls/tls.key"
-            # Browser + token legs go to the mesh-only host authentik.infra (no QUIC edge bug);
-            # the netbird sidecar gives this pod mesh reachability to fetch discovery/JWKS.
-            # KUBE_OIDC_SLUG defaults to "kube"; KUBE_OIDC_CLIENT_ID has no safe default and MUST be
-            # set in spectrum-manual-vars (Flux blanks undefined vars -> empty client-id breaks OIDC).
+            # Mesh-only authentik.infra (no public edge / QUIC). The operator-injected netbird sidecar
+            # gives this pod mesh reachability for discovery/JWKS. KUBE_OIDC_SLUG defaults to "kube";
+            # KUBE_OIDC_CLIENT_ID has no safe default and MUST be set in spectrum-manual-vars (Flux
+            # blanks undefined vars -> empty client-id breaks OIDC).
             - "--oidc-issuer-url=https://authentik.infra/application/o/${KUBE_OIDC_SLUG:=kube}/"
             - "--oidc-client-id=${KUBE_OIDC_CLIENT_ID}"
             - "--oidc-username-claim=preferred_username"
@@ -44,17 +52,20 @@ spec:
             # groups resourceNames allowlist in rbac-proxy.yml — all three MUST change together.
             - "--oidc-username-prefix=oidc:"
             - "--oidc-groups-prefix=oidc:"
-            # authentik.infra serves a Fluence-chain cert; trust the mesh root mounted below.
-            - "--oidc-ca-file=/etc/oidc/authentik-ca/ca.crt"
+            # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (no intermediate).
+            # Trust it via the ca.crt of the fluence-mesh-intermediate bootstrap secret (which IS the
+            # self-signed CN=Fluence Mesh Root CA) — same source Grafana uses for tls_client_ca. Reuses
+            # an already-required secret instead of a second hand-delivered object.
+            - "--oidc-ca-file=/etc/fluence-ca/root.crt"
           ports:
             - name: https
               containerPort: 443
             - name: probe
               containerPort: 8080
-          # /ready calls AuthenticateToken and stays 503 until OIDC discovery (via the sidecar mesh)
-          # succeeds, then latches ready=true. readiness alone removes the pod from endpoints during a
-          # transient authentik.infra outage and self-heals. A startupProbe gives the mesh+OIDC a
-          # generous cold-start budget. No livenessProbe on /ready: a restart would reset the
+          # /ready calls AuthenticateToken and stays 503 until OIDC discovery (via the injected mesh
+          # sidecar) succeeds, then latches ready=true. readiness alone removes the pod from endpoints
+          # during a transient authentik.infra outage and self-heals. A startupProbe gives the mesh +
+          # OIDC a generous cold-start budget. No livenessProbe on /ready: a restart would reset the
           # in-process discovery retry and the warm sidecar mesh — counterproductive (upstream ships
           # readiness-only for this reason).
           startupProbe:
@@ -75,75 +86,36 @@ spec:
               memory: 64Mi
             limits:
               memory: 128Mi
+          # Hardening lives on this container (NOT pod-level) so the injected netbird sidecar can run
+          # as root. PSA `privileged` on the namespace permits the sidecar; the proxy stays locked down.
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
             capabilities:
               drop: ["ALL"]
           volumeMounts:
             - name: tls
               mountPath: /etc/oidc/tls
               readOnly: true
-            - name: authentik-ca
-              mountPath: /etc/oidc/authentik-ca
+            - name: fluence-ca
+              mountPath: /etc/fluence-ca
               readOnly: true
-        # Sidecar: joins the NetBird mesh (group spectrum-${NETWORK}) so the proxy container — which
-        # shares this pod's network namespace — can resolve and reach authentik.infra for OIDC
-        # discovery/JWKS. NetBird needs root + NET_ADMIN + /dev/net/tun for its WireGuard interface,
-        # so it overrides the hardened pod-level securityContext for this container only.
-        - name: netbird
-          image: netbirdio/netbird:0.28.4
-          env:
-            - name: NB_MANAGEMENT_URL
-              value: "https://netbird.infrahub.cloudless.dev"
-            - name: NB_SETUP_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kube-oidc-proxy-netbird-setupkey
-                  key: NB_SETUP_KEY
-            - name: NB_HOSTNAME
-              value: "kube-oidc-proxy-${CLUSTER_ID}"
-            # NetBird's embedded DNS resolver listen address. NOTE: the cross-container DNS wiring
-            # (how the proxy container resolves authentik.infra via this resolver) is the one item
-            # pending an in-cluster decision — see docs/.../specs §8 open item. Do not treat the
-            # dnsConfig below as validated.
-            - name: NB_DNS_RESOLVER_ADDRESS
-              value: "127.0.0.1:5353"
-          securityContext:
-            runAsNonRoot: false
-            runAsUser: 0
-            capabilities:
-              add: ["NET_ADMIN"]
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              memory: 128Mi
-          volumeMounts:
-            - name: nb-tun
-              mountPath: /dev/net/tun
-            - name: nb-state
-              mountPath: /var/lib/netbird
-      # PENDING in-cluster decision (see specs §8): this dnsConfig is not yet validated.
-      dnsPolicy: ClusterFirst
-      dnsConfig:
-        nameservers:
-          - 127.0.0.1
-        options:
-          - name: ndots
-            value: "1"
       volumes:
         - name: tls
           secret:
             secretName: kube-oidc-proxy-tls
-        - name: authentik-ca
-          # Bootstrap secret: the Fluence Mesh Root used to verify authentik.infra's served cert.
-          # Hand-delivered into this namespace (key: ca.crt). See docs/kube-oidc-proxy-access.md.
+        - name: fluence-ca
+          # Fluence Mesh Root (public CA cert) to verify authentik.infra's served leaf. Sourced from
+          # the ca.crt of the fluence-mesh-intermediate bootstrap secret (already required on every
+          # cluster; its ca.crt IS the self-signed CN=Fluence Mesh Root CA). Projected to root.crt to
+          # match --oidc-ca-file. Reusing it avoids a second hand-delivered object (a missing standalone
+          # configmap wedged the grafana pod in ContainerCreating — 8h outage on stage 2026-06-05).
           secret:
-            secretName: kube-oidc-proxy-authentik-ca
-        - name: nb-tun
-          hostPath:
-            path: /dev/net/tun
-            type: CharDevice
-        - name: nb-state
-          emptyDir: {}
+            secretName: fluence-mesh-intermediate
+            items:
+              - key: ca.crt
+                path: root.crt

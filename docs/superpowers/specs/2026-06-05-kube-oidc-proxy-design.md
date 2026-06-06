@@ -192,47 +192,47 @@ A documented kubeconfig template:
 - **Audience pinning.** `--oidc-client-id` must equal the token `aud`; kubelogin requests
   tokens for that same client.
 - **Public client + PKCE.** No client secret stored in this repo or in user kubeconfigs.
-- **NetBird access policy.** The sidecar peer's group must be allowed to reach
-  `authentik.infra:443` by NetBird policy (managed on the infra/Authentik side).
+- **NetBird access policy.** None needed — `authentik.infra`'s NBResource policy source group is
+  `All`, so the auto-injected sidecar peer can reach it out of the box (same as Grafana #142).
 
-## 8. NetBird sidecar (proxy → authentik.infra)
+## 8. NetBird mesh back-channel (proxy → authentik.infra) — operator-injected
 
-- Image: `netbirdio/netbird` client, `NB_MANAGEMENT_URL=https://netbird.infrahub.cloudless.dev`.
-- Joins group `spectrum-${NETWORK}` so it can resolve and reach `authentik.infra`.
-- Setup-key provisioning: bootstrap secret `kube-oidc-proxy-netbird-setupkey`
-  (hand-delivered). **Mint it reusable + ephemeral with auto-group `spectrum-${NETWORK}`** —
-  ephemeral peers self-reap after ~10 min offline, so the emptyDir `nb-state` (new WG
-  identity per pod recreate) does not accumulate orphan peers. Do **not** force-remove
-  NetBird CR finalizers.
-- Cold start: a `startupProbe` on `/ready` (failureThreshold 30 × 10s ≈ 5 min) tolerates slow
-  mesh/OIDC warm-up; **no** `livenessProbe` (a restart resets in-process OIDC discovery + warm
-  mesh — counterproductive; v0.3.0 latches readiness anyway).
-- ⚠️ **OPEN — cross-container DNS.** kube-oidc-proxy has no separate JWKS/discovery URL
-  (verified, both jetstack & Tremolo), so `iss=authentik.infra` forces the pod to reach
-  `authentik.infra`. The proxy container must resolve it via the sidecar. The naive
-  `dnsConfig nameservers:[127.0.0.1]` + `NB_DNS_RESOLVER_ADDRESS=…:5353` does **not** work
-  (resolv.conf can't carry a port; NetBird only rewrites its own container's resolv.conf;
-  the netbird agent itself needs working DNS for its management host). The proxy's only
-  external DNS need is `authentik.infra` (the apiserver is reached via the in-cluster IP env,
-  not DNS). Pending decision — see implementation note.
+Mirrors Grafana PR #142 exactly (validated on stage 2026-06-05) — **no hand-rolled sidecar, no
+`dnsConfig`, no `/dev/net/tun`**:
+
+- The pod template carries the annotation `netbird.io/setup-key: kube-oidc-proxy`. The
+  **netbird-operator (≥0.3.x, merged to main)** mutating webhook injects a `netbird` sidecar that
+  runs as root, brings up WireGuard, and **rewrites the pod's shared `/etc/resolv.conf`** so the proxy
+  container resolves+routes `authentik.infra` over the mesh (the proxy re-reads resolv.conf once
+  netbird is up, per glibc). We do **not** set `netbird.io/init-sidecar` (native-sidecar injection
+  wedged under kube-ovn; a regular container works).
+- **Setup key auto-minted:** a `SetupKey` (netbird.io/v1alpha1, `ephemeral: true`) CR makes the
+  operator mint+rotate a reusable+ephemeral key into an operator-owned Secret `setup-key-…`; an
+  `NBSetupKey` (netbird.io/v1) references it for the annotation path. Nothing hand-delivered. Ephemeral
+  peers self-reap after ~10 min offline (no peer churn). Do **not** force-remove NetBird finalizers.
+- **securityContext split:** pod-level sets no `runAsNonRoot` (so the injected sidecar can run root);
+  the proxy container carries the hardening. The namespace is PSA `privileged` (required for the
+  root sidecar; Talos baseline would otherwise reject it).
+- **CA:** `authentik.infra`'s leaf is signed directly by the Fluence Mesh Root; `--oidc-ca-file`
+  mounts the `ca.crt` of the `fluence-mesh-intermediate` secret (which IS that root) — no separate CA.
+- Cold start: `startupProbe` on `/ready` (30 × 10s ≈ 5 min) tolerates slow mesh/OIDC warm-up; **no**
+  `livenessProbe` (a restart resets in-process OIDC discovery + warm mesh; v0.3.0 latches readiness).
 
 ## 9. Bootstrap prerequisites (out-of-band, not in git)
 
 > ⚠️ **First-reconcile ordering:** this app creates the `kube-oidc-proxy` namespace but also consumes
-> the secrets below in it. On a fresh cluster, create the namespace + secrets before/at first reconcile
-> (else Issuer/cert + pods stay pending until you do and Flux re-reconciles).
+> the secret below in it. On a fresh cluster, create the namespace + secret before/at first reconcile
+> (else Issuer/cert + pod stay pending until you do and Flux re-reconciles).
 
-- `fluence-mesh-intermediate` (cert+key) present in the `kube-oidc-proxy` namespace
-  (same hand-delivery as the Grafana namespace) — backs the `fluence-intermediate` Issuer.
-- `kube-oidc-proxy-authentik-ca` (key `ca.crt`) — Fluence Mesh Root for `--oidc-ca-file`.
-- `kube-oidc-proxy-netbird-setupkey` (key `NB_SETUP_KEY`) — **reusable + ephemeral**, auto-group
-  `spectrum-${NETWORK}`.
+- `fluence-mesh-intermediate` (`tls.crt`, `tls.key`, `ca.crt`) in the `kube-oidc-proxy` namespace
+  (same hand-delivery as the Grafana namespace) — backs the `fluence-intermediate` Issuer, and its
+  `ca.crt` (= Fluence Mesh Root) is the proxy's `--oidc-ca-file`. **Only hand-delivered object.**
 - **Infra-side (Nick, suggested — not edited here):**
-  - Authentik application/provider for kube-oidc-proxy (public client + PKCE), emitting
-    `groups`; note the `<slug>` / issuer + client_id.
+  - Authentik application/provider for kube-oidc-proxy (public client + PKCE), issuer
+    `authentik.infra`, `groups` via the `profile` mapping + "Include claims in id_token"; note the
+    `<slug>` / client_id (→ `KUBE_OIDC_SLUG` / `KUBE_OIDC_CLIENT_ID`).
   - Authentik groups `k8s-admins`, `k8s-viewers` (and membership).
-  - NetBird access policy permitting the sidecar peer group → `authentik.infra:443`.
-  - Confirm `authentik.infra`'s serving CA (Fluence chain?) to set `--oidc-ca-file`.
+  - (NetBird setup key auto-minted by the operator; no policy needed — authentik.infra is `All`.)
 
 ## 10. Open items
 
@@ -240,22 +240,23 @@ Resolved after adversarial review (2026-06-06):
 - ✅ Image + flags: `quay.io/jetstack/kube-oidc-proxy:v0.3.0@sha256:e045b26e…2393a7`; all flags
   verified valid; readiness `/ready:8080`. No separate JWKS URL exists (jetstack or Tremolo).
 - ✅ `system:` guard → `oidc:` prefix + `resourceNames` groups allowlist (§7).
-- ✅ Setup-key → hand-delivered, **reusable + ephemeral**, auto-group `spectrum-${NETWORK}` (§8).
+- ✅ **Cross-container DNS / mesh reachability — RESOLVED by adopting the Grafana #142 pattern**
+  (merged to main): operator-injected sidecar (`netbird.io/setup-key` annotation) rewrites the pod's
+  shared `/etc/resolv.conf`. No hand-rolled sidecar, no `dnsConfig`, no `/dev/net/tun`. Replaced the
+  original (broken) DNS wiring entirely (§8).
+- ✅ Setup-key → **auto-minted** by the operator (`SetupKey` CR), reusable + ephemeral; no
+  hand-delivered key (§8).
+- ✅ CA → reuse `fluence-mesh-intermediate` `ca.crt` for `--oidc-ca-file`; no separate CA secret (§8).
 - ✅ Startup gating → `startupProbe` 5-min budget, no `livenessProbe` (§8).
-- ✅ PSA → namespace labelled `pod-security.kubernetes.io/enforce: privileged` (Talos baseline blocks
-  NET_ADMIN + hostPath tun otherwise).
+- ✅ PSA → namespace labelled `pod-security.kubernetes.io/enforce: privileged` (root sidecar).
 - ✅ NBResource name collision → distinct `metadata.name`/`spec.name` (mirrors Grafana).
 - ✅ groups claim → via Authentik `profile` mapping + "Include claims in id_token"; kubelogin scopes
   `profile email` (not `groups`); redirect URIs `http://localhost:{8000,18000}`.
 
-Still open (require the live cluster):
-1. ⚠️ **Cross-container DNS** so the proxy resolves `authentik.infra` via the sidecar (§8) — the one
-   blocker that cannot be settled statically. Candidate approaches: (A) `hostAliases` pinning
-   `authentik.infra` to its stable mesh IP (no DNS machinery; needs the IP from infra); (B) an in-pod
-   CoreDNS forwarder on `127.0.0.1:53` splitting mesh→NetBird and the rest→cluster DNS; (C) minimal
-   NetBird-resolver config validated live.
-2. Confirm beam runs Talos ≥ 1.8 (for `/dev/net/tun`).
-3. `authentik.infra` serving CA for `--oidc-ca-file` (§9).
+Still open (require the live cluster — verify after rollout):
+1. End-to-end on stage: operator injects the sidecar, the **proxy** container resolves
+   `authentik.infra` (`getent`), OIDC discovery 200, kubectl happy-path per RBAC tier.
+2. `KUBE_OIDC_SLUG` / `KUBE_OIDC_CLIENT_ID` set in `spectrum-manual-vars`; Authentik app per §9.
 
 ## 11. Testing & verification
 

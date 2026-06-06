@@ -17,6 +17,11 @@ kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infr
 The apiserver itself is owned by **beam** and is not OIDC-configured; the proxy does impersonation,
 so no apiserver flags are required.
 
+The proxy pod reaches the mesh-only `authentik.infra` (for OIDC discovery/JWKS) via a NetBird sidecar
+that the **netbird-operator (≥0.3.x) auto-injects** from the pod annotation `netbird.io/setup-key`.
+The sidecar runs as root, brings up WireGuard and rewrites the pod's shared `/etc/resolv.conf` — no
+dnsConfig or hand-rolled sidecar. This mirrors the Grafana OIDC back-channel (PR #142).
+
 > **Security note — the `oidc:` prefix is load-bearing.** The proxy runs with
 > `--oidc-username-prefix=oidc:` / `--oidc-groups-prefix=oidc:`, so every OIDC identity is namespaced
 > and an Authentik group named e.g. `system:masters` arrives as the inert `oidc:system:masters`.
@@ -82,21 +87,22 @@ users:
 > and OIDC discovery fails silently at pod startup. `KUBE_OIDC_SLUG` has an in-manifest default
 > (`kube`); `KUBE_OIDC_CLIENT_ID` does not.
 
-## Bootstrap secrets (out-of-band, NOT in git)
+## Bootstrap secret (out-of-band, NOT in git)
 
 > ⚠️ **First-reconcile ordering.** This app creates the `kube-oidc-proxy` namespace, but it also
-> consumes three hand-delivered secrets in that namespace. On a fresh cluster, create the namespace
-> and apply these secrets *before/at* first Flux reconcile (`kubectl create namespace kube-oidc-proxy`
-> then apply the secrets), otherwise the Issuer/cert and pods stay pending until you do and Flux
-> re-reconciles.
+> consumes the secret below in that namespace. On a fresh cluster, create the namespace and apply it
+> *before/at* first Flux reconcile (`kubectl create namespace kube-oidc-proxy` then apply the secret),
+> otherwise the Issuer/cert and pod stay pending until you do and Flux re-reconciles.
 
 | Secret | Keys | Purpose |
 |---|---|---|
-| `fluence-mesh-intermediate` | `tls.crt`, `tls.key` | Per-cluster intermediate CA backing the `fluence-intermediate` Issuer (same hand-delivery as the Grafana namespace) |
-| `kube-oidc-proxy-authentik-ca` | `ca.crt` | Fluence Mesh Root, used by the proxy to verify `authentik.infra`'s served cert (`--oidc-ca-file`) |
-| `kube-oidc-proxy-netbird-setupkey` | `NB_SETUP_KEY` | NetBird setup key for the sidecar peer — mint it **reusable + ephemeral** with **auto-assigned group `spectrum-${NETWORK}`** (ephemeral peers are auto-reaped after ~10 min offline, avoiding peer churn from emptyDir state; the group is what the `authentik.infra:443` policy authorizes — the deployment cannot set it) |
+| `fluence-mesh-intermediate` | `tls.crt`, `tls.key`, `ca.crt` | Per-cluster intermediate CA backing the `fluence-intermediate` Issuer (same hand-delivery as the Grafana namespace). Its **`ca.crt` is the Fluence Mesh Root** and is also mounted as the proxy's `--oidc-ca-file` to verify `authentik.infra` — no separate CA secret. |
 
-## Infra-side checklist (Authentik / NetBird — done by the infra owner)
+> The NetBird **setup key is auto-minted** by the netbird-operator (`SetupKey` CR in
+> `netbird-setupkey.yml`) — nothing hand-delivered. The sidecar is auto-injected via the
+> `netbird.io/setup-key` pod annotation.
+
+## Infra-side checklist (Authentik — done by the infra owner)
 
 - Authentik application + OIDC provider for kube-oidc-proxy:
   - **public client + PKCE** (no client secret),
@@ -110,8 +116,9 @@ users:
     reads (it validates the id_token). This is the silent authenticated-but-Forbidden failure mode.
 - Authentik groups `k8s-admins`, `k8s-viewers` with membership (the proxy prefixes them to
   `oidc:k8s-admins` / `oidc:k8s-viewers` for RBAC).
-- NetBird access policy permitting the sidecar peer group (`spectrum-${NETWORK}`) → `authentik.infra:443`.
-- Confirm `authentik.infra`'s serving cert chains to the Fluence Mesh Root (for `--oidc-ca-file`).
+
+> NetBird: no extra policy needed — `authentik.infra`'s NBResource policy source group is `All`, so
+> the auto-injected sidecar peer can reach it out of the box (same as Grafana's back-channel).
 - Confirm beam runs **Talos ≥ 1.8** (the netbird sidecar mounts `/dev/net/tun`; the runc 1.2.0–1.2.3
   TUN regression does not apply on ≥ 1.8 / runc ≥ 1.2.4).
 

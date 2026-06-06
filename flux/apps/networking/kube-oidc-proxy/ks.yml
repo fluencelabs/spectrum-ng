@@ -27,3 +27,6 @@ spec:
         optional: true
   dependsOn:
     - name: cert-manager
+    # netbird-operator (>=0.3.x) provides the SetupKey CRD + the sidecar-injection webhook the pod
+    # annotation relies on (netbird-setupkey.yml / deployment.yml). Ensures both exist before reconcile.
+    - name: netbird-operator
