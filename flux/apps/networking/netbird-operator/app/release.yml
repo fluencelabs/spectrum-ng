@@ -58,5 +58,11 @@ spec:
     ingress:
       enabled: true
       allowAutomaticPolicyCreation: true
+      # The routing peer is managed by our own inline NBRoutingPeer (netbird-operator-config), so keep
+      # the chart's ingress-router OFF. router.enabled must still be present: the chart template does
+      # `and .Values.ingress.enabled .Values.ingress.router.enabled` and Go's `and` evaluates both
+      # args, so a nil `ingress.router` nil-pointers the helm upgrade.
+      router:
+        enabled: false
     gatewayAPI:
       enabled: false
