@@ -5,26 +5,22 @@ metadata:
   namespace: kube-oidc-proxy
 ---
 # The proxy authenticates to the real apiserver as this SA, then sets impersonation headers from the
-# validated OIDC token. Blast radius is narrowed two ways: (1) users impersonate is unscoped (per-user
-# names can't be allowlisted) but the oidc: username prefix makes a system:* username impossible;
-# (2) groups impersonate is restricted by resourceNames to exactly the bound groups PLUS
-# system:authenticated (kube-oidc-proxy always appends system:authenticated to the impersonated
-# groups — omitting it Forbids every request). No userextras grant: the proxy emits no extras with
-# this flag set (no --extra-user-header-client-ip). serviceaccounts impersonate is deliberately NOT
-# granted. NOTE: the resourceNames list is coupled to deployment.yml's --oidc-groups-prefix and
-# rbac-users.yml's subjects — adding a tier means updating all three.
+# validated OIDC token. The proxy passes through EVERY group in the token (prefixed `oidc:`), and a
+# real user has many Authentik groups (devops, grafana-admins, vault-admins, …) — so the groups
+# impersonate verb is UNRESTRICTED (a resourceNames allowlist would 403 the whole request the moment
+# the token carries any group not on the list). Safety comes from `--oidc-username-prefix=oidc:` /
+# `--oidc-groups-prefix=oidc:`: every impersonated user/group is namespaced under `oidc:`, so a token
+# can never impersonate `system:masters` or any privileged `system:*` identity. Only `oidc:devops`
+# (→cluster-admin) and `oidc:dev` (→view) have RBAC bindings; all other `oidc:*` groups grant nothing.
+# serviceaccounts impersonate is deliberately NOT granted.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: kube-oidc-proxy
 rules:
   - apiGroups: [""]
-    resources: ["users"]
+    resources: ["users", "groups"]
     verbs: ["impersonate"]
-  - apiGroups: [""]
-    resources: ["groups"]
-    verbs: ["impersonate"]
-    resourceNames: ["oidc:devops", "oidc:dev", "system:authenticated"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
