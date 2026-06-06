@@ -68,8 +68,8 @@ spec:
       #     2026-06-05 (getent + OIDC discovery 200; see PR #142).
       # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (infra Issuer
       # fluence-root-ca; chain leaf->root, no intermediate — confirmed issuer=CN=Fluence Mesh Root CA).
-      # Grafana's server-side OAuth client must trust that root explicitly; mounted from the bootstrap
-      # ConfigMap fluence-mesh-root-ca (public cert only; see deployment volumes).
+      # Grafana's server-side OAuth client must trust that root explicitly; mounted from the ca.crt of
+      # the fluence-mesh-intermediate secret (= the public Fluence Mesh Root cert; see deployment volumes).
       auth_url: "https://authentik.infra/application/o/authorize/"
       token_url: "https://authentik.infra/application/o/token/"
       api_url: "https://authentik.infra/application/o/userinfo/"
@@ -182,12 +182,17 @@ spec:
             - name: grafana-data
               persistentVolumeClaim:
                 claimName: grafana-pvc
-            # Fluence Mesh Root (public CA cert only — no key) for tls_client_ca. Bootstrap ConfigMap,
-            # hand-delivered like the fluence-mesh-intermediate secret (the root key never leaves
-            # infrahub; the cert is public). Key `root.crt`.
+            # Fluence Mesh Root (public CA cert) for tls_client_ca — sourced from the ca.crt of the
+            # fluence-mesh-intermediate bootstrap secret (already required on every cluster; its ca.crt
+            # IS the self-signed CN=Fluence Mesh Root CA). Reusing it avoids a second hand-delivered
+            # object: a missing standalone configmap wedged the grafana pod in ContainerCreating
+            # (8h outage on stage 2026-06-05). Projected to root.crt to match tls_client_ca above.
             - name: fluence-ca
-              configMap:
-                name: fluence-mesh-root-ca
+              secret:
+                secretName: fluence-mesh-intermediate
+                items:
+                  - key: ca.crt
+                    path: root.crt
           securityContext:
             # Only fsGroup at pod level (RWO PVC group ownership). runAsUser/runAsGroup/runAsNonRoot
             # are set on the grafana CONTAINER instead, so the operator-injected netbird sidecar (which
