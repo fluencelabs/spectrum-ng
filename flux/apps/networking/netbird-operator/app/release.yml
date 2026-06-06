@@ -48,9 +48,15 @@ spec:
       # Ignore so a transiently-unavailable operator never blocks pod scheduling cluster-wide (with
       # the default Fail it would). Injection still happens whenever the webhook is up.
       failurePolicy: Ignore
-    # We expose mesh resources via explicit NBResource CRs (see netbird-services), not the chart's
-    # Service-annotation ingress path; and we don't use Gateway API here.
+    # netbird-services exposes mesh names two ways and BOTH need the operator's "ingress"
+    # (Service-annotation) path: explicit NBResource CRs (grafana-spectrum / kube-oidc-proxy-spectrum,
+    # created by Jobs) AND `netbird.io/expose` Service annotations (the `grafana` and `k8s` Services,
+    # which the operator turns into NBResources + policies). 0.4.0+ made this opt-in (default off) and
+    # calls it "ingress"; on 0.3.x it was always on. Keep it on, with automatic policy creation since
+    # those Services declare netbird.io/policy-*. Verified on stage 2026-06-06: with enabled:false the
+    # grafana/k8s NBResources are never created and their mesh endpoints break. Gateway API unused.
     ingress:
-      enabled: false
+      enabled: true
+      allowAutomaticPolicyCreation: true
     gatewayAPI:
       enabled: false
