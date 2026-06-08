@@ -99,6 +99,7 @@ spec:
                 networkID: $${NETID}
                 groups:
                   - spectrum-${NETWORK}
+                policyName: spectrum-${NETWORK}-access
                 tcpPorts:
                   - 443
               EOF
