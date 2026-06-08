@@ -13,3 +13,8 @@ spec:
   bidirectional: false
   protocols:
     - tcp
+  # netbird-operator v0.6.0 treats tcp/udp as "restricted protocols" and drops the rule
+  # if no ports are set ("0 ports found for protocol tcp"), so the policy never reaches
+  # NetBird. The spectrum mesh services (grafana, kube-oidc-proxy) serve on 443.
+  ports:
+    - 443
