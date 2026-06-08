@@ -99,5 +99,8 @@ spec:
                 networkID: $${NETID}
                 groups:
                   - spectrum-${NETWORK}
+                policyName: spectrum-${NETWORK}-access
+                tcpPorts:
+                  - 443
               EOF
               echo "applied NBResource grafana-spectrum -> grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
