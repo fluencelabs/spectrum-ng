@@ -100,5 +100,7 @@ spec:
                 networkID: $${NETID}
                 groups:
                   - spectrum-${NETWORK}
+                tcpPorts:
+                  - 443
               EOF
               echo "applied NBResource kube-oidc-proxy-spectrum -> k8s.${CLUSTER_ID}.${NETWORK}.spectrum"
