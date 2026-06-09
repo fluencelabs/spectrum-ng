@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.2.0](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.10...v0.2.0) (2026-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* Migrate to crd operator ([#105](https://github.com/fluencelabs/spectrum-ng/issues/105))
+
+### Features
+
+* add crd readiness metrics/alets ([#134](https://github.com/fluencelabs/spectrum-ng/issues/134)) ([9572986](https://github.com/fluencelabs/spectrum-ng/commit/9572986b0e6d48472485172ddb375e8b50e97e47))
+* add netbird operator stack for cluster mesh networking ([#128](https://github.com/fluencelabs/spectrum-ng/issues/128)) ([9d7e34a](https://github.com/fluencelabs/spectrum-ng/commit/9d7e34a8976daa465d5f61ed411921539c871831))
+* Grafana OIDC login via Authentik ([#140](https://github.com/fluencelabs/spectrum-ng/issues/140)) ([b33e8bd](https://github.com/fluencelabs/spectrum-ng/commit/b33e8bd79cab01e21d4dcc8c96fec69c4d35c50a))
+* Grafana OIDC token/userinfo over mesh-only authentik.infra ([#142](https://github.com/fluencelabs/spectrum-ng/issues/142)) ([5dbc165](https://github.com/fluencelabs/spectrum-ng/commit/5dbc16533dadbdc372f55c4bfe835e05bdf70aa3))
+* kube-oidc-proxy — OIDC kubectl access to beam over mesh (Authentik) ([#145](https://github.com/fluencelabs/spectrum-ng/issues/145)) ([4510dab](https://github.com/fluencelabs/spectrum-ng/commit/4510dab2d81bc34fdf273fcfb4c789d017f26faf))
+* **kubevirt:** enable VolumesUpdateStrategy + VolumeMigration gates ([#141](https://github.com/fluencelabs/spectrum-ng/issues/141)) ([131c583](https://github.com/fluencelabs/spectrum-ng/commit/131c583032d768532158393731cca10860424c68))
+* Migrate to crd operator ([#105](https://github.com/fluencelabs/spectrum-ng/issues/105)) ([774d17a](https://github.com/fluencelabs/spectrum-ng/commit/774d17a7efa12437f23a8a87de7e0ee9a01e4704))
+* **netbird:** upgrade operator to v0.6.0 (OCI chart) + inline routing-peer CR ([#146](https://github.com/fluencelabs/spectrum-ng/issues/146)) ([4bda518](https://github.com/fluencelabs/spectrum-ng/commit/4bda51808cb10ad19bed93623eefcc9319f33c1e))
+* **networking:** deploy NetBird on testnet and mainnet so Grafana mesh OIDC works on all clusters ([#144](https://github.com/fluencelabs/spectrum-ng/issues/144)) ([bdce6ce](https://github.com/fluencelabs/spectrum-ng/commit/bdce6ce0e703744c828d8ae3753580d832674879))
+* remove kubevirt VMI alerts ([#138](https://github.com/fluencelabs/spectrum-ng/issues/138)) ([8475683](https://github.com/fluencelabs/spectrum-ng/commit/84756831b23bd4b2e68c10363c651d3594aec8df))
+
+
+### Bug Fixes
+
+* add grafana http router ([9553003](https://github.com/fluencelabs/spectrum-ng/commit/955300360fc84f0a0844d78f59555e531250d682))
+* add grafana http router ([#114](https://github.com/fluencelabs/spectrum-ng/issues/114)) ([48785ca](https://github.com/fluencelabs/spectrum-ng/commit/48785ca65deb43ce162f7a1cca0e53da822e0050))
+* add observability on stage ([#113](https://github.com/fluencelabs/spectrum-ng/issues/113)) ([b2a364c](https://github.com/fluencelabs/spectrum-ng/commit/b2a364c840b648b8386f24f7fb5ca9b186d31fb7))
+* added a crd alerts ([#111](https://github.com/fluencelabs/spectrum-ng/issues/111)) ([482a69d](https://github.com/fluencelabs/spectrum-ng/commit/482a69da07cd8d419591e8878e722a6cf316edaf))
+* crd condition metrics corrections ([#137](https://github.com/fluencelabs/spectrum-ng/issues/137)) ([927d997](https://github.com/fluencelabs/spectrum-ng/commit/927d9972e89e2c0665816a7f5f94275852021ad7))
+* crd rules ([ee03233](https://github.com/fluencelabs/spectrum-ng/commit/ee03233d14176f72a477208e7b8b817f27dae5e3))
+* crd rules logql ([#119](https://github.com/fluencelabs/spectrum-ng/issues/119)) ([ee03233](https://github.com/fluencelabs/spectrum-ng/commit/ee03233d14176f72a477208e7b8b817f27dae5e3))
+* **crd:** update crd on mainnet ([#109](https://github.com/fluencelabs/spectrum-ng/issues/109)) ([adb8acb](https://github.com/fluencelabs/spectrum-ng/commit/adb8acb9e7e203f38aed54d771806715cf62dd56))
+* Fix flux observability ([#104](https://github.com/fluencelabs/spectrum-ng/issues/104)) ([9db5a2e](https://github.com/fluencelabs/spectrum-ng/commit/9db5a2e33c2749114c171954dec6331945382667))
+* **grafana:** source mesh root CA for tls_client_ca from fluence-mesh-intermediate secret ([#143](https://github.com/fluencelabs/spectrum-ng/issues/143)) ([2ce385a](https://github.com/fluencelabs/spectrum-ng/commit/2ce385aa774904dbb96ce1c7511d2456232d85e7))
+* improved vm paused alerts ([#125](https://github.com/fluencelabs/spectrum-ng/issues/125)) ([8d3d4b2](https://github.com/fluencelabs/spectrum-ng/commit/8d3d4b245bbdeee0b8ef45d2965ae8b1243ba3cf))
+* **lightmare:** update ([#107](https://github.com/fluencelabs/spectrum-ng/issues/107)) ([80302fb](https://github.com/fluencelabs/spectrum-ng/commit/80302fb808e8194fd073e6dc69d4edd3a8019c6a))
+* **netbird:** add tcpPorts 443 to spectrum NBResources so access policy is created (operator v0.6.0) ([#147](https://github.com/fluencelabs/spectrum-ng/issues/147)) ([b445acf](https://github.com/fluencelabs/spectrum-ng/commit/b445acfcdec3b05a86f6fda10fd633d88de04040))
+* **netbird:** dns flow ([#135](https://github.com/fluencelabs/spectrum-ng/issues/135)) ([725c753](https://github.com/fluencelabs/spectrum-ng/commit/725c753e549df61a5e8a973d24eb01c1579422bd))
+* **observability:** bump node-exporter memory limit 64M → 256M (OOMKill on mainnet) ([#148](https://github.com/fluencelabs/spectrum-ng/issues/148)) ([9f9eedf](https://github.com/fluencelabs/spectrum-ng/commit/9f9eedfd2dd52bb525a47e350ebe13e9be4aeb19))
+* update crd on testnet ([#112](https://github.com/fluencelabs/spectrum-ng/issues/112)) ([259c41e](https://github.com/fluencelabs/spectrum-ng/commit/259c41eee8534f2132afc957d51de84bcb078ff9))
+* update lightmare ([#127](https://github.com/fluencelabs/spectrum-ng/issues/127)) ([ca0329c](https://github.com/fluencelabs/spectrum-ng/commit/ca0329c7a9f0b5525645eacb706f52578dcbe6c6))
+* update lightmare ([#130](https://github.com/fluencelabs/spectrum-ng/issues/130)) ([1a8d5ee](https://github.com/fluencelabs/spectrum-ng/commit/1a8d5ee827831b7f0d2256d5e152661e24de3161))
+* update lightmare ([#132](https://github.com/fluencelabs/spectrum-ng/issues/132)) ([2a46bf2](https://github.com/fluencelabs/spectrum-ng/commit/2a46bf25da38d460784d264649c6ed74ab498dbf))
+
 ## [0.1.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.9...v0.1.10) (2026-03-24)
 
 
