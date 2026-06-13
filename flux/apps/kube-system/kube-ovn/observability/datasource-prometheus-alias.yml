@@ -1,0 +1,25 @@
+# Alias datasource that exists solely to satisfy the kube-ovn dashboards, whose
+# `datasource` template variable is hardcoded to the value "prometheus" (see
+# dashboard.yml). It points at the same VictoriaMetrics backend (vmsingle) and
+# is NOT default, so it does not affect dashboards that resolve the default
+# datasource. Without it the `$datasource`-bound panels error with
+# "Datasource prometheus was not found".
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus-alias
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  allowCrossNamespaceImport: true
+  datasource:
+    name: prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://vmsingle-stack.observability.svc:8429
+    isDefault: false
+    jsonData:
+      prometheusType: Prometheus
+      timeInterval: 15s
