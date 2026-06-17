@@ -29,6 +29,6 @@ spec:
     vmApi:
       image:
         repository: "docker.fluence.dev/crd-vm-api"
-        tag: "0.2.0"
+        tag: "0.3.0"
       jwt:
         jwksUrl: "https://api.fluence.dev/v1/internal/.well_known/jwks.json"
