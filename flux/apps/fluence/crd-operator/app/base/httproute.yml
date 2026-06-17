@@ -26,7 +26,6 @@ metadata:
   name: crd-operator-vm-api
 spec:
   hostnames:
-    - vm-api.${NETWORK}-${PROVIDER}.cloudless.dev
     - vm-api.${CLUSTER_ID}.${NETWORK}.cloudless.dev
   parentRefs:
     - name: eg-gw
