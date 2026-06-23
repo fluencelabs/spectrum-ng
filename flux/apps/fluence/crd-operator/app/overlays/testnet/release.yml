@@ -11,24 +11,24 @@ spec:
   values:
     controller:
       image:
-        repository: "docker.fluence.dev/crd-controller"
+        repository: "containers.cloudless.dev/crd-controller"
         tag: "0.7.0"
       persistence:
         storageClassName: lvm-thin-r2
 
     api:
       image:
-        repository: "docker.fluence.dev/crd-api"
+        repository: "containers.cloudless.dev/crd-api"
         tag: "0.10.0"
 
     admission:
       image:
-        repository: "docker.fluence.dev/crd-admission"
+        repository: "containers.cloudless.dev/crd-admission"
         tag: "0.4.1"
 
     vmApi:
       image:
-        repository: "docker.fluence.dev/crd-vm-api"
+        repository: "containers.cloudless.dev/crd-vm-api"
         tag: "0.3.0"
       jwt:
         jwksUrl: "https://api.testnet.fluence.dev/v1/internal/.well_known/jwks.json"
