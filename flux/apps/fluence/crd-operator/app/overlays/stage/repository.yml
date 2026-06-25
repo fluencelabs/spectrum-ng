@@ -5,7 +5,8 @@ metadata:
 spec:
   interval: 1m
   ref:
-    tag: spectrum-stage
+    branch: feat/image-crd
+    commit: 6c14814a4f0b84babdbcf4155720f8eafa4ce294
   secretRef:
     name: lightmare-ssh-creds
   timeout: 60s

@@ -4,5 +4,6 @@ resources:
   - ../../base
   - repository.yml
   - httproute.yml
+  - namespace.yml
 patches:
   - path: release.yml

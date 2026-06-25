@@ -14,9 +14,21 @@ spec:
       reconcileStrategy: Revision
   values:
     controller:
+      image:
+        tag: feat-image-crd-6c14814-3666-1
       persistence:
         storageClassName: lvm-thin-r1
-
+      config:
+        # ImageModule provisions golden DataVolumes here; class must exist on stage
+        LTM_CRD_CTRL__INFRA__IMAGE_STORAGE_CLASS_NAME: lvm-thin-r1
+    api:
+      image:
+        tag: feat-image-crd-6c14814-3666-1
+    admission:
+      image:
+        tag: feat-image-crd-6c14814-3666-1
     vmApi:
+      image:
+        tag: feat-image-crd-6c14814-3666-1
       jwt:
         jwksUrl: "https://api.stage.fluence.dev/v1/internal/.well_known/jwks.json"
