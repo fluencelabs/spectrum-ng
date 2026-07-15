@@ -15,6 +15,10 @@ spec:
   values:
     features:
       enableLoadbalancerService: true
+      # Egress gate: enables OvnEip / VPC enableExternal (--enable-external-vpc).
+      # Per-cluster via ${ENABLE_EXTERNAL_VPCS} (spectrum-vars); default off so
+      # clusters that don't set the var are unaffected.
+      enableExternalVpcs: ${ENABLE_EXTERNAL_VPCS:=false}
 
     images:
       kubeovn:
