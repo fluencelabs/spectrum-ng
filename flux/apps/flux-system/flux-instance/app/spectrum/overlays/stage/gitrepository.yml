@@ -4,4 +4,4 @@ metadata:
   name: spectrum
 spec:
   ref:
-    branch: feat/egress-external-vpc-params
+    branch: main
