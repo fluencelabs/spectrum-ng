@@ -1,3 +1,11 @@
+# Upstream kube-ovn dashboards declare a `DS_PROMETHEUS` input and a `datasource`
+# template variable hardcoded to the value "prometheus". This cluster's
+# Prometheus-compatible datasource is "VictoriaMetrics" (uid victoria-metrics),
+# so both references are unresolved out of the box and every panel errors with
+# "Datasource ... was not found". Two-part fix:
+#   1. spec.datasources below maps the ${DS_PROMETHEUS} input -> VictoriaMetrics.
+#   2. A `prometheus`-uid GrafanaDatasource alias (datasource-prometheus-alias.yml)
+#      satisfies the hardcoded `$datasource` template variable.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
@@ -8,6 +16,9 @@ spec:
       dashboards: "grafana"
   folder: Kube-OVN
   allowCrossNamespaceImport: true
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
   url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/cni-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -20,6 +31,9 @@ spec:
       dashboards: "grafana"
   folder: Kube-OVN
   allowCrossNamespaceImport: true
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
   url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/controller-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -32,6 +46,9 @@ spec:
       dashboards: "grafana"
   folder: Kube-OVN
   allowCrossNamespaceImport: true
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
   url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovn-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -44,6 +61,9 @@ spec:
       dashboards: "grafana"
   folder: Kube-OVN
   allowCrossNamespaceImport: true
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
   url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/pinger-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -56,4 +76,7 @@ spec:
       dashboards: "grafana"
   folder: Kube-OVN
   allowCrossNamespaceImport: true
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
   url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovs-grafana.json"
