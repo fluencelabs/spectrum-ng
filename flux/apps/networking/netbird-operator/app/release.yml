@@ -11,7 +11,7 @@ spec:
       # CRDs (NBRoutingPeer/NBResource/NBPolicy/NBGroup/NBSetupKey) used elsewhere in this repo are
       # all still served by 0.6.0. New in 0.4.0+: an admission webhook (see values.webhook below).
       chart: netbird-operator
-      version: "0.6.0"
+      version: "0.8.0"
       sourceRef:
         kind: HelmRepository
         name: netbirdio
