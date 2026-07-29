@@ -97,6 +97,22 @@ spec:
           summary: "OVN database is unhealthy"
           description: "OVN {{ $labels.database }} database is unhealthy on {{ $labels.instance }}"
 
+      # Metric comes from kube-state-metrics customResourceState
+      # (flux/apps/observability/kube-state-metrics), not from kube-ovn itself —
+      # kube-ovn exports no metric for ProviderNetwork readiness.
+      # `for` is deliberately longer than the CNI resync interval (~17m) so a
+      # node still initialising its bridge does not flap the alert.
+      - alert: ProviderNetworkNodeNotReady
+        expr: kubeovn_providernetwork_condition{condition_type="Ready"} == 0
+        for: 30m
+        labels:
+          team: devops
+          severity: critical
+          component: provider-network
+        annotations:
+          summary: "Provider network is not ready on a node"
+          description: "ProviderNetwork {{ $labels.name }} is not ready on node {{ $labels.node }} (reason: {{ $labels.condition_reason }}). The OVS bridge for this underlay is missing on that node, so VLAN-backed networking — public IPs and egress — is dead there while the node itself stays Ready and every OVN/OVS component stays healthy."
+
       - alert: OVNChassisDown
         expr: kube_ovn_chassis_info == 0
         for: 2m
