@@ -1,18 +1,22 @@
 # Attaches the LINSTOR satellite to the dedicated storage network so DRBD
-# replication can leave the Geneve overlay.
+# replication leaves the Geneve overlay.
 #
-# This is the prerequisite, not the whole move: Piraeus registers only the
-# PRIMARY pod IP with LINSTOR, so after rollout the netinterface still has to be
-# created per node and selected for replication:
-#   linstor node interface create <node> storage <ip>
-#   linstor node set-property <node> PrefNic storage
+# One step stays manual, per node, and has no declarative form in Piraeus —
+# registering the interface itself:
+#   linstor node interface create <node> storage <ip-from-the-pool-below>
+# Piraeus only ever registers the PRIMARY pod IP (it tracks its own set in the
+# node property Aux/piraeus.io/configured-interfaces) and leaves interfaces it
+# did not create alone — verified on stage across a satellite restart, where it
+# rewrote default-ipv4 to the new pod IP and left `storage` untouched.
+#
 # Upstream documents only container-network and hostNetwork
 # (docs/how-to/drbd-host-networking.md), so this path is ours to maintain.
 #
 # ip_pool pins the address: a LINSTOR netinterface holds a literal IP, and a
-# dynamically reallocated one would go stale on every satellite restart. The pool
-# needs one entry per node running a satellite — extend it as nodes are added,
-# which is why this lives in the overlay and not in the shared base.
+# dynamically reallocated one would go stale on every satellite restart — the
+# same restart that showed the primary IP moving from 10.16.9.255 to 10.16.10.1.
+# The pool needs one entry per node running a satellite; extend it as nodes are
+# added, which is why this lives in the overlay and not in the shared base.
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
 metadata:
@@ -23,3 +27,11 @@ spec:
       annotations:
         k8s.v1.cni.cncf.io/networks: storage/linstor
         linstor.storage.ovn.kubernetes.io/ip_pool: "${STORAGE_SATELLITE_IPS}"
+  # Points DRBD replication at the interface registered above. The satellite's
+  # own control connection to the controller stays on the pod network
+  # (CurStltConnName remains default-ipv4) — only replication moves.
+  # Overlay-scoped on purpose: on a cluster without that interface, PrefNic
+  # would name a NIC that does not exist.
+  properties:
+    - name: PrefNic
+      value: storage
