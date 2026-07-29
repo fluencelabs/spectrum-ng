@@ -37,3 +37,10 @@ spec:
       - kind: ConfigMap
         name: spectrum-manual-vars
         optional: false
+      # CLOUDFLARE_TOKEN belongs here, not in the ConfigMap above. Listed last so
+      # it wins while a cluster still carries the old plaintext copy: Flux lets a
+      # later source override an earlier one, which makes the move a two-step —
+      # seed the Secret, then drop the ConfigMap key.
+      - kind: Secret
+        name: spectrum-manual-secrets
+        optional: true

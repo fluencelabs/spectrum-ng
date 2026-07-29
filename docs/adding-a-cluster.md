@@ -38,8 +38,8 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `CLOUDFLARE_TOKEN`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_CIDR`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU`, and `STORAGE_VLAN` where beam did not supply it |
-| `spectrum-manual-secrets` | Secret | **manual** | optional (grafana only) | `GRAFANA_OIDC_CLIENT_SECRET` |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_CIDR`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU`, and `STORAGE_VLAN` where beam did not supply it |
+| `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
 > variables are optional. `CLUSTER_ID` etc. are still required for manifests to render
@@ -55,7 +55,7 @@ tokens in the manifests are filled from them at apply time.
 | `PROVIDER` | `spectrum-manual-vars` | external-dns `txtOwnerId`, crd-api host | required (external-dns ks requires manual-vars) |
 | `PUBLIC_SUBNET_LIST` | `spectrum-manual-vars` | crd-operator controller public-network subnets | |
 | `ENVOY_PUBLIC_SUBNET` | `spectrum-manual-vars` | envoy proxy | required (envoy ks requires manual-vars) |
-| `CLOUDFLARE_TOKEN` | `spectrum-manual-vars` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | ⚠️ plaintext token in a ConfigMap — cert-manager/external-dns ks have no Secret source |
+| `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
 | `STORAGE_VLAN` | `spectrum-vars` where beam supplied it, otherwise `spectrum-manual-vars` | piraeus `linstor` Subnet | ⚠️ the quotes are part of the value — write `"504"`. `vlan` is a string in the CRD, and an unquoted value renders as a number the CRD rejects. beam writes it the same way |
@@ -154,12 +154,12 @@ node's interface. These are per-cluster hardware facts, deliberately not in any 
      --from-literal=PROVIDER=<provider> \
      --from-literal=PUBLIC_SUBNET_LIST=<list> \
      --from-literal=ENVOY_PUBLIC_SUBNET=<cidr> \
-     --from-literal=CLOUDFLARE_TOKEN=<cf_token> \
      --from-literal=GRAFANA_OIDC_CLIENT_ID=<oidc_client_id>
 
-   # Substitution Secret (OIDC client secret)
+   # Substitution Secret (anything sensitive)
    kubectl -n flux-system create secret generic spectrum-manual-secrets \
-     --from-literal=GRAFANA_OIDC_CLIENT_SECRET=<oidc_client_secret>
+     --from-literal=GRAFANA_OIDC_CLIENT_SECRET=<oidc_client_secret> \
+     --from-literal=CLOUDFLARE_TOKEN=<cf_token>
 
    # Standalone secrets
    kubectl create namespace networking
@@ -244,9 +244,12 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
    live there. Note beam's storage bootstrap step currently fails on every cluster (it
    POSTs a namespaced CRD through a cluster-scoped path and gets a plain-text 404), so in
    practice new clusters supply all three `STORAGE_*` vars by hand.
-3. **`CLOUDFLARE_TOKEN` lives in a ConfigMap** (`spectrum-manual-vars`) in plaintext —
-   cert-manager/external-dns Kustomizations have no Secret substitution source. It is
-   baked into Opaque Secrets at apply time.
+3. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
+   `spectrum-manual-vars` in plaintext, because `cluster-issuers` and
+   `external-dns-cloudflare` had no Secret substitution source; they do now, and the
+   token belongs in `spectrum-manual-secrets`. On a cluster still carrying the old copy,
+   the Secret wins (it is listed last), so seed it first and drop the ConfigMap key
+   afterwards. Either way the value is baked into Opaque Secrets at apply time.
 4. **Don't force-remove NetBird CR finalizers** on teardown — the operator owns
    control-plane cleanup.
 5. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
@@ -264,8 +267,8 @@ on infra-stage):
 | Object | Keys found on stage |
 |---|---|
 | `spectrum-vars` (CM) | `NETWORK` **only** — beam injects nothing else |
-| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `CLOUDFLARE_TOKEN`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS` |
-| `spectrum-manual-secrets` (Secret) | `GRAFANA_OIDC_CLIENT_SECRET` |
+| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU` |
+| `spectrum-manual-secrets` (Secret) | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 | `netbird-api-token` (Secret, networking) | `NB_API_KEY` |
 | `alertmanager-config` (Secret, observability) | `alertmanager.yaml` |
 | `fluence-mesh-intermediate` (Secret, observability) | `ca.crt`, `tls.crt`, `tls.key` |
