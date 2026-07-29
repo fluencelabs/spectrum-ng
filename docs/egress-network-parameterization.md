@@ -1,69 +1,102 @@
-# Egress network — ownership split & per-cluster parameterization
+# Egress — ownership split & per-cluster parameterization
 
-Status: **design approved** (2026-07-15). Implementation: spectrum-ng (GitOps) + cluster-vars; no beam/lightmare code change required for the reuse-subnet-temp path.
+Status: **in production on kabat-stage**. Implementation: spectrum-ng (GitOps) +
+per-cluster vars; the hub objects themselves are applied to the cluster.
 
-## Context
+Two clusters hide behind "stage": the DO **management** cluster
+(`talos.stage.cloudless.dev`, running beam/argo/flux) and the **workload**
+cluster `kabat-stage` — "spectrum", with kube-ovn, lightmare and the tenant VPCs.
+Egress lives on the workload cluster.
 
-- Custom-VPC egress = per-VPC `VpcEgressGateway`, reconciled by lightmare from `Subnet.egress` (shipped, lightmare PR #660 / NKS lightmare #246). Mechanism empirically confirmed on kabat-stage (NKS fluence #1095/#1157).
-- Gate on the cluster: kube-ovn controller flag **`--enable-external-vpc`** (helm value `features.enableExternalVpcs`, default `false`). Without it `OvnEip`/`enableExternal` don't work.
-- Two clusters behind "stage": the DO **management** cluster (`talos.stage.cloudless.dev`, runs beam/argo/flux) and the **workload** cluster **`kabat-stage`** = "spectrum" (KubeOVN + lightmare + tenant VPCs, behind `crd-api-open.stage-cloudless`). Egress lives on the workload cluster.
+## The shape: OVN-native hub-and-spoke
 
-## Who creates what (current, verified)
+One public IP for the entire cluster. A tenant VPC attaches to a shared egress
+fabric, gets its own **private** EIP there, and SNATs out of it; the hub then
+second-SNATs the whole fabric out the cluster's single public EIP. SNAT happens
+in the OVN router — there is no gateway pod, so no SPOF and no manual return
+route. Cost in public addresses: **two fixed** (the hub's external LRP and the
+public EIP), **zero per tenant**.
 
-| Object | Creator | Source of truth |
+Tenants are isolated structurally: their logical routers hold no routes to one
+another and each per-VPC EIP is SNAT-only, so tenant CIDRs may overlap freely.
+
+> The earlier per-VPC `VpcEgressGateway` form (lightmare PR #660) and the
+> `vpcPeerings` + `/30` transit-pool form are both **deprecated**. Peering was
+> dropped because it could not carry overlapping tenant CIDRs — see the module
+> doc at `crd-controller/src/controller/vpc/egress/mod.rs`. Attachment is by
+> `Vpc.spec.extraExternalSubnets`, not by peering.
+
+## Who creates what
+
+| Object | Creator |
+|---|---|
+| `Vlan`, `ProviderNetwork`, underlay `Subnet`s (incl. the public one) | **beam-agent**, from the beam DB |
+| Hub `Vpc`, `egress-fabric` `Subnet`, the public `OvnEip`, the hub `OvnSnatRule` | **applied to the cluster** (beam-owned in the long run) |
+| Node label `ovn.kubernetes.io/external-gw=true` | applied to the cluster |
+| kube-ovn controller gate, lightmare egress config | **spectrum-ng** (this repo), from the vars below |
+| Per-VPC `OvnEip` on the fabric, per-subnet `OvnSnatRule`, the tenant's `extraExternalSubnets` + default route | **lightmare controller**, reconciled from `Subnet.egress` — never by hand |
+
+## Per-cluster variables (`spectrum-manual-vars`)
+
+| Var | Meaning | kabat-stage |
 |---|---|---|
-| `Vlan`, `ProviderNetwork`, underlay `Subnet`s (incl. public `subnet-temp`) | **beam-agent** (`apply_config`/`add_subnet`) | **beam DB** (sent via gRPC `ApplyConfigRequest.vlan` etc.) |
-| NAD `public`, `Vpc underlay`, storage `Subnet linstor` (`vlan: ${STORAGE_VLAN}`) | **spectrum-ng GitOps** (`fluence-network/`, piraeus overlays) | spectrum-vars |
-| lightmare `PublicNetworkConfig.subnets` | lightmare, fed by spectrum | `LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS=${PUBLIC_SUBNET_LIST}` |
+| `ENABLE_EXTERNAL_VPCS` | kube-ovn `--enable-external-vpc`; without it `OvnEip` / `enableExternal` do nothing | `true` |
+| `EXTERNAL_NETWORK_ENABLED` | lightmare `ExternalNetworkConfig` | `true` |
+| `EGRESS_ENABLED` | lightmare `EgressConfig` feature gate | `true` |
+| `EGRESS_FABRIC_SUBNET` | name of the shared fabric subnet | `egress-fabric` |
+| `EGRESS_HUB_NEXT_HOP` | the hub's fabric-side LRP address | `100.65.0.2` |
 
-Note the existing split: the storage `Subnet` in spectrum references `${STORAGE_VLAN}`, but the `Vlan` object is beam-created from beam DB — so `STORAGE_VLAN` must be kept in sync with beam DB by hand (a known double-source; unifying it is out of scope here — see "Deferred").
+Five variables, and only five: `EgressConfig` has exactly two fields,
+`fabric_subnet` and `hub_next_hop`, plus the gate. `EGRESS_EXTERNAL_SUBNET`,
+`EGRESS_GW_NAMESPACE` and `EGRESS_REPLICAS` belonged to the deprecated per-VPC
+gateway form and are gone.
 
-## Decision: egress follows the existing pattern — **beam creates the network, spectrum passes config**
+`--enable-eip-snat=true` is also required; it is already the default on our
+clusters.
 
-No new ownership. For egress we do NOT move network creation into GitOps (that would be a beam-role refactor — deferred). Instead:
+**`EGRESS_FABRIC_SUBNET` is effectively immutable once tenants are wired.**
+Repointing it strands them on the old fabric: the previous name reads as foreign
+to `attach_fabric` and is left in place, while the persisted
+`status.egress_fabric_subnet` marker is overwritten, so nothing ever detaches the
+old attachment. Rewire only with no egress subnets in play.
 
-- **beam** owns the external gateway subnet the same way it owns the public one:
-  - **Reuse `subnet-temp`** (public `/29`, vlan 121) as the external gateway subnet if KubeOVN accepts it — then beam creates **nothing new**.
-  - Otherwise beam creates a dedicated `external` underlay subnet exactly like the public one (VLAN from beam DB). No beam code change either way — it's data.
-- **spectrum-ng** only *passes config / references* (no network objects for egress):
-  1. kube-ovn helm value — the controller gate.
-  2. lightmare egress config via `crd-operator` env — the external subnet **name** + gateway namespace + replicas + enable toggle.
-- **lightmare** reconciles `Subnet.egress → VpcEgressGateway` (already shipped, #660) using the passed external-subnet name.
+## Cluster-side prerequisites
 
-## Per-cluster variables (set in `spectrum-vars` / `spectrum-manual-vars`, like `PUBLIC_SUBNET_LIST`)
+- An external subnet on the underlay VLAN with a real routable block. On stage
+  the public `/29` (`subnet-temp`, vlan 121) is reused rather than a dedicated one.
+- `ovn.kubernetes.io/external-gw=true` on the nodes with an external uplink.
+  The label marks nodes *eligible* as the external LRP's gateway chassis: OVN
+  keeps **one** active, the rest are standby with BFD failover — it is not
+  "every node NATs for itself". Labelling a single node is legal and is what
+  stage does, at the cost of no failover.
+- Two free addresses in the public block. Budget them before enabling: a `/29`
+  that already serves ingress and tenant public IPs can be left with nothing.
 
-| Var | Meaning | stage | mainnet |
-|---|---|---|---|
-| `ENABLE_EXTERNAL_VPCS` | kube-ovn `--enable-external-vpc` | `true` | unset → `false` |
-| `EGRESS_EXTERNAL_SUBNET` | KubeOVN external subnet name for the gateway EIP | `subnet-temp` (or `external`) | — |
-| `EGRESS_GW_NAMESPACE` | privileged-PSA namespace for gateway pods | e.g. `networking` | — |
-| `EGRESS_REPLICAS` | gateway replicas | `1` | — |
-| `EXTERNAL_NETWORK_ENABLED` | lightmare `ExternalNetworkConfig` toggle (#1023) | `true` | unset |
+## Verifying — check the OVN topology, not CR status
 
-Same code on every cluster; egress turns on where these vars are set.
+CR status reports the controller's *intent*. Every object can read `READY` while
+not a single packet leaves. Before trusting any connectivity run:
 
-## GitOps changes (spectrum-ng)
+```
+kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl show <hub-vpc>
+```
 
-1. `flux/apps/kube-system/kube-ovn/app/release.yml` — under `values.features`:
-   ```yaml
-   enableExternalVpcs: ${ENABLE_EXTERNAL_VPCS}
-   ```
-2. `flux/apps/kube-system/kube-ovn/ks.yml` — add `postBuild.substituteFrom` (`spectrum-vars` + `spectrum-manual-vars`), mirroring `crd-operator/ks.yml`.
-3. `flux/apps/fluence/crd-operator/app/.../release.yml` — add env:
-   ```yaml
-   LTM_CRD_CTRL__EGRESS__EXTERNAL_SUBNET: ${EGRESS_EXTERNAL_SUBNET}
-   LTM_CRD_CTRL__EGRESS__GATEWAY_NAMESPACE: ${EGRESS_GW_NAMESPACE}
-   LTM_CRD_CTRL__EGRESS__REPLICAS: ${EGRESS_REPLICAS}
-   LTM_CRD_CTRL__EXTERNAL_NETWORK__ENABLED: ${EXTERNAL_NETWORK_ENABLED}
-   ```
-   (matches `EgressConfig{external_subnet, gateway_namespace, replicas}` + `ExternalNetworkConfig`.)
-4. Only if a **dedicated** `external` subnet is chosen over reusing `subnet-temp`: either beam creates it (preferred, its domain), or add it to `fluence-network/` overlay with `vlan: ${EGRESS_VLAN}`.
+The hub router must have all three:
 
-## Open / to confirm
+1. a port on the fabric holding the gateway address (e.g. `100.65.0.2/24`),
+2. a port on the external subnet with an address from its CIDR **and a bound
+   `gateway chassis`**,
+3. `nat snat: <public EIP> <- <fabric CIDR>`.
 
-- **Reuse `subnet-temp` vs dedicated `external`**: verify on kabat-stage whether KubeOVN accepts `subnet-temp` (the public NAD subnet) as the external-gateway/OvnEip subnet, or requires a dedicated one. This is the one empirical check before wiring vars.
-- Public IP economy: `subnet-temp` is a `/29` (~5 IPs). Hub-and-spoke (1 shared public IP) vs per-VPC EIP is a separate lightmare-reconciler question (NKS fluence #1157 vs shipped per-VPC #660) — not blocked by this parameterization.
+The classic trap is a half-built link: the switch port references a router port
+that does not exist. Check with `ovn-nbctl lsp-get-options <ext-subnet>-<vpc>`
+— the `router-port=<name>` it returns must appear in `ovn-nbctl show <vpc>`.
+If it does not, the router has no interface on the external network, the default
+route points at an unreachable next hop, and there is nothing for SNAT to apply
+to — while everything still looks `READY` from the outside. The cure is to
+toggle `Vpc.spec.extraExternalSubnets` (remove, re-add) so kube-ovn rebuilds the
+router port together with its gateway chassis. Physical and VLAN config need no
+changes.
 
-## Deferred
-
-- **2b — unify VLAN as a single spectrum source of truth** (beam reads VLAN from spectrum, or network creation moves fully to GitOps). Removes the beam-DB/spectrum-vars double-source, but is a beam ownership refactor. Out of scope; revisit if the double-source causes drift.
+`ovn-nbctl lr-route-list <hub>` catches the same trap independently: the default
+route's next hop must lie in a CIDR where the router actually has an interface.
