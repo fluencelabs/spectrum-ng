@@ -25,6 +25,16 @@ spec:
       - --exclude-record-types=AAAA
     serviceMonitor:
       enabled: true
+    # Sized from 14 days of cadvisor data on spectrum stage: memory peaked at
+    # ~16Mi, CPU at ~0.3m. The footprint tracks the number of managed records,
+    # so the memory limit keeps a wide margin. No CPU limit, to avoid throttling
+    # a process that is idle between reconcile intervals.
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32M
+      limits:
+        memory: 128M
     env:
       - name: CF_API_TOKEN
         valueFrom:
