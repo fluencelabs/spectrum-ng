@@ -113,7 +113,10 @@ spec:
                   TOKENS=$(curl -sf -H "Authorization: Token $T" "$API/users/$USER_ID/tokens")
                   NEWEST_AGE=$(echo "$TOKENS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end')
                   if [ "$NEWEST_AGE" != "-1" ] && [ "$NEWEST_AGE" -lt $((RENEW_AFTER_DAYS*86400)) ]; then
-                    echo "newest token ${NEWEST_AGE}s old (< ${RENEW_AFTER_DAYS}d), nothing to do"
+                    # The doubled dollar escapes Flux postBuild envsubst. NETWORK above is a real
+                    # substitution; the two below are shell vars and must stay literal. Keep
+                    # substitution syntax out of these comments — envsubst rewrites comment text too.
+                    echo "newest token $${NEWEST_AGE}s old (< $${RENEW_AFTER_DAYS}d), nothing to do"
                     exit 0
                   fi
 

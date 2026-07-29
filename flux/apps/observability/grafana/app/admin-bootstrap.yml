@@ -44,8 +44,11 @@ subjects:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  # Versioned name: Job specs are immutable, bump the suffix when the script changes.
-  name: grafana-admin-seed-1
+  # A Job's pod template is immutable; let Flux delete and recreate it when the
+  # script changes, instead of versioning the name by hand.
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
+  name: grafana-admin-seed
   namespace: observability
 spec:
   backoffLimit: 3
@@ -91,4 +94,8 @@ spec:
                 --from-literal=GF_SECURITY_ADMIN_USER=admin \
                 --from-literal=GF_SECURITY_ADMIN_PASSWORD="$PW" \
                 --dry-run=client -o yaml | kubectl -n "$NS" apply -f -
-              echo "seeded random admin password (len ${#PW})"
+              # The doubled dollar escapes Flux postBuild envsubst, which in strict mode would
+              # otherwise treat the shell length expansion below as a substitution variable and
+              # fail the build. Keep substitution syntax out of these comments — envsubst
+              # rewrites comment text too.
+              echo "seeded random admin password (len $${#PW})"
