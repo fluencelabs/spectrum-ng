@@ -54,7 +54,12 @@ metadata:
   name: netbird-token-rotate
   namespace: networking
 spec:
-  schedule: "0 3 * * 0" # weekly, Sun 03:00
+  # Daily, not weekly. The PAT lives PAT_EXPIRES_IN_DAYS and is renewed once it is
+  # older than RENEW_AFTER_DAYS, so the gap between "may renew" and "too late" is
+  # the budget of attempts this job gets. Weekly at 30/90 gave it 8; daily at
+  # 14/90 gives it over 70, so a run of failures has to go unnoticed for months
+  # rather than weeks before the token dies and locks the cluster out.
+  schedule: "23 3 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -90,7 +95,7 @@ spec:
                 - name: PAT_EXPIRES_IN_DAYS
                   value: "90"
                 - name: RENEW_AFTER_DAYS
-                  value: "30"
+                  value: "14"
                 - name: REVOKE_AFTER_DAYS
                   value: "40"
                 - name: NB_API_KEY
@@ -105,9 +110,20 @@ spec:
                   API="$NETBIRD_API"; T="$NB_API_KEY"
                   [ -n "$T" ] || { echo "NB_API_KEY empty"; exit 1; }
 
-                  USER_ID=$(curl -sf -H "Authorization: Token $T" "$API/users?service_user=true" \
-                    | jq -r --arg n "$SERVICE_USER" '[.[]|select(.is_service_user==true and .name==$n)]|(.[0].id // empty)')
-                  [ -n "$USER_ID" ] || { echo "service user $SERVICE_USER not found"; exit 1; }
+                  # Check the HTTP status before parsing. With curl -sf a rejected token
+                  # fails the pipe, jq reads nothing, and an empty USER_ID reads as
+                  # "service user not found" — which sent a real incident down the wrong
+                  # path. A dead PAT and a missing user need different answers, so they
+                  # get different messages.
+                  CODE=$(curl -s -o /tmp/users.json -w '%{http_code}' \
+                    -H "Authorization: Token $T" "$API/users?service_user=true")
+                  if [ "$CODE" != "200" ]; then
+                    echo "netbird API answered HTTP $CODE listing service users — the PAT is invalid, revoked or expired, not missing a user"
+                    exit 1
+                  fi
+
+                  USER_ID=$(jq -r --arg n "$SERVICE_USER" '[.[]|select(.is_service_user==true and .name==$n)]|(.[0].id // empty)' /tmp/users.json)
+                  [ -n "$USER_ID" ] || { echo "PAT is accepted, but service user $SERVICE_USER does not exist on this NetBird tenant"; exit 1; }
                   echo "service user $SERVICE_USER id=$USER_ID"
 
                   TOKENS=$(curl -sf -H "Authorization: Token $T" "$API/users/$USER_ID/tokens")
