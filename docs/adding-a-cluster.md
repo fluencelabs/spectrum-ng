@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `CLOUDFLARE_TOKEN`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_CIDR`, `STORAGE_SATELLITE_IPS`, and `STORAGE_VLAN` where beam did not supply it |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `CLOUDFLARE_TOKEN`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_CIDR`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU`, and `STORAGE_VLAN` where beam did not supply it |
 | `spectrum-manual-secrets` | Secret | **manual** | optional (grafana only) | `GRAFANA_OIDC_CLIENT_SECRET` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -61,6 +61,7 @@ tokens in the manifests are filled from them at apply time.
 | `STORAGE_VLAN` | `spectrum-vars` where beam supplied it, otherwise `spectrum-manual-vars` | piraeus `linstor` Subnet | ⚠️ the quotes are part of the value — write `"504"`. `vlan` is a string in the CRD, and an unquoted value renders as a number the CRD rejects. beam writes it the same way |
 | `STORAGE_CIDR` | `spectrum-manual-vars` | piraeus `linstor` Subnet | required on every cluster whose overlay has `network.yml` — no default, a missing value fails the build on purpose |
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite (stage overlay) | one address per node running a satellite, taken from `STORAGE_CIDR`; see §3 |
+| `STORAGE_MTU` | `spectrum-manual-vars` | piraeus `linstor` Subnet `spec.mtu` (stage overlay) | what the cluster's storage port actually carries, usually 1500. Without it kube-ovn defaults pods to 1400, which reserves room for Geneve headers that a VLAN underlay never adds |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
