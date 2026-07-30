@@ -25,6 +25,9 @@ spec:
         - apiGroups: ["cloudless.dev"]
           resources: ["workspaces", "storages", "vpcs", "subnets", "public-ips", "virtualmachines", "security-groups"]
           verbs: ["list", "watch"]
+        - apiGroups: ["kubeovn.io"]
+          resources: ["provider-networks"]
+          verbs: ["list", "watch"]
 
     customResourceState:
       enabled: true
@@ -192,6 +195,33 @@ spec:
                       path: [status, conditions]
                       valueFrom: [status]
                       labelsFromPath:
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            # ProviderNetwork carries one condition PER NODE (each entry has its
+            # own `node` field), so a network can be Ready cluster-wide while a
+            # single node fails to build its OVS bridge. That per-node failure is
+            # what the ProviderNetworkNodeNotReady alert watches — nothing else
+            # surfaces it: the kube-ovn/OVS components stay healthy and the k8s
+            # Node stays Ready, only VLAN-backed traffic on that node is dead.
+            - groupVersionKind:
+                group: kubeovn.io
+                version: v1
+                kind: ProviderNetwork
+              labelsFromPath:
+                name: [metadata, name]
+              metrics:
+                - name: kubeovn_providernetwork_condition
+                  help: "kube-ovn ProviderNetwork per-node condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      valueFrom: [status]
+                      labelsFromPath:
+                        node: [node]
                         condition_type: [type]
                         condition_status: [status]
                         condition_reason: [reason]
