@@ -103,7 +103,11 @@ spec:
       # `for` is deliberately longer than the CNI resync interval (~17m) so a
       # node still initialising its bridge does not flap the alert.
       - alert: ProviderNetworkNodeNotReady
-        expr: kubeovn_providernetwork_condition{condition_type="Ready"} == 0
+        # kube-state-metrics prefixes customResourceState metrics with
+        # `kube_customresource_` — the name declared in its config is only the
+        # suffix. Without the prefix this expression matches nothing and the
+        # alert is silently dead, which looks exactly like "everything is fine".
+        expr: kube_customresource_kubeovn_providernetwork_condition{condition_type="Ready"} != 1
         for: 30m
         labels:
           team: devops
