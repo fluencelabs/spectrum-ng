@@ -37,7 +37,32 @@ spec:
       - target:
           kind: Deployment
           name: source-controller
+        # The controllers run with hostNetwork, so the default ports would clash
+        # on the node — hence the custom ones below. health/metrics/events stay on
+        # loopback: only this pod talks to them.
+        #
+        # The artifact store is different: kustomize-controller and
+        # helm-controller fetch from it OVER THE NETWORK. Binding or advertising
+        # it on 127.0.0.1 makes it reachable only from the node source-controller
+        # happens to sit on, so GitOps silently dies the moment the scheduler puts
+        # the fetching controller elsewhere. That is not hypothetical — it hit
+        # fra-flix-01 and went unnoticed for a week, while the other clusters kept
+        # working purely because their controllers landed on the same node.
+        #
+        # POD_IP under hostNetwork is the node's address, so binding and
+        # advertising it is reachable cluster-wide without depending on DNS
+        # (hostNetwork pods use the host resolver, which does not resolve
+        # cluster.local). Binding 0.0.0.0 would also work but would expose the
+        # artifact store on every node interface, including the public ones these
+        # nodes carry on the underlay VLAN.
         patch: |-
+          - op: add
+            path: /spec/template/spec/containers/0/env/-
+            value:
+              name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           - op: add
             path: /spec/template/spec/containers/0/args/-
             value: --health-addr=127.0.0.1:45121
@@ -46,10 +71,10 @@ spec:
             value: --metrics-addr=127.0.0.1:45122
           - op: add
             path: /spec/template/spec/containers/0/args/-
-            value: --storage-addr=127.0.0.1:45123
+            value: --storage-addr=$(POD_IP):45123
           - op: add
             path: /spec/template/spec/containers/0/args/-
-            value: --storage-adv-addr=127.0.0.1:45123
+            value: --storage-adv-addr=$(POD_IP):45123
           - op: add
             path: /spec/template/spec/containers/0/args/-
             value: --events-addr=http://127.0.0.1:45423

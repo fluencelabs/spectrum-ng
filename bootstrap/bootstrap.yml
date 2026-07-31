@@ -1893,6 +1893,13 @@ spec:
         kind: Namespace
     - patch: |-
         - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        - op: add
           path: /spec/template/spec/containers/0/args/-
           value: --health-addr=127.0.0.1:45121
         - op: add
@@ -1900,10 +1907,10 @@ spec:
           value: --metrics-addr=127.0.0.1:45122
         - op: add
           path: /spec/template/spec/containers/0/args/-
-          value: --storage-addr=127.0.0.1:45123
+          value: --storage-addr=$(POD_IP):45123
         - op: add
           path: /spec/template/spec/containers/0/args/-
-          value: --storage-adv-addr=127.0.0.1:45123
+          value: --storage-adv-addr=$(POD_IP):45123
         - op: add
           path: /spec/template/spec/containers/0/args/-
           value: --events-addr=http://127.0.0.1:45423
