@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.0...v0.2.1) (2026-07-31)
+
+
+### Features
+
+* **storage:** attach LINSTOR satellites to the storage network on mainnet and testnet ([#185](https://github.com/fluencelabs/spectrum-ng/issues/185)) ([ec3e3e2](https://github.com/fluencelabs/spectrum-ng/commit/ec3e3e28c0c266440178e8ce39ebdf0a9b000cb8))
+* **storage:** point DRBD replication at the storage network on testnet ([#188](https://github.com/fluencelabs/spectrum-ng/issues/188)) ([84c9d50](https://github.com/fluencelabs/spectrum-ng/commit/84c9d5095300fee3f6b6b23b608d7cd7c97cecc3))
+* **storage:** set the LINSTOR subnet MTU on mainnet and testnet ([#187](https://github.com/fluencelabs/spectrum-ng/issues/187)) ([4c9ec12](https://github.com/fluencelabs/spectrum-ng/commit/4c9ec128bf0383863e41752c3e3aabd90e44ab56))
+
+
+### Bug Fixes
+
+* **flux:** make the artifact store reachable across nodes, not just on source-controller's own ([#183](https://github.com/fluencelabs/spectrum-ng/issues/183)) ([148098f](https://github.com/fluencelabs/spectrum-ng/commit/148098f13ffc8a14926829754a16238bdbd91e4a))
+* **observability:** ProviderNetworkNodeNotReady never fires — missing kube_customresource_ prefix ([#184](https://github.com/fluencelabs/spectrum-ng/issues/184)) ([fb3b772](https://github.com/fluencelabs/spectrum-ng/commit/fb3b772117cadb6c6335b0cd666767765a32c439))
+
 ## [0.2.0](https://github.com/fluencelabs/spectrum-ng/compare/v0.1.10...v0.2.0) (2026-07-30)
 
 
