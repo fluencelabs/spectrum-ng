@@ -15,3 +15,12 @@ spec:
   provider: linstor.storage.ovn
   logicalGateway: true
   vlan: ${STORAGE_VLAN}
+  # kube-ovn's global default is 1400, reserving room for Geneve headers on the
+  # pod overlay. This subnet is a VLAN underlay — frames leave tagged with no
+  # encapsulation — so that reservation is dead weight and costs DRBD ~7% more
+  # packets for the same bytes.
+  #
+  # A property of the cluster's own link, hence a variable: set it to what the
+  # storage port actually carries. Going jumbo means raising the node's
+  # machine-config and the switch port first, then this.
+  mtu: ${STORAGE_MTU}
