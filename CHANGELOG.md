@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.1...v0.2.2) (2026-07-31)
+
+
+### Features
+
+* **storage:** point DRBD replication at the storage network on mainnet ([#190](https://github.com/fluencelabs/spectrum-ng/issues/190)) ([d35f16b](https://github.com/fluencelabs/spectrum-ng/commit/d35f16be134616c9f8dae8869028781d53779bbf))
+
+
+### Bug Fixes
+
+* **flux:** declare spec.kustomize on the GitOps FluxInstance to match bootstrap ([#189](https://github.com/fluencelabs/spectrum-ng/issues/189)) ([c67c8fa](https://github.com/fluencelabs/spectrum-ng/commit/c67c8fa3047a2603a0e11a5dc623eaaa6e03a11a))
+
 ## [0.2.1](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.0...v0.2.1) (2026-07-31)
 
 
