@@ -1,0 +1,31 @@
+# Attaches the LINSTOR satellite to the dedicated storage network, mirroring
+# stage. Until this exists the linstor NAD and subnet are declared but nothing
+# joins them — the subnet sits at used=0 and DRBD replicates over the pod
+# network, i.e. through Geneve and out over the management VLAN.
+#
+# PrefNic is deliberately NOT set here yet. It names the interface registered
+# by the manual step below, and on a node where that has not been done it would
+# point at a NIC that does not exist. Sequence: this patch lands and satellites
+# pick up their storage address, then the interface is registered per node,
+# then PrefNic follows in a second change.
+#
+# The manual step, per node, with no declarative form in Piraeus:
+#   linstor node interface create <node> storage <ip-from-the-pool-below>
+# Piraeus only ever registers the PRIMARY pod IP (tracked in the node property
+# Aux/piraeus.io/configured-interfaces) and leaves interfaces it did not create
+# alone.
+#
+# ip_pool pins the addresses: a LINSTOR netinterface holds a literal IP, and a
+# dynamically reallocated one would go stale on every satellite restart. One
+# entry per node running a satellite — two on testnet — which is
+# why the pool lives in the overlay and not in the shared base.
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: talos-override
+spec:
+  podTemplate:
+    metadata:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: storage/linstor
+        linstor.storage.ovn.kubernetes.io/ip_pool: "${STORAGE_SATELLITE_IPS}"
