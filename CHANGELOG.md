@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.2...v0.2.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* **ingress:** pin the Envoy LoadBalancer external address ([#196](https://github.com/fluencelabs/spectrum-ng/issues/196)) ([d9bc726](https://github.com/fluencelabs/spectrum-ng/commit/d9bc726b2e1da72f5f313f340e710867b00c3dfe))
+
 ## [0.2.2](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.1...v0.2.2) (2026-07-31)
 
 
