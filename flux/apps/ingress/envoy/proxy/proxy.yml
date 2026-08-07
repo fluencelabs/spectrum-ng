@@ -20,20 +20,27 @@ spec:
               allocateLoadBalancerNodePorts: false
               externalTrafficPolicy: Cluster
               # Pin the external address instead of taking whatever IPAM hands out.
-              # kube-ovn copies spec.loadBalancerIP onto the lb-svc pod as the
-              # <provider>.kubernetes.io/ip_address annotation (pkg/controller/service_lb.go),
-              # so the pod reclaims the same address on every recreation.
+              # kube-ovn reads spec.loadBalancerIP and writes it into the lb-svc pod
+              # TEMPLATE as the <provider>.kubernetes.io/ip_address annotation
+              # (pkg/controller/service_lb.go). Setting that annotation on the Service
+              # itself does nothing — only logical_switch is copied from there.
               #
-              # Without this the address drifts: when the lb-svc pod is recreated, the
+              # Note: the template is filled when kube-ovn creates the lb-svc Deployment.
+              # Adding the pin to an existing deployment therefore requires deleting that
+              # Deployment so kube-ovn recreates it; deleting only the pod is not enough,
+              # the template stays as it was.
+              #
+              # Without pinning the address drifts: when the lb-svc pod is recreated the
               # previous pod's IP record is not released in time, so IPAM hands out the
               # next free address while the Service still advertises the old one — and
               # traffic arrives at an address nobody holds.
               #
-              # Reserve the same address in the subnet's excludeIps so tenant VMs and
-              # lightmare cannot take it (lightmare derives its pool from the subnet's
-              # status.v4AvailableIPRange, which kube-ovn computes with excludeIps applied).
-              # Order matters: pin first, exclude second — otherwise the lb-svc pod has
-              # nowhere to take its own address from.
+              # No excludeIps entry is needed for this address: kube-ovn already keeps
+              # allocated addresses out of the subnet's status.v4AvailableIPRange, and
+              # that range is exactly what lightmare allocates tenant public IPs from.
+              # Excluding a pinned address is in fact harmful — the lb-svc pod may then
+              # fail to reclaim its own address on recreation. excludeIps is only for
+              # reserving an address ahead of time, before anything holds it.
               loadBalancerIP: ${ENVOY_PUBLIC_IP:=}
               ports:
                 - name: http-10080
