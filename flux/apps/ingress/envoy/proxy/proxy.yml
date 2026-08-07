@@ -19,6 +19,22 @@ spec:
               type: LoadBalancer
               allocateLoadBalancerNodePorts: false
               externalTrafficPolicy: Cluster
+              # Pin the external address instead of taking whatever IPAM hands out.
+              # kube-ovn copies spec.loadBalancerIP onto the lb-svc pod as the
+              # <provider>.kubernetes.io/ip_address annotation (pkg/controller/service_lb.go),
+              # so the pod reclaims the same address on every recreation.
+              #
+              # Without this the address drifts: when the lb-svc pod is recreated, the
+              # previous pod's IP record is not released in time, so IPAM hands out the
+              # next free address while the Service still advertises the old one — and
+              # traffic arrives at an address nobody holds.
+              #
+              # Reserve the same address in the subnet's excludeIps so tenant VMs and
+              # lightmare cannot take it (lightmare derives its pool from the subnet's
+              # status.v4AvailableIPRange, which kube-ovn computes with excludeIps applied).
+              # Order matters: pin first, exclude second — otherwise the lb-svc pod has
+              # nowhere to take its own address from.
+              loadBalancerIP: ${ENVOY_PUBLIC_IP:=}
               ports:
                 - name: http-10080
                   port: 10080
