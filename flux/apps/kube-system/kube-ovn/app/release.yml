@@ -24,6 +24,20 @@ spec:
       kubeovn:
         tag: v1.15.6
 
+    agent:
+      # Interface carrying inter-node Geneve traffic (--iface). Empty keeps
+      # kube-ovn's default — the interface holding the node IP, which on every
+      # Kabat node today is the 1G management port, so all pod-to-pod east-west
+      # shares it with the control plane while the 10G ports carry only the
+      # public and storage VLANs.
+      #
+      # Moving it takes an address on the data VLAN first (a Talos
+      # machine-config fact owned by beam, not something this repo can assert),
+      # hence a per-cluster variable: set it to that interface — `br-underlay`
+      # when the address lands on a port kube-ovn has taken into a provider
+      # bridge, since kube-ovn migrates the address there.
+      interface: "${OVN_TUNNEL_IFACE:=}"
+
     masterNodesLabels:
       kube-ovn/role: null
       node-role.kubernetes.io/control-plane: ""
