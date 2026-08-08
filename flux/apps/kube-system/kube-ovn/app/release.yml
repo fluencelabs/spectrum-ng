@@ -44,6 +44,20 @@ spec:
 
     networking:
       stack: "IPv4"
+      services:
+        cidr:
+          # Renders --service-cluster-ip-range, which is how kube-ovn decides
+          # what counts as service traffic. It is NOT the apiserver's setting —
+          # the real range comes from Talos (`cluster.network.serviceSubnets`)
+          # and belongs to whoever provisions the cluster, so the two can drift
+          # apart silently: the chart's default is 10.96.0.0/12 while a cluster
+          # may well serve 10.112.0.0/12, and nothing complains.
+          #
+          # Per-cluster, defaulting to the chart's value so a cluster that sets
+          # nothing keeps today's behaviour. Read it off the cluster rather than
+          # assuming — `kubectl -n default get svc kubernetes` names the range
+          # the apiserver actually allocates from.
+          v4: "${SERVICE_CIDR:=10.96.0.0/12}"
 
     ovsOvn:
       disableModulesManagement: true

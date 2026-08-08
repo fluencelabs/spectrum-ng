@@ -63,6 +63,7 @@ tokens in the manifests are filled from them at apply time.
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite (stage overlay) | one address per node running a satellite, taken from `STORAGE_CIDR`; see §3 |
 | `STORAGE_MTU` | `spectrum-manual-vars` | piraeus `linstor` Subnet `spec.mtu` (stage overlay) | what the cluster's storage port actually carries, usually 1500. Without it kube-ovn defaults pods to 1400, reserving room for Geneve headers that a VLAN underlay never adds |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
+| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #6 |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -301,6 +302,15 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 5. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
    If the PVC already has an admin user, delete the grafana PVC + pod once so first-init
    picks it up.
+6. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
+   `--service-cluster-ip-range` comes from this repo (`SERVICE_CIDR`, defaulting to
+   `10.96.0.0/12`); the range the apiserver actually allocates from comes from Talos
+   (`cluster.network.serviceSubnets`) and is set by whoever provisions the cluster. On
+   stage they disagreed — services live in `10.112.0.0/12` while kube-ovn was told
+   `10.96.0.0/12` — and nothing surfaced it, because OVN load balancers serve ClusterIPs
+   from the logical switch regardless. The range still governs what the CNI treats as
+   service traffic for SNAT and routing, so check it on every new cluster:
+   `kubectl -n default get svc kubernetes` names the range in one number.
 
 ---
 
