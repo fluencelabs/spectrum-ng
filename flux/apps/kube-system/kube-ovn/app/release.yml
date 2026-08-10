@@ -4,6 +4,17 @@ metadata:
   name: kube-ovn
 spec:
   interval: 30m
+  # Helm never upgrades what it installed from a chart's crds/ directory, so
+  # without this the CRDs stay frozen at whatever version first installed them
+  # while the controllers keep being upgraded. On stage that gap had grown far
+  # enough to hide fields the running 1.15.6 daemon already reads — the
+  # ProviderNetwork CRD carried neither `autoCreateVlanSubinterfaces` nor
+  # `vlanInterfaces`, so a whole VLAN-subinterface feature looked like it did
+  # not exist. CreateReplace makes flux apply the chart's CRDs on every upgrade.
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
   chart:
     spec:
       chart: kube-ovn-v2
