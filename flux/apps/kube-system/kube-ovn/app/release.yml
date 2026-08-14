@@ -4,6 +4,17 @@ metadata:
   name: kube-ovn
 spec:
   interval: 30m
+  # Helm never upgrades what it installed from a chart's crds/ directory, so
+  # without this the CRDs stay frozen at whatever version first installed them
+  # while the controllers keep being upgraded. On stage that gap had grown far
+  # enough to hide fields the running 1.15.6 daemon already reads — the
+  # ProviderNetwork CRD carried neither `autoCreateVlanSubinterfaces` nor
+  # `vlanInterfaces`, so a whole VLAN-subinterface feature looked like it did
+  # not exist. CreateReplace makes flux apply the chart's CRDs on every upgrade.
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
   chart:
     spec:
       chart: kube-ovn-v2
@@ -24,12 +35,40 @@ spec:
       kubeovn:
         tag: v1.15.6
 
+    agent:
+      # Interface carrying inter-node Geneve traffic (--iface). Empty keeps
+      # kube-ovn's default — the interface holding the node IP, which on every
+      # Kabat node today is the 1G management port, so all pod-to-pod east-west
+      # shares it with the control plane while the 10G ports carry only the
+      # public and storage VLANs.
+      #
+      # Moving it takes an address on the data VLAN first (a Talos
+      # machine-config fact owned by beam, not something this repo can assert),
+      # hence a per-cluster variable: set it to that interface — `br-underlay`
+      # when the address lands on a port kube-ovn has taken into a provider
+      # bridge, since kube-ovn migrates the address there.
+      interface: "${OVN_TUNNEL_IFACE:=}"
+
     masterNodesLabels:
       kube-ovn/role: null
       node-role.kubernetes.io/control-plane: ""
 
     networking:
       stack: "IPv4"
+      services:
+        cidr:
+          # Renders --service-cluster-ip-range, which is how kube-ovn decides
+          # what counts as service traffic. It is NOT the apiserver's setting —
+          # the real range comes from Talos (`cluster.network.serviceSubnets`)
+          # and belongs to whoever provisions the cluster, so the two can drift
+          # apart silently: the chart's default is 10.96.0.0/12 while a cluster
+          # may well serve 10.112.0.0/12, and nothing complains.
+          #
+          # Per-cluster, defaulting to the chart's value so a cluster that sets
+          # nothing keeps today's behaviour. Read it off the cluster rather than
+          # assuming — `kubectl -n default get svc kubernetes` names the range
+          # the apiserver actually allocates from.
+          v4: "${SERVICE_CIDR:=10.96.0.0/12}"
 
     ovsOvn:
       disableModulesManagement: true

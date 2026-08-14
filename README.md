@@ -23,6 +23,8 @@ Cluster-specific overrides, created manually.
 | `PUBLIC_SUBNET_LIST` | Public subnet list for CRD operator |
 | `ENVOY_PUBLIC_SUBNET` | Public subnet for Envoy proxy |
 | `STORAGE_VLAN` | VLAN ID for storage network (optional) |
+| `OVN_TUNNEL_IFACE` | Interface carrying Geneve traffic, kube-ovn `--iface` (optional; default is the interface holding the node IP) |
+| `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
 
 ### Secret: `alertmanager-config` (namespace: `observability`)

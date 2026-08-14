@@ -62,6 +62,8 @@ tokens in the manifests are filled from them at apply time.
 | `STORAGE_CIDR` | `spectrum-manual-vars` | piraeus `linstor` Subnet | required on every cluster whose overlay has `network.yml` — no default, a missing value fails the build on purpose |
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite (stage overlay) | one address per node running a satellite, taken from `STORAGE_CIDR`; see §3 |
 | `STORAGE_MTU` | `spectrum-manual-vars` | piraeus `linstor` Subnet `spec.mtu` (stage overlay) | what the cluster's storage port actually carries, usually 1500. Without it kube-ovn defaults pods to 1400, reserving room for Geneve headers that a VLAN underlay never adds |
+| `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
+| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #6 |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -135,6 +137,51 @@ linstor node list-properties <node>    # PrefNic = storage
 
 Also required outside Kubernetes: a `ProviderNetwork` and `Vlan` for that VLAN on the
 node's interface. These are per-cluster hardware facts, deliberately not in any overlay.
+
+### Which interface and VLAN carries what
+
+A Kabat node has three traffic classes, and only two of them ride a VLAN today:
+
+| Traffic | How it leaves the node | Owner of the objects |
+|---|---|---|
+| Public (Kabat ASN) | tagged, through the underlay `ProviderNetwork` bridge | beam (`ProviderNetwork` + `Vlan` + the public `Subnet`, labelled `fluence/created-by=beam`) |
+| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | `Subnet` from this repo (`network.yml`); `ProviderNetwork` + `Vlan` by hand, see above |
+| Pod east-west (Geneve) | **untagged, on whichever interface holds the node IP** | kube-ovn default, until `OVN_TUNNEL_IFACE` is set |
+
+The third row is the one to check on a new cluster. kube-ovn picks the tunnel endpoint
+from the node IP, which on the Kabat nodes is the 1G management port — so pod-to-pod
+traffic shares a 1G link with the control plane while the 10G ports carry only public
+and storage. Nothing warns about it; the cluster is simply slower than its cabling.
+
+Moving it is not a GitOps-only change. `OVN_TUNNEL_IFACE` names an interface that must
+already hold an address, which is a Talos machine-config fact owned by beam. When
+kube-ovn has taken that port into a provider bridge it migrates the address onto the
+bridge, so the value to set is then `br-underlay`, not the physical port.
+
+Whether the underlay carries one VLAN or several is a data question, not a code one: a
+`ProviderNetwork` holds a list of VLANs, so a second `Vlan` with the same `provider:`
+plus a `Subnet` referencing it is all that separates, say, public traffic from other
+underlay subnets on the same trunk. Testnet already runs two (public and storage) off a
+single `ProviderNetwork`. The site has to trunk the VLAN to that port first.
+
+Per-node interface names differ, and beam handles that with
+`ProviderNetwork.spec.customInterfaces` — testnet's underlay is `enp36s0f0` by default
+with `enp65s0f0` overridden for `kabat-02`. A new node with different NICs needs that
+list extended, or its bridge never initializes.
+
+Verify on a running cluster:
+
+```bash
+kubectl get provider-networks -o wide      # DEFAULTINTERFACE + READY
+kubectl get vlans                          # ID → provider
+kubectl get subnets.kubeovn.io -o wide     # which subnet rides which VLAN
+kubectl get node <node> -o jsonpath='{.metadata.annotations}' | tr ',' '\n' \
+  | grep provider-network                  # per-node interface actually taken
+```
+
+The last one is the honest check: `ProviderNetwork.status.ready` keeps its last good
+value, so a bridge that was torn down still reads `ready: true` while the node
+annotations are gone.
 
 ---
 
@@ -255,6 +302,15 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 5. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
    If the PVC already has an admin user, delete the grafana PVC + pod once so first-init
    picks it up.
+6. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
+   `--service-cluster-ip-range` comes from this repo (`SERVICE_CIDR`, defaulting to
+   `10.96.0.0/12`); the range the apiserver actually allocates from comes from Talos
+   (`cluster.network.serviceSubnets`) and is set by whoever provisions the cluster. On
+   stage they disagreed — services live in `10.112.0.0/12` while kube-ovn was told
+   `10.96.0.0/12` — and nothing surfaced it, because OVN load balancers serve ClusterIPs
+   from the logical switch regardless. The range still governs what the CNI treats as
+   service traffic for SNAT and routing, so check it on every new cluster:
+   `kubectl -n default get svc kubernetes` names the range in one number.
 
 ---
 
