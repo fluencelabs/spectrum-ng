@@ -8,6 +8,19 @@ spec:
     kind: OCIRepository
     name: flux-operator
   values:
+    # The bootstrap patches this Deployment onto hostNetwork so the operator can
+    # run before a CNI exists, which pins container ports 8080/8081/9080 to the
+    # node. A rolling update then cannot work on a single-node cluster: the new
+    # pod stays Pending on "didn't have free ports for the requested pod ports"
+    # while the old pod holds them, the old pod is never retired because the new
+    # one never goes Ready, and the Helm upgrade fails on a Deployment stuck
+    # InProgress. Observed on stage — the 0.58.0 bump sat deadlocked for 11h.
+    #
+    # The FluxInstance already pairs hostNetwork with Recreate for the flux
+    # controllers (bootstrap/bootstrap/instance.yml); the operator's own
+    # Deployment was the one place the pair was missing.
+    strategy:
+      type: Recreate
     serviceMonitor:
       create: true
       labels:
