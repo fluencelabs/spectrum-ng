@@ -51,11 +51,14 @@ spec:
     - name: piraeus-operator
   postBuild:
     substituteFrom:
-      # spectrum-vars is written by beam and carries NETWORK, plus STORAGE_VLAN
-      # on clusters where beam's bootstrap supplied a storage vlan. Anything set
-      # per cluster by hand — STORAGE_CIDR, STORAGE_SATELLITE_IPS, and
-      # STORAGE_VLAN where beam did not provide it — lives in
-      # spectrum-manual-vars, so this app has to read both.
+      # spectrum-vars is written by beam and carries NETWORK, which selects the
+      # overlay path. STORAGE_SATELLITE_IPS is set per cluster by hand and lives
+      # in spectrum-manual-vars, so this app has to read both.
+      #
+      # The storage network objects themselves — ProviderNetwork, Vlan, Subnet,
+      # NAD — are owned by beam and no longer rendered here, so STORAGE_CIDR,
+      # STORAGE_VLAN and STORAGE_MTU are not substituted into anything. Leftover
+      # keys in either ConfigMap are simply unread.
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
