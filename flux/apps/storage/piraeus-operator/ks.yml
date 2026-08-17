@@ -63,11 +63,8 @@ spec:
       # not recreate them and deliberately refuses to guess the Vlan: any name it
       # could substitute would be wrong in a way that looks like a repair.
       #
-      # So STORAGE_CIDR, STORAGE_VLAN and STORAGE_MTU are not substituted into
-      # anything here any more, but the keys must STAY in spectrum-manual-vars:
-      # beam reads that ConfigMap, and turns a missing key into an error rather
-      # than a default. They leave only once beam supplies them from its own
-      # cluster model. See docs/adding-a-cluster.md §3.
+      # The storage network's own facts — CIDR, vlan id, MTU — are beam's now and
+      # are not substituted into anything here. See docs/adding-a-cluster.md §3.
       - kind: ConfigMap
         name: spectrum-vars
         optional: false

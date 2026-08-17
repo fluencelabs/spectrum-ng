@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, and `STORAGE_CIDR` / `STORAGE_VLAN` / `STORAGE_MTU` until beam supplies them |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS` |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -59,9 +59,8 @@ tokens in the manifests are filled from them at apply time.
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, taken from the CIDR beam gave the `linstor` Subnet; see §3 |
-| `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_MTU` | `spectrum-manual-vars` | **nothing in this repo** since the `linstor` Subnet moved to beam | keep them set anyway: beam reads this ConfigMap and treats a missing key as an error, not a default. They leave only once beam supplies them from its own cluster model. `STORAGE_CIDR` is fixed at cluster birth — kube-ovn does not survive a CIDR change on a live subnet, so beam refuses to edit it; `STORAGE_MTU` is editable |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
-| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #6 |
+| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -296,25 +295,18 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 
 1. **`netbird-api-token` key is `NB_API_KEY`** (not `token`). The operator, setup/route
    jobs and the rotate CronJob all read `NB_API_KEY`.
-2. **`STORAGE_VLAN` can come from either ConfigMap.** beam writes it into `spectrum-vars`
-   when its bootstrap supplied a storage vlan; where it did not, put it in
-   `spectrum-manual-vars`. The `linstor-cluster` Kustomization reads both — it used to
-   substitute only `spectrum-vars`, which is why the variable used to look like it had to
-   live there. Note beam's storage bootstrap step currently fails on every cluster (it
-   POSTs a namespaced CRD through a cluster-scoped path and gets a plain-text 404), so in
-   practice new clusters supply all three `STORAGE_*` vars by hand.
-3. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
+2. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
    `spectrum-manual-vars` in plaintext, because `cluster-issuers` and
    `external-dns-cloudflare` had no Secret substitution source; they do now, and the
    token belongs in `spectrum-manual-secrets`. On a cluster still carrying the old copy,
    the Secret wins (it is listed last), so seed it first and drop the ConfigMap key
    afterwards. Either way the value is baked into Opaque Secrets at apply time.
-4. **Don't force-remove NetBird CR finalizers** on teardown — the operator owns
+3. **Don't force-remove NetBird CR finalizers** on teardown — the operator owns
    control-plane cleanup.
-5. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
+4. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
    If the PVC already has an admin user, delete the grafana PVC + pod once so first-init
    picks it up.
-6. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
+5. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
    `--service-cluster-ip-range` comes from this repo (`SERVICE_CIDR`, defaulting to
    `10.96.0.0/12`); the range the apiserver actually allocates from comes from Talos
    (`cluster.network.serviceSubnets`) and is set by whoever provisions the cluster. On
@@ -342,11 +334,9 @@ on infra-stage):
 | `fluence-mesh-intermediate` (Secret, observability) | `ca.crt`, `tls.crt`, `tls.key` |
 | `lightmare-ssh-creds` (Secret, fluence) | `identity`, `known_hosts` |
 
-Stage since gained a storage overlay of its own, so the `STORAGE_*` trio now lives in its
-`spectrum-manual-vars` — `spectrum-vars` still holds `NETWORK` only, because beam's
-storage bootstrap step never completes. The earlier reading of gotcha #2, that
-`STORAGE_VLAN` had to live in `spectrum-vars`, no longer holds: `linstor-cluster`
-substitutes from both ConfigMaps.
+Stage's `spectrum-manual-vars` still carries the `STORAGE_*` trio from when this repo
+rendered the `linstor` `Subnet`; only `STORAGE_SATELLITE_IPS` is read now.
+`spectrum-vars` holds `NETWORK` only.
 
 To re-verify on any cluster (keys only, no secret values leave the cluster):
 
