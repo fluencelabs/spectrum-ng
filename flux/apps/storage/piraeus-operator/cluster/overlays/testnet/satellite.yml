@@ -1,6 +1,6 @@
 # Attaches the LINSTOR satellite to the dedicated storage network and points DRBD
-# replication at it, mirroring stage. Without this the linstor NAD and subnet are
-# declared but nothing joins them — the subnet sits at used=0 and replication goes
+# replication at it, mirroring stage. beam declares the linstor NAD and Subnet;
+# without this nothing joins them — the subnet sits at used=0 and replication goes
 # over the pod network, i.e. through Geneve and out over the management VLAN.
 #
 # One step per node has no declarative form in Piraeus and is done by hand:

@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_CIDR`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU`, and `STORAGE_VLAN` where beam did not supply it |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS` |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -58,12 +58,9 @@ tokens in the manifests are filled from them at apply time.
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
-| `STORAGE_VLAN` | `spectrum-vars` where beam supplied it, otherwise `spectrum-manual-vars` | piraeus `linstor` Subnet | ⚠️ the quotes are part of the value — write `"504"`. `vlan` is a string in the CRD, and an unquoted value renders as a number the CRD rejects. beam writes it the same way |
-| `STORAGE_CIDR` | `spectrum-manual-vars` | piraeus `linstor` Subnet | required on every cluster whose overlay has `network.yml` — no default, a missing value fails the build on purpose |
-| `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite (stage overlay) | one address per node running a satellite, taken from `STORAGE_CIDR`; see §3 |
-| `STORAGE_MTU` | `spectrum-manual-vars` | piraeus `linstor` Subnet `spec.mtu` (stage overlay) | what the cluster's storage port actually carries, usually 1500. Without it kube-ovn defaults pods to 1400, reserving room for Geneve headers that a VLAN underlay never adds |
+| `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, taken from the CIDR beam gave the `linstor` Subnet; see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
-| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #6 |
+| `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -110,7 +107,7 @@ substitutions.
 
 ### Dedicated storage network (per node, manual)
 
-On a cluster whose overlay carries a `network.yml`, the satellite is attached to the
+On a cluster where beam provisions a storage network, the satellite is attached to the
 `linstor` NAD and gets a pinned address from `STORAGE_SATELLITE_IPS`. Pointing DRBD
 replication at it takes one command **per node**, which has no declarative form in
 Piraeus:
@@ -135,8 +132,22 @@ linstor node interface list <node>     # both default-ipv4 and storage present
 linstor node list-properties <node>    # PrefNic = storage
 ```
 
-Also required outside Kubernetes: a `ProviderNetwork` and `Vlan` for that VLAN on the
-node's interface. These are per-cluster hardware facts, deliberately not in any overlay.
+What the satellite attaches *to* has two different owners, and the split matters when
+storage breaks:
+
+- The `linstor` `Subnet` and NAD are **beam's**. It recreates them from the beam DB with
+  a stable name, namespace and CIDR; no overlay here renders them.
+- The `ProviderNetwork` and `Vlan` underneath are **applied by hand**, outside both flux
+  and beam — on stage, `ProviderNetwork storage` on the dedicated 10G port `enp16s0f1`,
+  so replication does not share the workload underlay. Nothing reconciles them, and
+  nothing in git describes them; they exist only on the live cluster.
+
+beam deliberately will not recreate that `Vlan`: it does not know the hand-made name, and
+any name it could substitute would be wrong in a way that looks like a repair — it warns
+loudly and does nothing. The site also has to trunk the VLAN to the node's port.
+
+> ⚠️ This is the single point of loss in the storage network. Re-check it before
+> reprovisioning a node, and keep a copy of the two manifests to hand.
 
 ### Which interface and VLAN carries what
 
@@ -145,7 +156,7 @@ A Kabat node has three traffic classes, and only two of them ride a VLAN today:
 | Traffic | How it leaves the node | Owner of the objects |
 |---|---|---|
 | Public (Kabat ASN) | tagged, through the underlay `ProviderNetwork` bridge | beam (`ProviderNetwork` + `Vlan` + the public `Subnet`, labelled `fluence/created-by=beam`) |
-| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | `Subnet` from this repo (`network.yml`); `ProviderNetwork` + `Vlan` by hand, see above |
+| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | split: beam owns the `linstor` `Subnet` + NAD; the `ProviderNetwork` + `Vlan` are by hand, reconciled by nothing; this repo keeps only the satellite wiring, see above |
 | Pod east-west (Geneve) | **untagged, on whichever interface holds the node IP** | kube-ovn default, until `OVN_TUNNEL_IFACE` is set |
 
 The third row is the one to check on a new cluster. kube-ovn picks the tunnel endpoint
@@ -270,7 +281,7 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 | `flux/apps/flux-system/flux-instance/app/spectrum/overlays/foonet/` | `gitrepository.yml` (branch or tag) + `spectrum.yml` (`path: ./clusters/foonet`) |
 | `flux/apps/fluence/crd-operator/app/overlays/foonet/` | chart source — OCI (like testnet/mainnet) or git (like stage) |
 | `flux/apps/networking/netbird-operator-config/app/overlays/foonet/` | `router.replicas: 1` patch (only if `networking` is included) |
-| `flux/apps/storage/piraeus-operator/cluster/overlays/foonet/` | `kustomization.yml`; add `network.yml` for a dedicated storage VLAN |
+| `flux/apps/storage/piraeus-operator/cluster/overlays/foonet/` | `kustomization.yml`; add `satellite.yml` to attach the satellite to a beam-provisioned storage VLAN |
 
 > Any cluster that includes `flux/apps/observability` **must** also include
 > `flux/apps/networking` — Grafana joins the mesh (creates `SetupKey`/`NBSetupKey`,
@@ -284,25 +295,18 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 
 1. **`netbird-api-token` key is `NB_API_KEY`** (not `token`). The operator, setup/route
    jobs and the rotate CronJob all read `NB_API_KEY`.
-2. **`STORAGE_VLAN` can come from either ConfigMap.** beam writes it into `spectrum-vars`
-   when its bootstrap supplied a storage vlan; where it did not, put it in
-   `spectrum-manual-vars`. The `linstor-cluster` Kustomization reads both — it used to
-   substitute only `spectrum-vars`, which is why the variable used to look like it had to
-   live there. Note beam's storage bootstrap step currently fails on every cluster (it
-   POSTs a namespaced CRD through a cluster-scoped path and gets a plain-text 404), so in
-   practice new clusters supply all three `STORAGE_*` vars by hand.
-3. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
+2. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
    `spectrum-manual-vars` in plaintext, because `cluster-issuers` and
    `external-dns-cloudflare` had no Secret substitution source; they do now, and the
    token belongs in `spectrum-manual-secrets`. On a cluster still carrying the old copy,
    the Secret wins (it is listed last), so seed it first and drop the ConfigMap key
    afterwards. Either way the value is baked into Opaque Secrets at apply time.
-4. **Don't force-remove NetBird CR finalizers** on teardown — the operator owns
+3. **Don't force-remove NetBird CR finalizers** on teardown — the operator owns
    control-plane cleanup.
-5. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
+4. **`grafana-admin-credentials`** only adopts its seeded password on a *fresh* Grafana DB.
    If the PVC already has an admin user, delete the grafana PVC + pod once so first-init
    picks it up.
-6. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
+5. **kube-ovn's idea of the service range is a chart default, not the cluster's.**
    `--service-cluster-ip-range` comes from this repo (`SERVICE_CIDR`, defaulting to
    `10.96.0.0/12`); the range the apiserver actually allocates from comes from Talos
    (`cluster.network.serviceSubnets`) and is set by whoever provisions the cluster. On
@@ -323,18 +327,16 @@ on infra-stage):
 | Object | Keys found on stage |
 |---|---|
 | `spectrum-vars` (CM) | `NETWORK` **only** — beam injects nothing else |
-| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU` |
+| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU` — of these only `STORAGE_SATELLITE_IPS` is still read, the rest went unread when beam took the storage network |
 | `spectrum-manual-secrets` (Secret) | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 | `netbird-api-token` (Secret, networking) | `NB_API_KEY` |
 | `alertmanager-config` (Secret, observability) | `alertmanager.yaml` |
 | `fluence-mesh-intermediate` (Secret, observability) | `ca.crt`, `tls.crt`, `tls.key` |
 | `lightmare-ssh-creds` (Secret, fluence) | `identity`, `known_hosts` |
 
-Stage since gained a storage overlay of its own, so the `STORAGE_*` trio now lives in its
-`spectrum-manual-vars` — `spectrum-vars` still holds `NETWORK` only, because beam's
-storage bootstrap step never completes. The earlier reading of gotcha #2, that
-`STORAGE_VLAN` had to live in `spectrum-vars`, no longer holds: `linstor-cluster`
-substitutes from both ConfigMaps.
+Stage's `spectrum-manual-vars` still carries the `STORAGE_*` trio from when this repo
+rendered the `linstor` `Subnet`; only `STORAGE_SATELLITE_IPS` is read now.
+`spectrum-vars` holds `NETWORK` only.
 
 To re-verify on any cluster (keys only, no secret values leave the cluster):
 
