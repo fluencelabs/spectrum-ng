@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS` |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, and `STORAGE_CIDR` / `STORAGE_VLAN` / `STORAGE_MTU` until beam supplies them |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -59,6 +59,7 @@ tokens in the manifests are filled from them at apply time.
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, taken from the CIDR beam gave the `linstor` Subnet; see §3 |
+| `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_MTU` | `spectrum-manual-vars` | **nothing in this repo** since the `linstor` Subnet moved to beam | keep them set anyway: beam reads this ConfigMap and treats a missing key as an error, not a default. They leave only once beam supplies them from its own cluster model. `STORAGE_CIDR` is fixed at cluster birth — kube-ovn does not survive a CIDR change on a live subnet, so beam refuses to edit it; `STORAGE_MTU` is editable |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
 | `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #6 |
 
@@ -132,10 +133,22 @@ linstor node interface list <node>     # both default-ipv4 and storage present
 linstor node list-properties <node>    # PrefNic = storage
 ```
 
-Everything the satellite attaches *to* is beam's: the `ProviderNetwork` and `Vlan` for
-that VLAN on the node's interface, the `linstor` `Subnet`, and the `linstor` NAD. beam
-recreates them from the beam DB with a stable name, namespace and CIDR; no overlay in
-this repo renders them. The site still has to trunk the VLAN to the node's port.
+What the satellite attaches *to* has two different owners, and the split matters when
+storage breaks:
+
+- The `linstor` `Subnet` and NAD are **beam's**. It recreates them from the beam DB with
+  a stable name, namespace and CIDR; no overlay here renders them.
+- The `ProviderNetwork` and `Vlan` underneath are **applied by hand**, outside both flux
+  and beam — on stage, `ProviderNetwork storage` on the dedicated 10G port `enp16s0f1`,
+  so replication does not share the workload underlay. Nothing reconciles them, and
+  nothing in git describes them; they exist only on the live cluster.
+
+beam deliberately will not recreate that `Vlan`: it does not know the hand-made name, and
+any name it could substitute would be wrong in a way that looks like a repair — it warns
+loudly and does nothing. The site also has to trunk the VLAN to the node's port.
+
+> ⚠️ This is the single point of loss in the storage network. Re-check it before
+> reprovisioning a node, and keep a copy of the two manifests to hand.
 
 ### Which interface and VLAN carries what
 
@@ -144,7 +157,7 @@ A Kabat node has three traffic classes, and only two of them ride a VLAN today:
 | Traffic | How it leaves the node | Owner of the objects |
 |---|---|---|
 | Public (Kabat ASN) | tagged, through the underlay `ProviderNetwork` bridge | beam (`ProviderNetwork` + `Vlan` + the public `Subnet`, labelled `fluence/created-by=beam`) |
-| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | beam (`ProviderNetwork` + `Vlan` + the `linstor` `Subnet` and NAD); this repo keeps only the satellite wiring, see above |
+| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | split: beam owns the `linstor` `Subnet` + NAD; the `ProviderNetwork` + `Vlan` are by hand, reconciled by nothing; this repo keeps only the satellite wiring, see above |
 | Pod east-west (Geneve) | **untagged, on whichever interface holds the node IP** | kube-ovn default, until `OVN_TUNNEL_IFACE` is set |
 
 The third row is the one to check on a new cluster. kube-ovn picks the tunnel endpoint
