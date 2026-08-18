@@ -1,0 +1,19 @@
+# Scrapes DRBD connection, quorum and device state from the drbd-reactor
+# sidecar. Requires the `monitoring: enabled` label on the storage namespace —
+# see namespace.yml — because the vmagent restricts service scrapes to
+# namespaces carrying it.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: linstor-satellite
+  labels:
+    app: linstor-satellite
+spec:
+  endpoints:
+    - port: prometheus
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app: linstor-satellite

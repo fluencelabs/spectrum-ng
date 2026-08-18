@@ -1,0 +1,20 @@
+# The satellites are a DaemonSet with no Service of their own, and the vmagent
+# in this cluster only selects ServiceScrapes (`serviceScrapeNamespaceSelector`,
+# no pod-scrape selector and no selectAllByDefault), so a PodMonitor is never
+# converted or picked up. A headless Service in front of the drbd-reactor
+# sidecar puts the metrics on the path that already works here.
+apiVersion: v1
+kind: Service
+metadata:
+  name: linstor-satellite-metrics
+  labels:
+    app: linstor-satellite
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/component: linstor-satellite
+    app.kubernetes.io/name: piraeus-datastore
+  ports:
+    - name: prometheus
+      port: 9942
+      targetPort: prometheus
