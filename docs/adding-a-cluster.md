@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS` |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC` |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -59,6 +59,8 @@ tokens in the manifests are filled from them at apply time.
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
 | `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, from the storage subnet's CIDR. A **set**, not a mapping — the nth entry is not the nth node, read the address off the pod. Pinned for the node's life: LINSTOR stores the literal IP, so a reallocated one leaves a dead `NetInterface` and replication fails silently; see §3 |
+| `STORAGE_NAD` | `spectrum-manual-vars` | `k8s.v1.cni.cncf.io/networks` on the LINSTOR satellite | `<namespace>/<name>` of the hand-applied NAD, e.g. `storage/linstor` — the whole reference, not just the name. The `Subnet`'s `provider` encodes the same pair as `<nad>.<namespace>.ovn` |
+| `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` property on the LINSTOR satellite | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`. Must equal the name used in the manual `linstor node interface create`; nothing verifies the two, see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
 | `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
 
@@ -113,7 +115,7 @@ replication at it takes one command **per node**, which has no declarative form 
 Piraeus:
 
 ```bash
-linstor node interface create <node> storage <ip-from-STORAGE_SATELLITE_IPS>
+linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-STORAGE_SATELLITE_IPS>
 ```
 
 `PrefNic` is declared in the overlay (`satellite.yml` → `spec.properties`) and does not
@@ -124,10 +126,10 @@ so a hand-registered one survives satellite restarts. Registration is therefore
 one-off per node, not a standing reconcile: the `NetInterface` lives in the LINSTOR
 controller's database, not in the satellite pod.
 
-> ⚠️ `PrefNic` and this hand-registered interface are two ends of one name. `PrefNic` is
-> a literal in the overlay, so the two match by construction as long as the command
-> above is copied as written — keep it that way. A mismatch fails nothing: the pod
-> starts, and DRBD quietly replicates over the pod network instead.
+> ⚠️ `PrefNic` and this hand-registered interface are two ends of one name, and nothing
+> verifies them against each other: `PrefNic` comes from `STORAGE_PREF_NIC`, the
+> interface is created by hand. A mismatch fails nothing — the pod starts, and DRBD
+> quietly replicates over the pod network instead. Check it whenever a node joins.
 
 Two things this does **not** do: the satellite's control connection to the controller
 stays on the pod network (`CurStltConnName` remains `default-ipv4` — only replication
@@ -135,18 +137,19 @@ moves), and the VLAN must actually be trunked to the node's port by the site. Ve
 with:
 
 ```bash
-linstor node interface list <node>     # both default-ipv4 and storage present
-linstor node list-properties <node>    # PrefNic = storage
+linstor node interface list <node>     # default-ipv4 AND the STORAGE_PREF_NIC name
+linstor node list-properties <node>    # PrefNic = that same name
 ```
 
-The NAD reference and `PrefNic` in `satellite.yml` are **literals**: they are identical
-on every cluster, and a variable someone must remember to fill is one more way to get an
-empty value. Only `STORAGE_SATELLITE_IPS` is substituted, from `spectrum-manual-vars`,
-because it genuinely differs per cluster.
+All three storage values in `satellite.yml` — `STORAGE_NAD`, `STORAGE_SATELLITE_IPS`
+and `STORAGE_PREF_NIC` — come from `spectrum-manual-vars`, set by hand at bootstrap
+alongside the objects they name. Keeping them as variables means one place per cluster
+describes its storage network, rather than splitting that description between a
+ConfigMap and three overlays.
 
-It has no default, deliberately. An unset variable substitutes to an empty string, and
-the CRD accepts an empty `ip_pool` — which points DRBD back at the pod network without
-failing anything. A cluster with no storage network must therefore leave `satellite.yml`
+None of them has a default, deliberately. An unset variable substitutes to an empty string, and
+the CRD accepts an empty `PrefNic` or `ip_pool` — which points DRBD back at the pod
+network without failing anything. A cluster with no storage network must therefore leave `satellite.yml`
 out of its overlay, which is why the file is overlay-scoped rather than shared. Note
 also that `${VAR:?message}` does **not** help: in flux's substitution it yields the
 message text as the value and still succeeds, so there is no "required variable" that
