@@ -3,4 +3,7 @@ kind: Namespace
 metadata:
   name: storage
   labels:
+    # vmagent only selects service scrapes from namespaces carrying this
+    # label; without it the linstor-satellite ServiceMonitor is inert.
+    monitoring: enabled
     pod-security.kubernetes.io/enforce: privileged
