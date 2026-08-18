@@ -17,3 +17,13 @@ spec:
     url: "http://vmsingle-stack.observability.svc:8429"
   evaluationInterval: "30s"
   selectAllByDefault: true
+  # Take every VMRule EXCEPT the vlogs-typed ones. Those carry LogsQL
+  # expressions and belong to the stack-logs instance, which queries
+  # vlogs; evaluated here they are sent to vmsingle, which answers 400 and
+  # leaves the rule permanently in health=err. They still fire correctly
+  # from stack-logs — this only stops the doomed second copy.
+  ruleSelector:
+    matchExpressions:
+      - key: rule-type
+        operator: NotIn
+        values: ["vlogs"]
