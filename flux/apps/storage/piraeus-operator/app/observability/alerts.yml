@@ -1,0 +1,74 @@
+# Alerts on DRBD replication state, fed by the drbd-reactor sidecar scraped in
+# pod-monitor.yml.
+#
+# Motivated by the mainnet incident on 2026-08-18: the satellites were
+# recreated and picked up different addresses from the storage NAD pool, while
+# LINSTOR kept handing out the old ones in drbd.conf. Every connection that had
+# to re-handshake after that landed in Connecting forever. Two volumes lost
+# quorum, DRBD suspended their I/O, and the pods holding them could neither be
+# killed nor replaced. LINSTOR's own exporter showed nothing wrong (nodes
+# Online, volumes UpToDate) — only the DRBD-level metrics carry this state.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: drbd-alerts
+spec:
+  groups:
+    - name: drbd.replication.alerts
+      rules:
+        # The end state: no quorum means DRBD has suspended I/O on the device.
+        # Anything holding it is frozen — the pod cannot be killed, and a
+        # replacement cannot open the device read-write.
+        - alert: DrbdQuorumLost
+          expr: |
+            drbd_device_quorum == 0
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "DRBD volume {{ $labels.name }} has lost quorum on {{ $labels.instance }}"
+            description: "DRBD device {{ $labels.name }} on {{ $labels.instance }} has had no quorum for more than 5 minutes. I/O on this volume is suspended: pods using it will hang in Terminating or fail to mount."
+
+        # Fires before quorum is lost, while replicas are still healthy — this
+        # is the window in which the 2026-08-18 incident could have been caught
+        # without user-visible impact.
+        - alert: DrbdConnectionNotConnected
+          expr: |
+            drbd_connection_state{drbd_connection_state="Connected"} == 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "DRBD connection {{ $labels.name }} -> {{ $labels.conn_name }} is not connected"
+            description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 10 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
+
+        # Set while DRBD is deliberately failing I/O; harmless for seconds
+        # during a role change, a stuck volume if it persists.
+        - alert: DrbdForceIoFailures
+          expr: |
+            drbd_resource_forceiofailures == 1
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "DRBD resource {{ $labels.name }} is forcing I/O failures"
+            description: "DRBD resource {{ $labels.name }} on {{ $labels.instance }} has been configured to force I/O failures for more than 10 minutes."
+
+    - name: kubernetes.stuck.objects
+      rules:
+        # A pod that cannot finish terminating is the symptom shared by every
+        # storage-level freeze: on 2026-08-18 one had been stuck for 18 days and
+        # a VM launcher for 6, with nothing reporting it.
+        - alert: PodStuckTerminating
+          expr: |
+            (time() - kube_pod_deletion_timestamp) > 900
+          for: 5m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is stuck terminating"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been terminating for {{ $value | humanizeDuration }}. Usually a volume whose I/O is frozen, or a finalizer whose owning controller is gone."

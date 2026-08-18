@@ -1,0 +1,24 @@
+# drbd-reactor already runs as a sidecar in every linstor-satellite pod and
+# serves DRBD state on port 9942 (named "prometheus" by the piraeus operator).
+# Nothing scraped it, so connection and quorum state were invisible: on
+# 2026-08-18 two volumes on mainnet sat in Connecting with quorum lost for
+# hours, freezing I/O, and no alert fired.
+#
+# The satellites are a DaemonSet with no Service in front of them, so this has
+# to be a PodMonitor rather than a ServiceMonitor.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: linstor-satellite
+  labels:
+    app: linstor-satellite
+spec:
+  podMetricsEndpoints:
+    - port: prometheus
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: linstor-satellite
+      app.kubernetes.io/name: piraeus-datastore
