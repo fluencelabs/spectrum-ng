@@ -16,5 +16,9 @@ spec:
   ruleSelector:
     matchLabels:
       rule-type: vlogs
+  # Without this the instance only looks in its own namespace and finds
+  # nothing: the vlogs rules live in fluence/, so no log alert was ever
+  # evaluated here.
+  ruleNamespaceSelector: {}
   remoteWrite:
     url: "http://vmsingle-stack.observability.svc:8429"

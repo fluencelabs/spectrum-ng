@@ -27,3 +27,8 @@ spec:
       - key: rule-type
         operator: NotIn
         values: ["vlogs"]
+  # Setting ruleSelector alone narrows discovery to this VMAlert's own
+  # namespace, which silently dropped every rule living elsewhere —
+  # storage/drbd-alerts, kubevirt/*, fluence/*. An empty namespace selector
+  # restores cluster-wide discovery.
+  ruleNamespaceSelector: {}
