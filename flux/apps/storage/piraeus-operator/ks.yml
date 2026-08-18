@@ -52,22 +52,30 @@ spec:
   postBuild:
     substituteFrom:
       # spectrum-vars is written by beam and carries NETWORK, which selects the
-      # overlay path. STORAGE_SATELLITE_IPS is set per cluster by hand and lives
-      # in spectrum-manual-vars, so this app has to read both.
+      # overlay path. The storage values — STORAGE_NAD, STORAGE_SATELLITE_IPS and
+      # STORAGE_PREF_NIC — are set per cluster by hand and live in
+      # spectrum-manual-vars, so this app has to read both.
       #
-      # Of the storage network objects, only the `linstor` Subnet and NAD moved to
-      # beam; they are no longer rendered here. The ProviderNetwork and Vlan they
-      # ride on are per-cluster hardware, applied BY HAND outside both flux and
-      # beam — on stage, ProviderNetwork `storage` on the dedicated 10G port
-      # enp16s0f1, so replication does not share the workload underlay. beam does
-      # not recreate them and deliberately refuses to guess the Vlan: any name it
-      # could substitute would be wrong in a way that looks like a repair.
+      # The storage network objects themselves — ProviderNetwork, Vlan, the linstor
+      # Subnet and its NAD — are applied BY HAND on each cluster and rendered by
+      # nothing: this repo dropped the Subnet and NAD in #202, and beam withdrew
+      # from storage ownership entirely. On stage that is ProviderNetwork
+      # `storage` on the dedicated 10G port enp16s0f1, so replication does not
+      # share the workload underlay.
       #
-      # The storage network's own facts — CIDR, vlan id, MTU — are beam's now and
-      # are not substituted into anything here. See docs/adding-a-cluster.md §3.
+      # STORAGE_CIDR, STORAGE_VLAN and STORAGE_MTU are therefore substituted into
+      # nothing here; leftover keys in either ConfigMap are simply unread. See
+      # docs/adding-a-cluster.md §3, which records the missing owner as an open
+      # risk.
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
+      # optional: false so a cluster that never got spectrum-manual-vars fails the
+      # build loudly instead of substituting STORAGE_NAD and STORAGE_PREF_NIC to
+      # empty strings. NOTE this only catches a MISSING ConfigMap: flux does not
+      # fail on a present ConfigMap that lacks a key, and an unset key is
+      # indistinguishable from "". A present-but-incomplete ConfigMap still
+      # degrades silently — see docs/adding-a-cluster.md §3.
       - kind: ConfigMap
         name: spectrum-manual-vars
-        optional: true
+        optional: false

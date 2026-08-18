@@ -1,16 +1,34 @@
 # Attaches the LINSTOR satellite to the dedicated storage network and points DRBD
-# replication at it, mirroring stage. beam declares the linstor NAD and Subnet;
-# without this nothing joins them — the subnet sits at used=0 and replication goes
+# replication at it, mirroring stage. Without this nothing joins the linstor NAD
+# and Subnet — the subnet sits at used=0 and replication goes
 # over the pod network, i.e. through Geneve and out over the management VLAN.
 #
+# The storage network is run BY HAND, end to end — beam owns no part of it. All
+# three values below come from spectrum-manual-vars, set at bootstrap alongside
+# the objects they name: STORAGE_NAD (`<namespace>/<name>` of the NAD),
+# STORAGE_SATELLITE_IPS, STORAGE_PREF_NIC (the LINSTOR NetInterface name). None
+# gets a default: an empty PrefNic or ip_pool is accepted by the CRD and breaks
+# replication silently, so a cluster without a storage network must not include
+# this file in its overlay.
+#
+# ⚠️ That is a CONVENTION, not a mechanism: every overlay includes this file with
+# the same unconditional `patches:` entry, and nothing checks it against whether
+# the cluster actually has a storage network — see the stage overlay for the
+# full note.
+#
 # One step per node has no declarative form in Piraeus and is done by hand:
-#   linstor node interface create <node> storage <ip-from-the-pool-below>
+#   linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-the-pool>
 # Piraeus only ever registers the PRIMARY pod IP (tracked in the node property
 # Aux/piraeus.io/configured-interfaces) and leaves interfaces it did not create
 # alone. PrefNic below names that interface, so on a node where the step has not
 # been done it would point at a NIC that does not exist — hence this file is
 # overlay-scoped, and hence the annotations landed first and PrefNic only once
 # the interfaces existed.
+#
+# ⚠️ PrefNic and that hand-registered interface are two ends of one name, and
+# nothing verifies them: PrefNic comes from STORAGE_PREF_NIC, the interface is
+# made by hand. Verify with `linstor node interface list <node>` against
+# `linstor node list-properties <node>`.
 #
 # Registered on testnet: kabat-02 → 10.118.147.12, kabat-03 → 10.118.147.11.
 # The addresses do NOT follow node order — ip_pool is a set, not a mapping, so
@@ -30,11 +48,11 @@ spec:
   podTemplate:
     metadata:
       annotations:
-        k8s.v1.cni.cncf.io/networks: storage/linstor
+        k8s.v1.cni.cncf.io/networks: "${STORAGE_NAD}"
         linstor.storage.ovn.kubernetes.io/ip_pool: "${STORAGE_SATELLITE_IPS}"
   # Points DRBD replication at the interface registered above. The satellite's
   # own control connection to the controller stays on the pod network
   # (CurStltConnName remains default-ipv4) — only replication moves.
   properties:
     - name: PrefNic
-      value: storage
+      value: "${STORAGE_PREF_NIC}"
