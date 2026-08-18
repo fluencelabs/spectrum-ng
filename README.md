@@ -22,7 +22,9 @@ Cluster-specific overrides, created manually.
 | `PROVIDER` | Infrastructure provider identifier |
 | `PUBLIC_SUBNET_LIST` | Public subnet list for CRD operator |
 | `ENVOY_PUBLIC_SUBNET` | Public subnet for Envoy proxy |
-| `STORAGE_SATELLITE_IPS` | Storage-network addresses for the LINSTOR satellite `ip_pool`, one per node running a satellite (optional) |
+| `STORAGE_SATELLITE_IPS` | Storage-network addresses for the LINSTOR satellite `ip_pool`, one per node running a satellite |
+| `STORAGE_NAD` | `<namespace>/<name>` of the hand-applied storage NAD, e.g. `storage/linstor` |
+| `STORAGE_PREF_NIC` | Name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage` |
 | `OVN_TUNNEL_IFACE` | Interface carrying Geneve traffic, kube-ovn `--iface` (optional; default is the interface holding the node IP) |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |

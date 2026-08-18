@@ -362,7 +362,7 @@ on infra-stage):
 | Object | Keys found on stage |
 |---|---|
 | `spectrum-vars` (CM) | `NETWORK` **only** — beam injects nothing else |
-| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU` — of these only `STORAGE_SATELLITE_IPS` is read by an overlay today |
+| `spectrum-manual-vars` (CM) | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, and since 2026-07-28 `STORAGE_CIDR`, `STORAGE_VLAN`, `STORAGE_SATELLITE_IPS`, `STORAGE_MTU`. `STORAGE_NAD` and `STORAGE_PREF_NIC` were **absent** at that observation — see the prerequisite note below |
 | `spectrum-manual-secrets` (Secret) | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 | `netbird-api-token` (Secret, networking) | `NB_API_KEY` |
 | `alertmanager-config` (Secret, observability) | `alertmanager.yaml` |
@@ -370,8 +370,21 @@ on infra-stage):
 | `lightmare-ssh-creds` (Secret, fluence) | `identity`, `known_hosts` |
 
 Stage's `spectrum-manual-vars` still carries the `STORAGE_*` trio from when this repo
-rendered the `linstor` `Subnet`; only `STORAGE_SATELLITE_IPS` is read now.
-`spectrum-vars` holds `NETWORK` only.
+rendered the `linstor` `Subnet`. `spectrum-vars` holds `NETWORK` only.
+
+> ⚠️ **Prerequisite, not yet verified on any cluster.** `satellite.yml` now reads three
+> keys — `STORAGE_NAD`, `STORAGE_SATELLITE_IPS`, `STORAGE_PREF_NIC`. Only the middle one
+> was present at the observation above; the other two must be added to
+> `spectrum-manual-vars` on **every** cluster running a satellite *before* this repo is
+> reconciled, with the values that match the hand-applied objects (on stage:
+> `STORAGE_NAD=storage/linstor`, `STORAGE_PREF_NIC=storage`).
+>
+> `piraeus-operator/ks.yml` marks `spectrum-manual-vars` `optional: false`, so a cluster
+> with no such ConfigMap fails the build loudly. That does **not** cover a ConfigMap that
+> exists but lacks a key: flux substitutes an empty string and succeeds, and an empty
+> `PrefNic` or NAD reference is accepted by the CRD — DRBD then replicates over the pod
+> network via Geneve and the management NIC, with nothing failing. Check the keys with the
+> commands below before merging a change that consumes them.
 
 To re-verify on any cluster (keys only, no secret values leave the cluster):
 

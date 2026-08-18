@@ -70,6 +70,12 @@ spec:
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
+      # optional: false so a cluster that never got spectrum-manual-vars fails the
+      # build loudly instead of substituting STORAGE_NAD and STORAGE_PREF_NIC to
+      # empty strings. NOTE this only catches a MISSING ConfigMap: flux does not
+      # fail on a present ConfigMap that lacks a key, and an unset key is
+      # indistinguishable from "". A present-but-incomplete ConfigMap still
+      # degrades silently — see docs/adding-a-cluster.md §3.
       - kind: ConfigMap
         name: spectrum-manual-vars
-        optional: true
+        optional: false
