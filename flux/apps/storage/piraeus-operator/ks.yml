@@ -52,8 +52,9 @@ spec:
   postBuild:
     substituteFrom:
       # spectrum-vars is written by beam and carries NETWORK, which selects the
-      # overlay path. STORAGE_SATELLITE_IPS is set per cluster by hand and lives
-      # in spectrum-manual-vars, so this app has to read both.
+      # overlay path. The storage values — STORAGE_NAD, STORAGE_SATELLITE_IPS and
+      # STORAGE_PREF_NIC — are set per cluster by hand and live in
+      # spectrum-manual-vars, so this app has to read both.
       #
       # The storage network objects themselves — ProviderNetwork, Vlan, the linstor
       # Subnet and its NAD — are applied BY HAND on each cluster and rendered by
