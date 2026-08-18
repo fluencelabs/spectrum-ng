@@ -372,12 +372,21 @@ on infra-stage):
 Stage's `spectrum-manual-vars` still carries the `STORAGE_*` trio from when this repo
 rendered the `linstor` `Subnet`. `spectrum-vars` holds `NETWORK` only.
 
-> ⚠️ **Prerequisite, not yet verified on any cluster.** `satellite.yml` now reads three
+### Re-verified on spectrum-stage (`kabat-05`, 2026-08-18)
+
+| Observed | Value |
+|---|---|
+| `spectrum-vars` keys | `NETWORK`, `STORAGE_VLAN` — beam still writes `STORAGE_VLAN`, read by nothing here |
+| `spectrum-manual-vars` storage keys | `STORAGE_CIDR`, `STORAGE_MTU`, `STORAGE_SATELLITE_IPS`, `STORAGE_VLAN` |
+| **`STORAGE_NAD`, `STORAGE_PREF_NIC`** | **absent** |
+| Live `LinstorSatelliteConfiguration/talos-override` | `networks: storage/linstor`, `PrefNic: storage`, `ip_pool: 10.118.147.51` |
+| Hand-applied objects present | NAD `storage/linstor`; `ProviderNetwork/storage` on `enp16s0f1`; `Vlan/504` provider `storage` |
+
+> ⚠️ **Hard prerequisite before `satellite.yml` may consume variables.** It reads three
 > keys — `STORAGE_NAD`, `STORAGE_SATELLITE_IPS`, `STORAGE_PREF_NIC`. Only the middle one
-> was present at the observation above; the other two must be added to
-> `spectrum-manual-vars` on **every** cluster running a satellite *before* this repo is
-> reconciled, with the values that match the hand-applied objects (on stage:
-> `STORAGE_NAD=storage/linstor`, `STORAGE_PREF_NIC=storage`).
+> exists on stage today. The other two must be added to `spectrum-manual-vars` on **every**
+> cluster running a satellite *before* this repo is reconciled, matching the hand-applied
+> objects — on stage `STORAGE_NAD=storage/linstor` and `STORAGE_PREF_NIC=storage`.
 >
 > `piraeus-operator/ks.yml` marks `spectrum-manual-vars` `optional: false`, so a cluster
 > with no such ConfigMap fails the build loudly. That does **not** cover a ConfigMap that
