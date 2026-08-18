@@ -1,9 +1,36 @@
 # Attaches the LINSTOR satellite to the dedicated storage network so DRBD
 # replication leaves the Geneve overlay.
 #
+# The storage network is run BY HAND, end to end. beam took ownership of it for
+# one day and then withdrew (beam PR #394 reverts the whole set), so nothing
+# outside this repo creates, reconciles or supplies any part of it. The NAD
+# reference and PrefNic below are therefore literals, not variables: they are the
+# same on every cluster, and a variable a human must remember to fill is one more
+# way to get an empty value the CRD accepts in silence.
+#
+# STORAGE_SATELLITE_IPS stays a variable because it genuinely differs per
+# cluster, and it comes from spectrum-manual-vars — set by hand at bootstrap.
+# It gets no default on purpose: an empty ip_pool is accepted and breaks
+# replication silently, so a cluster without a storage network must not include
+# this file in its overlay.
+#
+# ⚠️ That last sentence is a CONVENTION, not a mechanism. Every overlay includes
+# this file with the same unconditional `patches: - path: satellite.yml`, and
+# nothing checks it against whether the cluster actually has a storage network.
+# An unset variable and an empty one are indistinguishable after substitution, so
+# a cluster that includes this file without the network gets empty values, the
+# pod starts, and DRBD replicates over the pod network — through Geneve and out
+# the 1G management port. Nothing reports it.
+#
 # One step stays manual, per node, and has no declarative form in Piraeus —
 # registering the interface itself:
-#   linstor node interface create <node> storage <ip-from-the-pool-below>
+#   linstor node interface create <node> storage <ip-from-the-pool>
+#
+# PrefNic below and that hand-registered interface are two ends of one name.
+# Both are literals in this file now, so they match by construction — keep it
+# that way. Check after adding a node:
+#   linstor node interface list <node>     # `storage` present
+#   linstor node list-properties <node>    # PrefNic = storage
 # Piraeus only ever registers the PRIMARY pod IP (it tracks its own set in the
 # node property Aux/piraeus.io/configured-interfaces) and leaves interfaces it
 # did not create alone — verified on stage across a satellite restart, where it
@@ -31,7 +58,8 @@ spec:
   # own control connection to the controller stays on the pod network
   # (CurStltConnName remains default-ipv4) — only replication moves.
   # Overlay-scoped on purpose: on a cluster without that interface, PrefNic
-  # would name a NIC that does not exist.
+  # would name a NIC that does not exist — and an unsubstituted or empty value
+  # names one too, without failing the build. See the header.
   properties:
     - name: PrefNic
       value: storage
