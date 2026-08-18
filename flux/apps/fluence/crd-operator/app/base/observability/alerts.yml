@@ -51,7 +51,17 @@ spec:
             description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 30s"
           labels:
             severity: warning
-
+---
+# Kept as a separate VMRule, WITHOUT the rule-type: vlogs label: these are
+# PromQL rules over kube-state-metrics, not LogsQL. Carrying them inside the
+# vlogs-labelled object sent the whole set to the logs vmalert, where every
+# one of them answered 400.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: crd-operator-readiness
+spec:
+  groups:
     - name: cloudless.crd.ready.alerts
       rules:
         - alert: CloudlessWorkspaceNotReady
