@@ -1,0 +1,48 @@
+# The silent half of the 2026-08-19 incident. The operator's pod webhook is
+# `failurePolicy: Ignore`, so a pod admitted while the operator is rolling gets NO
+# sidecar — no error, no event, no retry — and stays bare for its whole life. On
+# stage both kube-oidc-proxy and grafana were created that way on 2026-08-10 and
+# neither joined the mesh. kube-oidc-proxy at least crash-looped; grafana ran 1/1
+# Ready and produced no pod-level signal at all, so nothing anywhere would have
+# told us its OIDC login was broken. This rule is the only cover for that case.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: netbird-sidecar
+spec:
+  groups:
+    - name: netbird-sidecar
+      rules:
+        # kube-state-metrics collects neither kube_pod_annotations nor
+        # kube_pod_labels here, so "annotated for injection" cannot be expressed
+        # generically — the mesh workloads are listed by hand. ADD A LINE HERE
+        # whenever a workload gains `netbird.io/setup-key`, or it is uncovered.
+        - alert: NetbirdSidecarMissing
+          expr: |
+            (
+              max by (namespace, deployment) (
+                kube_deployment_status_replicas_available{job="kube-state-metrics", namespace="kube-oidc-proxy", deployment="kube-oidc-proxy"}
+                or
+                kube_deployment_status_replicas_available{job="kube-state-metrics", namespace="observability", deployment="grafana-deployment"}
+              ) > 0
+            )
+            unless on (namespace)
+            (
+              count by (namespace) (kube_pod_container_info{container="netbird"})
+            )
+          for: 15m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $labels.namespace }}/{{ $labels.deployment }} is running without its
+              NetBird sidecar.
+            description: >-
+              The deployment has available replicas but no pod in that namespace
+              carries a `netbird` container, so it is not on the mesh and cannot
+              resolve mesh-only names such as authentik.infra. This does not heal by
+              itself — the webhook only injects at admission. Fix with
+              `kubectl -n {{ $labels.namespace }} rollout restart deploy/{{ $labels.deployment }}`
+              once the netbird-operator is up, then confirm the new pod has two
+              containers.
