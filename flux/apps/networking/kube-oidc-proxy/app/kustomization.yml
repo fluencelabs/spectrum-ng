@@ -9,3 +9,4 @@ resources:
   - netbird-setupkey.yml
   - deployment.yml
   - service.yml
+  - alerts.yml

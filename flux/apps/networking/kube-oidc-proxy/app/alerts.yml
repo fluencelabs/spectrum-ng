@@ -1,0 +1,66 @@
+# Why these exist: on 2026-08-19 kube-oidc-proxy was found crash-looping for eight
+# days — OIDC login to the apiserver was dead the whole time — and no alert ever
+# reached anyone. KubePodCrashLooping never latched (it is `for: 15m`, and the pod
+# restarted every ~4.5 min, resetting the condition to pending each time), so the
+# only signals were the generic warning-level KubePodNotReady and
+# KubeDeploymentReplicasMismatch. These name the capability instead of the symptom.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-oidc-proxy
+spec:
+  groups:
+    - name: kube-oidc-proxy
+      rules:
+        # Deployment-level on purpose: pod-level crash-loop alerts flap with the
+        # restart backoff and never survive their own `for:` window.
+        - alert: KubeOidcProxyUnavailable
+          expr: |
+            kube_deployment_status_replicas_available{job="kube-state-metrics", namespace="kube-oidc-proxy", deployment="kube-oidc-proxy"} == 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: OIDC authentication to the apiserver is down.
+            description: >-
+              kube-oidc-proxy has had no available replica for 10 minutes, so no one
+              can log in to this cluster's apiserver. If the logs show a repeating
+              `lookup authentik.infra ... no such host`, the pod is missing its
+              NetBird sidecar — see NetbirdSidecarMissing.
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-oidc-proxy-logs
+  labels:
+    # Evaluated by the `stack-logs` VMAlert against vlogs; the metrics instance
+    # explicitly excludes this label.
+    rule-type: vlogs
+spec:
+  groups:
+    - name: kube-oidc-proxy-logs
+      type: vlogs
+      interval: "30s"
+      params:
+        query:
+          - 'namespace:kube-oidc-proxy AND container:proxy AND "oidc authenticator"'
+      rules:
+        # Catches the case the deployment alert cannot: the proxy serves TLS and
+        # counts as available, but rejects every login because it never finished
+        # initialising the OIDC plugin.
+        - alert: KubeOidcProxyAuthenticatorFailing
+          expr: '* | stats count(*) as hits | filter hits:>0'
+          # 5m, not 0s: the proxy retries every ~10s, so a real failure holds the
+          # condition easily, while a single blip during a restart does not page.
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: kube-oidc-proxy cannot initialise its OIDC plugin.
+            description: >-
+              {{ $value }} `oidc authenticator` errors in the last 30s. Every login
+              attempt fails while this repeats. The usual cause is that the issuer
+              host authentik.infra does not resolve, because the pod has no NetBird
+              sidecar and so is not on the mesh.
