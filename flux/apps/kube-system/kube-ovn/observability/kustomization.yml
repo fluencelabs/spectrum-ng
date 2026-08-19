@@ -5,3 +5,4 @@ resources:
   - datasource-prometheus-alias.yml
   - service-monitor.yml
   - alerts.yml
+  - egress-alerts.yml
