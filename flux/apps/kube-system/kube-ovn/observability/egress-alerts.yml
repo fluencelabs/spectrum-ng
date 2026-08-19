@@ -52,3 +52,64 @@ spec:
               `kubectl get nodes -L ovn.kubernetes.io/external-gw`, and check a
               suspect VPC has TWO router ports (its tenant subnet AND the fabric):
               `kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl show <vpc>`.
+---
+# The outcome-side alert, and the only one that would have caught the second
+# failure of 2026-08-19.
+#
+# That day the egress hub VPC was still attached to `subnet-temp`, the public /29
+# on the legacy VLAN 121, which had been deleted when the public network moved to
+# VLAN 400. The hub kept a router port with an address on it, peered to a logical
+# switch that no longer existed, so EVERY tenant lost egress — including VPCs
+# whose own fabric attachment was perfectly healthy.
+#
+# Nothing reported it. kube-ovn logged no error for the hub (VpcEgressFabricAttachFailing
+# above stayed silent, correctly — attachment was not what failed). Every cloudless
+# CR read Ready. There are no kube-ovn CR metrics here to compare
+# `Vpc.spec.extraExternalSubnets` against the Subnets that exist. `ovn-trace` even
+# reported a complete path, because it simulates the logical pipeline and cannot
+# know the far side is gone.
+#
+# What did expose it was the guest: cloud-init installs qemu-guest-agent from the
+# Ubuntu archive, so a VM with no egress spends 250-420s timing out and gives up.
+# Alerting on that covers this cause and any future one, at the cost of only
+# firing once someone boots a VM — which is also when it starts to matter.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: tenant-egress-guest-logs
+  labels:
+    rule-type: vlogs
+spec:
+  groups:
+    - name: tenant-egress-guest-logs
+      type: vlogs
+      interval: "60s"
+      rules:
+        - alert: TenantVmCannotResolveDns
+          # `Temporary failure resolving` is glibc's EAI_AGAIN: the query left and
+          # nothing came back. It is NOT evidence that DNS itself is misconfigured
+          # — the guests are handed 1.1.1.1 and 8.8.8.8, which are only reachable
+          # over egress, so loss of egress presents as a resolver failure. Do not
+          # start by auditing resolv.conf; check the path out.
+          #
+          # 30m window against a 60s interval: a failing guest logs these across a
+          # ~7 minute cloud-init, and VMs boot sporadically, so a short window
+          # would fall between them and the alert would never hold its `for:`.
+          # hits:>5 so one unlucky guest with a broken image does not page.
+          expr: '_time:30m AND "Temporary failure resolving" | stats count(*) as hits | filter hits:>5'
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: Tenant VMs cannot reach the internet — cloud-init is failing in the guests.
+            description: >-
+              {{ $value }} DNS resolution failures in guest consoles in the last 30m.
+              The VMs boot and report Ready, but cloud-init cannot fetch packages, so
+              qemu-guest-agent is never installed and vm-api's password setting fails
+              with `409 qemu-guest-agent not connected` forever after. Check the egress
+              path end to end, starting at the hub: `ovn-nbctl show ovn-egress-test`
+              must have a port on a Subnet that still EXISTS (`kubectl get subnet.kubeovn.io`)
+              with a gateway chassis, and its SNAT address must belong to that subnet.
+              A green `ovn-trace` does not rule this out — it simulates the logical
+              pipeline and reports success even when the peer switch is gone.
