@@ -32,7 +32,7 @@ another and each per-VPC EIP is SNAT-only, so tenant CIDRs may overlap freely.
 |---|---|
 | `Vlan`, `ProviderNetwork`, underlay `Subnet`s (incl. the public one) | **beam-agent**, from the beam DB |
 | Hub `Vpc`, `egress-fabric` `Subnet`, the public `OvnEip`, the hub `OvnSnatRule` | **applied to the cluster** (beam-owned in the long run) |
-| Node label `ovn.kubernetes.io/external-gw=true` | applied to the cluster |
+| Node label `ovn.kubernetes.io/external-gw=true` | **beam**, via Talos machine config (`nodeLabels`) — see the note below |
 | kube-ovn controller gate, lightmare egress config | **spectrum-ng** (this repo), from the vars below |
 | Per-VPC `OvnEip` on the fabric, per-subnet `OvnSnatRule`, the tenant's `extraExternalSubnets` + default route | **lightmare controller**, reconciled from `Subnet.egress` — never by hand |
 
@@ -69,6 +69,17 @@ old attachment. Rewire only with no egress subnets in play.
   keeps **one** active, the rest are standby with BFD failover — it is not
   "every node NATs for itself". Labelling a single node is legal and is what
   stage does, at the cost of no failover.
+
+  > It must be set through **Talos machine config (`nodeLabels`), patched onto the
+  > node by beam** — not with `kubectl label`. Talos is the owner of node identity
+  > here, and a hand-set label is unowned: nothing restores it, nothing notices its
+  > absence, and a node that is reprovisioned or re-registered comes back without
+  > it. That is not hypothetical — on 2026-08-19 stage's only node was found
+  > carrying `ovn.kubernetes.io/external-gw: "false"` with no managedFields owner,
+  > which silently denied egress to every VPC created after the flip while leaving
+  > the already-attached ones working. Since spectrum-ng is Flux-only and does not
+  > own Talos, this is a beam-side change; this repo can only detect the failure,
+  > which `VpcEgressFabricAttachFailing` now does.
 - Two free addresses in the public block. Budget them before enabling: a `/29`
   that already serves ingress and tenant public IPs can be left with nothing.
 

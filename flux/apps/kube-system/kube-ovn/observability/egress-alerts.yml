@@ -1,0 +1,54 @@
+# Egress attachment failures have no metric and no CR status to read: when
+# kube-ovn cannot connect a tenant VPC to the shared egress fabric, the cloudless
+# Subnet and VirtualMachine CRs still report Ready=True, the VPC still gets its
+# default route, the per-subnet OvnSnatRule still reports READY=true, and even the
+# lrp-type OvnEip reports ready=true for an address it never bound. The lightmare
+# controller logs nothing. Only kube-ovn-controller knows, and only in its log —
+# hence a vlogs rule.
+#
+# Found on 2026-08-19: a VM sat on a VPC with no fabric port and no egress for
+# hours; ovn-trace showed its packets being sent back out the only port the router
+# owned and dropped. Root cause was the node label
+# `ovn.kubernetes.io/external-gw=true` being absent, so kube-ovn had no chassis to
+# place the external LRP on.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-egress-logs
+  labels:
+    # Evaluated by the `stack-logs` VMAlert against vlogs; the metrics instance
+    # excludes this label.
+    rule-type: vlogs
+spec:
+  groups:
+    - name: kube-ovn-egress-logs
+      type: vlogs
+      interval: "60s"
+      rules:
+        # The whole LogsQL lives in `expr`. It must NOT be split into
+        # `params.query` + `expr: '* | ...'` — vmalert sends `expr` to the
+        # datasource and never applies the params filter, so `*` would match every
+        # log line in the cluster.
+        - alert: VpcEgressFabricAttachFailing
+          # `_time:30m`, deliberately much wider than the 60s interval: kube-ovn
+          # retries a VPC sync only about every 16 minutes, so a 5m window is empty
+          # between retries and the alert would never survive its own `for:`. That
+          # is exactly how KubePodCrashLooping failed to latch on a pod restarting
+          # every 4.5 minutes.
+          expr: '_time:30m AND namespace:kube-system AND container:kube-ovn-controller AND "no external gw nodes" | stats count(*) as hits | filter hits:>0'
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: A VPC cannot be attached to the egress fabric — new tenants get no egress.
+            description: >-
+              kube-ovn-controller reports `no external gw nodes` ({{ $value }} times in
+              the last 30m), so it cannot create the external logical router port that
+              carries a tenant VPC to the egress fabric. VPCs attached before this
+              started keep working; every VPC created while it lasts silently has no
+              egress, with all CRs reporting Ready. Usual cause: no node carries
+              `ovn.kubernetes.io/external-gw=true`. Confirm with
+              `kubectl get nodes -L ovn.kubernetes.io/external-gw`, and check a
+              suspect VPC has TWO router ports (its tenant subnet AND the fabric):
+              `kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl show <vpc>`.
