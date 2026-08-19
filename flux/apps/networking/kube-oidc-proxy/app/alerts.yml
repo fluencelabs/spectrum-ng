@@ -42,23 +42,18 @@ spec:
     - name: kube-oidc-proxy-logs
       type: vlogs
       interval: "30s"
-      params:
-        query:
-          # `_time:5m` is load-bearing. Without it LogsQL matches the WHOLE
-          # retention, not the evaluation interval: this same filter returned
-          # 99573 hits unbounded and 0 with the window, so the rule fired on
-          # eight-day-old log lines and could never clear.
-          - '_time:5m AND namespace:kube-oidc-proxy AND container:proxy AND "oidc authenticator"'
       rules:
-        # Catches the case the deployment alert cannot: the proxy serves TLS and
-        # counts as available, but rejects every login because it never finished
-        # initialising the OIDC plugin.
+        # The whole LogsQL lives in `expr`. It must NOT be split into
+        # `params.query` + `expr: '* | ...'` — vmalert sends `expr` to the
+        # datasource and the params filter is never applied, so `*` matches
+        # EVERY log line in the cluster. Measured: all logs in 30s = 512, and the
+        # rule was firing with value 551. `hits:>0` and even `hits:>5` are then
+        # always true, and the alert says nothing about the proxy at all.
         - alert: KubeOidcProxyAuthenticatorFailing
-          # hits:>5, not >0: the proxy logs two or three of these in the ~10s a
-          # fresh pod needs before its sidecar joins the mesh, so every rollout
-          # would otherwise page. A real failure retries every ~10s, i.e. ~30 hits
-          # per window.
-          expr: '* | stats count(*) as hits | filter hits:>5'
+          expr: '_time:5m AND namespace:kube-oidc-proxy AND container:proxy AND "oidc authenticator" | stats count(*) as hits | filter hits:>5'
+          # hits:>5, not >0: a freshly rolled pod logs two or three of these in
+          # the ~10s before its NetBird sidecar joins the mesh. A real failure
+          # retries every ~10s, i.e. ~30 hits per window.
           # 5m, not the 0s used elsewhere: at critical severity a transient blip
           # must not page.
           for: 5m
@@ -68,7 +63,7 @@ spec:
           annotations:
             summary: kube-oidc-proxy cannot initialise its OIDC plugin.
             description: >-
-              {{ $value }} `oidc authenticator` errors in the last 30s. Every login
+              {{ $value }} `oidc authenticator` errors in the last 5m. Every login
               attempt fails while this repeats. The usual cause is that the issuer
               host authentik.infra does not resolve, because the pod has no NetBird
               sidecar and so is not on the mesh.
