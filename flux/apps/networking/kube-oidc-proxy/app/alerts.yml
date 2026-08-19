@@ -44,15 +44,23 @@ spec:
       interval: "30s"
       params:
         query:
-          - 'namespace:kube-oidc-proxy AND container:proxy AND "oidc authenticator"'
+          # `_time:5m` is load-bearing. Without it LogsQL matches the WHOLE
+          # retention, not the evaluation interval: this same filter returned
+          # 99573 hits unbounded and 0 with the window, so the rule fired on
+          # eight-day-old log lines and could never clear.
+          - '_time:5m AND namespace:kube-oidc-proxy AND container:proxy AND "oidc authenticator"'
       rules:
         # Catches the case the deployment alert cannot: the proxy serves TLS and
         # counts as available, but rejects every login because it never finished
         # initialising the OIDC plugin.
         - alert: KubeOidcProxyAuthenticatorFailing
-          expr: '* | stats count(*) as hits | filter hits:>0'
-          # 5m, not 0s: the proxy retries every ~10s, so a real failure holds the
-          # condition easily, while a single blip during a restart does not page.
+          # hits:>5, not >0: the proxy logs two or three of these in the ~10s a
+          # fresh pod needs before its sidecar joins the mesh, so every rollout
+          # would otherwise page. A real failure retries every ~10s, i.e. ~30 hits
+          # per window.
+          expr: '* | stats count(*) as hits | filter hits:>5'
+          # 5m, not the 0s used elsewhere: at critical severity a transient blip
+          # must not page.
           for: 5m
           labels:
             team: devops
