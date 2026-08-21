@@ -73,7 +73,16 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 2
+      # No in-Job retry. A retry starts a NEW pod that re-reads the secret, and after a
+      # failed rollout the secret already holds the fresh PAT — so attempt 2 sees a token
+      # minted minutes ago, prints "nothing to do" and exits 0. The Job goes Complete,
+      # KubeJobFailed never fires, and the guard's "restart the operator by hand" message
+      # survives only in the logs of a pod that is about to be deleted; meanwhile the
+      # operator runs on the old PAT and every nightly run exits 0 doing nothing. This job
+      # is idempotent and runs daily, so the schedule IS the retry — the same budget of
+      # ~70 attempts the comment above counts. An in-Job retry only converts a real
+      # failure into a green Job and a lost alert.
+      backoffLimit: 0
       activeDeadlineSeconds: 600
       template:
         spec:
@@ -218,11 +227,13 @@ spec:
                   fi
 
                   CUTOFF=$(( $(date -u +%s) - REVOKE_AFTER_DAYS*86400 ))
-                  # `.created_at? // empty` skips a malformed entry instead of aborting the whole jq:
-                  # one of our own tokens with a null timestamp used to kill the sweep mid-stream, and
-                  # with no `set -e` the script still printed "rotation complete" and exited 0, so the
-                  # skipped revocations were invisible.
-                  echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at? // empty | sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) < $c) | .id' \
+                  # `try … catch empty` skips a malformed entry instead of aborting the whole jq:
+                  # one of our own tokens with an unusable created_at used to kill the sweep
+                  # mid-stream, and with no `set -e` the script still printed "rotation complete" and
+                  # exited 0, so the skipped revocations were invisible. `?` alone is not enough — it
+                  # suppresses iterate/index errors, not the type and format errors that sub and
+                  # fromdateiso8601 raise on a number or a string that is not RFC3339.
+                  echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((try (.created_at // empty | sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) catch empty) < $c) | .id' \
                   | while read -r OLD; do
                     [ -z "$OLD" ] && continue
                     # Kept although OURS was captured before the mint, so the fresh token cannot
