@@ -4,6 +4,13 @@
 # service user `spectrum-<network>`. This CronJob uses the CURRENT PAT to mint the next one for the
 # same service user (admin PAT can create its own user's tokens — verified), writes it back into the
 # secret, restarts the operator (it reads the token at start), and revokes aged-out tokens.
+#
+# The service user is per NETWORK, but several clusters can share one network, so every decision
+# this job makes is scoped to THIS cluster's tokens by name. Without that scoping two clusters
+# throttle each other: A mints, B sees A's fresh token and never renews its own, and 40 days later
+# A's revoke loop deletes B's token. B then has no valid PAT and cannot mint one — only a
+# hand-seeded PAT gets it back. Own tokens are named CLUSTER_ID (hand-seeded) or CLUSTER_ID-<date>
+# (minted here); everything else belongs to a sibling cluster and is never touched.
 # Self-sustaining as long as it runs within the validity window; if the PAT ever fully expires
 # (cluster down > REVOKE window), re-bootstrap a PAT into the secret by hand.
 ---
@@ -92,6 +99,9 @@ spec:
                   value: https://netbird.infrahub.cloudless.dev/api
                 - name: SERVICE_USER
                   value: spectrum-${NETWORK}
+                # Scopes freshness and revocation to this cluster's own tokens.
+                - name: CLUSTER_ID
+                  value: "${CLUSTER_ID}"
                 - name: PAT_EXPIRES_IN_DAYS
                   value: "90"
                 - name: RENEW_AFTER_DAYS
@@ -126,8 +136,16 @@ spec:
                   [ -n "$USER_ID" ] || { echo "PAT is accepted, but service user $SERVICE_USER does not exist on this NetBird tenant"; exit 1; }
                   echo "service user $SERVICE_USER id=$USER_ID"
 
+                  [ -n "$$CLUSTER_ID" ] || { echo "CLUSTER_ID empty — refusing to run: without it this job cannot tell its own tokens from a sibling cluster's"; exit 1; }
+
+                  # OURS filters the service user's tokens down to this cluster's own: the
+                  # hand-seeded one is named exactly CLUSTER_ID, the ones minted below carry a
+                  # CLUSTER_ID- prefix. Both the freshness check and the revoke loop read only
+                  # this list, so sibling clusters on the same network stay invisible to each other.
                   TOKENS=$(curl -sf -H "Authorization: Token $T" "$API/users/$USER_ID/tokens")
-                  NEWEST_AGE=$(echo "$TOKENS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end')
+                  OURS=$(echo "$TOKENS" | jq -c --arg c "$$CLUSTER_ID" '[.[]? | select(.name == $c or (.name | startswith($c + "-")))]')
+                  echo "$(echo "$OURS" | jq -r 'length') of $(echo "$TOKENS" | jq -r 'length') tokens belong to cluster $$CLUSTER_ID"
+                  NEWEST_AGE=$(echo "$OURS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end')
                   if [ "$NEWEST_AGE" != "-1" ] && [ "$NEWEST_AGE" -lt $((RENEW_AFTER_DAYS*86400)) ]; then
                     # The doubled dollar escapes Flux postBuild envsubst. NETWORK above is a real
                     # substitution; the two below are shell vars and must stay literal. Keep
@@ -136,7 +154,9 @@ spec:
                     exit 0
                   fi
 
-                  DATED="$SERVICE_USER-$(date -u +%Y%m%d)"
+                  # Named by cluster, not by service user: the name is what makes a token
+                  # recognisable as ours on the next run.
+                  DATED="$$CLUSTER_ID-$(date -u +%Y%m%d)"
                   RESP=$(curl -sf -X POST -H "Authorization: Token $T" -H "Content-Type: application/json" \
                     -d "{\"name\":\"$DATED\",\"expires_in\":$PAT_EXPIRES_IN_DAYS}" "$API/users/$USER_ID/tokens")
                   NEWPAT=$(echo "$RESP" | jq -r '.plain_token // .personal_access_token.plain_token // empty')
@@ -144,8 +164,11 @@ spec:
                   [ -n "$NEWPAT" ] || { echo "mint failed (body suppressed); keys=$(echo "$RESP" | jq -r 'keys|join(",")' 2>/dev/null)"; exit 1; }
                   echo "minted $DATED id=$NEWID"
 
-                  if ! kubectl -n networking create secret generic netbird-api-token \
-                    --from-literal=NB_API_KEY="$NEWPAT" --dry-run=client -o yaml | kubectl -n networking apply -f -; then
+                  # patch, not `create --dry-run | apply`: apply writes the whole object into the
+                  # kubectl.kubernetes.io/last-applied-configuration annotation, i.e. the job would
+                  # leave the fresh PAT sitting in cleartext in an annotation next to the secret.
+                  if ! kubectl -n networking patch secret netbird-api-token --type merge \
+                    -p "{\"stringData\":{\"NB_API_KEY\":\"$NEWPAT\"}}"; then
                     echo "secret update failed; revoking just-minted $NEWID"
                     [ -n "$NEWID" ] && curl -sf -X DELETE -H "Authorization: Token $T" "$API/users/$USER_ID/tokens/$NEWID" >/dev/null || true
                     exit 1
@@ -156,7 +179,7 @@ spec:
                   kubectl -n networking rollout status deploy/netbird-operator --timeout=5m
 
                   CUTOFF=$(( $(date -u +%s) - REVOKE_AFTER_DAYS*86400 ))
-                  echo "$TOKENS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601) < $c) | .id' \
+                  echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601) < $c) | .id' \
                   | while read -r OLD; do
                     [ -z "$OLD" ] && continue
                     [ "$OLD" = "$NEWID" ] && continue
