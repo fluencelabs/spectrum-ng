@@ -26,10 +26,11 @@ metadata:
   name: netbird-token-rotate
   namespace: networking
 rules:
-  # Update the operator token secret.
+  # Update the operator token secret. The flow is patch-only (the PAT write is a merge
+  # patch, and `kubectl annotate` is a patch too), so create/update are not needed.
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "create", "update", "patch"]
+    verbs: ["get", "list", "patch"]
   # Restart the operator + watch the rollout.
   - apiGroups: ["apps"]
     resources: ["deployments"]
@@ -139,13 +140,31 @@ spec:
                   [ -n "$$CLUSTER_ID" ] || { echo "CLUSTER_ID empty — refusing to run: without it this job cannot tell its own tokens from a sibling cluster's"; exit 1; }
 
                   # OURS filters the service user's tokens down to this cluster's own: the
-                  # hand-seeded one is named exactly CLUSTER_ID, the ones minted below carry a
-                  # CLUSTER_ID- prefix. Both the freshness check and the revoke loop read only
-                  # this list, so sibling clusters on the same network stay invisible to each other.
+                  # hand-seeded one is named exactly CLUSTER_ID, the ones minted below are
+                  # CLUSTER_ID, a hyphen and an 8-digit date. Both the freshness check and the
+                  # revoke loop read only this list, so sibling clusters on the same network stay
+                  # invisible to each other. The tail is matched as an exact 8-digit shape rather
+                  # than by a bare prefix test: a sibling whose id happens to be ours plus "-west"
+                  # would otherwise read as our token, and 40 days later we would revoke it and
+                  # lock that cluster out — the very failure this job exists to avoid. The
+                  # comparison is done with string slicing, not by splicing the id into a regex,
+                  # so an id carrying regex metacharacters cannot change what matches.
                   TOKENS=$(curl -sf -H "Authorization: Token $T" "$API/users/$USER_ID/tokens")
-                  OURS=$(echo "$TOKENS" | jq -c --arg c "$$CLUSTER_ID" '[.[]? | select(.name == $c or (.name | startswith($c + "-")))]')
-                  echo "$(echo "$OURS" | jq -r 'length') of $(echo "$TOKENS" | jq -r 'length') tokens belong to cluster $$CLUSTER_ID"
-                  NEWEST_AGE=$(echo "$OURS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end')
+                  # There is no `set -e` here on purpose, so nothing downstream notices a curl that
+                  # produced nothing or a body we cannot parse: OURS would come out empty, NEWEST_AGE
+                  # empty, the numeric test below would error, and the job would fall through and mint
+                  # one more token every single run while reporting blank counts. So parse the list
+                  # explicitly and fail loudly. "Parsed fine, none of them ours" is a different and
+                  # entirely legitimate answer: that keeps the -1 path and mints, as before.
+                  TOTAL=$(echo "$TOKENS" | jq -r 'if type=="array" then length else empty end' 2>/dev/null)
+                  [ -n "$TOTAL" ] || { echo "netbird returned a token list we could not parse as an array — refusing to guess whether this cluster has a fresh token"; exit 1; }
+                  OURS=$(echo "$TOKENS" | jq -c --arg c "$$CLUSTER_ID" '[.[] | select((.name? // "") as $n | $n == $c or (($n | startswith($c + "-")) and ($n[($c|length)+1:] | test("^[0-9]{8}$"))))]') \
+                    || { echo "failed to select this cluster's tokens out of the list (unexpected shape, e.g. a token with no name)"; exit 1; }
+                  OURS_COUNT=$(echo "$OURS" | jq -r 'length' 2>/dev/null)
+                  [ -n "$OURS_COUNT" ] || { echo "could not count this cluster's tokens"; exit 1; }
+                  echo "$OURS_COUNT of $TOTAL tokens belong to cluster $$CLUSTER_ID"
+                  NEWEST_AGE=$(echo "$OURS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end' 2>/dev/null)
+                  [ -n "$NEWEST_AGE" ] || { echo "could not read the age of this cluster's newest token"; exit 1; }
                   if [ "$NEWEST_AGE" != "-1" ] && [ "$NEWEST_AGE" -lt $((RENEW_AFTER_DAYS*86400)) ]; then
                     # The doubled dollar escapes Flux postBuild envsubst. NETWORK above is a real
                     # substitution; the two below are shell vars and must stay literal. Keep
@@ -175,6 +194,17 @@ spec:
                   fi
                   echo "secret netbird-api-token updated"
 
+                  # One-off cleanup of a leak this job used to cause itself: the previous
+                  # implementation wrote the secret with `create --dry-run | apply`, which stores the
+                  # whole object — PAT included — in the last-applied-configuration annotation.
+                  # Patching stops new leaks but never removes the one already sitting there. The
+                  # trailing hyphen removes the annotation and is a no-op when it is absent, so this
+                  # is safe to run forever. Output is dropped and a failure is only a warning: the
+                  # rotation itself already succeeded and must not be undone by a cleanup.
+                  kubectl -n networking annotate secret netbird-api-token \
+                    kubectl.kubernetes.io/last-applied-configuration- >/dev/null 2>&1 \
+                    || echo "warn: could not strip the legacy last-applied-configuration annotation from netbird-api-token; check it by hand"
+
                   kubectl -n networking rollout restart deploy/netbird-operator
                   kubectl -n networking rollout status deploy/netbird-operator --timeout=5m
 
@@ -182,8 +212,26 @@ spec:
                   echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601) < $c) | .id' \
                   | while read -r OLD; do
                     [ -z "$OLD" ] && continue
+                    # Kept although OURS was captured before the mint, so the fresh token cannot
+                    # appear in this list: it costs nothing and is the last thing standing between a
+                    # future reordering and revoking the PAT we just wrote into the secret.
                     [ "$OLD" = "$NEWID" ] && continue
                     curl -sf -X DELETE -H "Authorization: Token $T" "$API/users/$USER_ID/tokens/$OLD" >/dev/null \
                       && echo "revoked old $OLD" || echo "warn: revoke failed $OLD"
                   done
+                  # Tokens the old code minted are named after the service user, not the cluster
+                  # (SERVICE_USER, or SERVICE_USER and an 8-digit date), so they match no cluster's
+                  # ownership filter and nobody will ever sweep them. They are NOT revoked here on
+                  # purpose: one of them may still be the live PAT of a sibling cluster that has not
+                  # had this rollout yet, and revoking it would recreate exactly the lockout this job
+                  # exists to prevent. Report them and let an operator revoke them by hand. Never
+                  # fatal — this is a hygiene note appended to a rotation that already succeeded.
+                  ORPHANS=$(echo "$TOKENS" | jq -r --arg n "$SERVICE_USER" \
+                    '.[] | select((.name? // "") as $x | $x == $n or (($x | startswith($n + "-")) and ($x[($n|length)+1:] | test("^[0-9]{8}$"))))
+                     | "  id=\(.id) name=\(.name) age=\(((now - (.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))/86400)|floor)d"' 2>/dev/null)
+                  if [ -n "$ORPHANS" ]; then
+                    echo "warn: legacy-named tokens of $SERVICE_USER belong to no cluster and are swept by nobody; revoke by hand once every cluster on this network has rotated:"
+                    echo "$ORPHANS"
+                  fi
+
                   echo "rotation complete"
