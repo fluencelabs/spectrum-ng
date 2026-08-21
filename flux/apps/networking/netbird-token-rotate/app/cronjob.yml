@@ -205,11 +205,24 @@ spec:
                     kubectl.kubernetes.io/last-applied-configuration- >/dev/null 2>&1 \
                     || echo "warn: could not strip the legacy last-applied-configuration annotation from netbird-api-token; check it by hand"
 
-                  kubectl -n networking rollout restart deploy/netbird-operator
-                  kubectl -n networking rollout status deploy/netbird-operator --timeout=5m
+                  # A failed rollout must stop the run before anything is revoked. Without this the
+                  # script falls through and exits 0 in the worst state it can reach: the secret
+                  # already holds the new PAT, the operator is still running with an old one, and the
+                  # revoke loop below may delete exactly that old one — leaving a live operator with
+                  # no valid token. Checked here rather than with a global `set -e`, which the rest of
+                  # this script was deliberately not written for.
+                  if ! kubectl -n networking rollout restart deploy/netbird-operator \
+                     || ! kubectl -n networking rollout status deploy/netbird-operator --timeout=5m; then
+                    echo "operator rollout failed — secret netbird-api-token ALREADY holds the new PAT ($DATED id=$NEWID) but the running operator has not picked it up; no token was revoked. Restart deploy/netbird-operator by hand; the next run will resume normally."
+                    exit 1
+                  fi
 
                   CUTOFF=$(( $(date -u +%s) - REVOKE_AFTER_DAYS*86400 ))
-                  echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601) < $c) | .id' \
+                  # `.created_at? // empty` skips a malformed entry instead of aborting the whole jq:
+                  # one of our own tokens with a null timestamp used to kill the sweep mid-stream, and
+                  # with no `set -e` the script still printed "rotation complete" and exited 0, so the
+                  # skipped revocations were invisible.
+                  echo "$OURS" | jq -r --argjson c "$CUTOFF" '.[]? | select((.created_at? // empty | sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) < $c) | .id' \
                   | while read -r OLD; do
                     [ -z "$OLD" ] && continue
                     # Kept although OURS was captured before the mint, so the fresh token cannot
