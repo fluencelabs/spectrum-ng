@@ -7,7 +7,7 @@ spec:
   # Helm never upgrades what it installed from a chart's crds/ directory, so
   # without this the CRDs stay frozen at whatever version first installed them
   # while the controllers keep being upgraded. On stage that gap had grown far
-  # enough to hide fields the running 1.15.6 daemon already reads — the
+  # enough to hide fields the running daemon already reads — the
   # ProviderNetwork CRD carried neither `autoCreateVlanSubinterfaces` nor
   # `vlanInterfaces`, so a whole VLAN-subinterface feature looked like it did
   # not exist. CreateReplace makes flux apply the chart's CRDs on every upgrade.
@@ -18,7 +18,12 @@ spec:
   chart:
     spec:
       chart: kube-ovn-v2
-      version: 1.15.9
+      # The image tag is NOT set here: kube-ovn-v2 reads it from
+      # `global.images.kubeovn.tag`, whose default is the chart's own
+      # appVersion. A top-level `images.kubeovn.tag` (as this file carried
+      # until 1.15.23) is silently ignored, so the daemons have always
+      # followed the chart version alone — this line is the only lever.
+      version: 1.15.23
       sourceRef:
         kind: HelmRepository
         name: kube-ovn
@@ -30,10 +35,6 @@ spec:
       # Per-cluster via ${ENABLE_EXTERNAL_VPCS} (spectrum-vars); default off so
       # clusters that don't set the var are unaffected.
       enableExternalVpcs: ${ENABLE_EXTERNAL_VPCS:=false}
-
-    images:
-      kubeovn:
-        tag: v1.15.6
 
     agent:
       # Interface carrying inter-node Geneve traffic (--iface). Empty keeps
