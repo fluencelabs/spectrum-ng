@@ -174,6 +174,21 @@ spec:
                   echo "$OURS_COUNT of $TOTAL tokens belong to cluster $$CLUSTER_ID"
                   NEWEST_AGE=$(echo "$OURS" | jq -r '(map(.created_at)|max) as $m | if $m==null then -1 else ((now - ($m|sub("\\.[0-9]+Z$";"Z")|fromdateiso8601))|floor) end' 2>/dev/null)
                   [ -n "$NEWEST_AGE" ] || { echo "could not read the age of this cluster's newest token"; exit 1; }
+                  # Strip the legacy last-applied-configuration annotation off the secret on EVERY
+                  # run, before the freshness check below can exit 0. That annotation stores the whole
+                  # object — PAT included — in cleartext; it is written by client-side `kubectl apply`,
+                  # which this job no longer uses, but a human bootstrapping the PAT by hand can still
+                  # write it. Doing it only after a successful mint left a leak sitting there for up to
+                  # RENEW_AFTER_DAYS, since most runs exit early with "nothing to do"; running it here
+                  # means every cluster self-heals within a day instead of at the next mint. Placed
+                  # after the API and token-list guards so a dead PAT or an unparsable list still fails
+                  # first with its own message. The trailing hyphen removes the annotation and is a
+                  # no-op when it is absent, so this is safe to run forever. Output is dropped and a
+                  # failure is only a warning: a cleanup must never abort or undo a rotation.
+                  kubectl -n networking annotate secret netbird-api-token \
+                    kubectl.kubernetes.io/last-applied-configuration- >/dev/null 2>&1 \
+                    || echo "warn: could not strip the legacy last-applied-configuration annotation from netbird-api-token; check it by hand"
+
                   if [ "$NEWEST_AGE" != "-1" ] && [ "$NEWEST_AGE" -lt $((RENEW_AFTER_DAYS*86400)) ]; then
                     # The doubled dollar escapes Flux postBuild envsubst. NETWORK above is a real
                     # substitution; the two below are shell vars and must stay literal. Keep
@@ -202,17 +217,6 @@ spec:
                     exit 1
                   fi
                   echo "secret netbird-api-token updated"
-
-                  # One-off cleanup of a leak this job used to cause itself: the previous
-                  # implementation wrote the secret with `create --dry-run | apply`, which stores the
-                  # whole object — PAT included — in the last-applied-configuration annotation.
-                  # Patching stops new leaks but never removes the one already sitting there. The
-                  # trailing hyphen removes the annotation and is a no-op when it is absent, so this
-                  # is safe to run forever. Output is dropped and a failure is only a warning: the
-                  # rotation itself already succeeded and must not be undone by a cleanup.
-                  kubectl -n networking annotate secret netbird-api-token \
-                    kubectl.kubernetes.io/last-applied-configuration- >/dev/null 2>&1 \
-                    || echo "warn: could not strip the legacy last-applied-configuration annotation from netbird-api-token; check it by hand"
 
                   # A failed rollout must stop the run before anything is revoked. Without this the
                   # script falls through and exits 0 in the worst state it can reach: the secret
