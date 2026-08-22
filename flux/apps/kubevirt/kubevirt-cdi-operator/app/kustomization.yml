@@ -3,6 +3,42 @@ kind: Kustomization
 resources:
   - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.0/cdi-operator.yaml
 patches:
+  # ⚠️ IMPORTER PINNED BACK to 1.64.0 while the rest of CDI stays at 1.66.0.
+  #
+  # cdi-importer 1.65 and 1.66 cannot write into a block volume whose logical
+  # sector is 4096. qemu-img clears the target's first sector with a 512-byte
+  # request and the kernel refuses it:
+  #   qemu-img: /dev/cdi-block-volume: error while converting raw:
+  #   Failed to clear the new image's first sector: Invalid argument
+  # Every boot disk on mainnet lands on such a device — both fra-flix-01 and
+  # poz-bey-c01 run 4Kn disks — so no new VM could be created there at all.
+  # 1.64.0 writes those devices fine (last good import 2026-08-22 10:41 UTC);
+  # 1.66.0 did NOT fix it, checked live the same day.
+  #
+  # stage and testnet cannot reproduce this: their DRBD devices report a
+  # 512-byte sector, the same import succeeds there, and that is why the whole
+  # pilot came out clean while prod broke on the first VM.
+  #
+  # Each image is its own env var on the operator Deployment, so only the
+  # importer moves back — controller, apiserver, cloner and upload stay 1.66.0.
+  # Merged by name, not by position, so upstream reordering cannot silently
+  # retarget it. Drop this patch once upstream fixes the 4K path.
+  - target:
+      kind: Deployment
+      name: cdi-operator
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cdi-operator
+      spec:
+        template:
+          spec:
+            containers:
+              - name: cdi-operator
+                env:
+                  - name: IMPORTER_IMAGE
+                    value: quay.io/kubevirt/cdi-importer:v1.64.0
   - target:
       kind: Namespace
       name: cdi
