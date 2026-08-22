@@ -337,7 +337,7 @@ spec:
 
       - alert: InconsistentPortBindings
         expr: pinger_inconsistent_port_binding > 0
-        for: 5m
+        for: 30m
         labels:
           team: devops
           severity: warning
