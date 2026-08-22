@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.2.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.2...v0.2.3) (2026-08-22)
+
+
+### Features
+
+* **kube-ovn:** add OVN_TUNNEL_IFACE and SERVICE_CIDR, apply chart CRDs on upgrade ([#199](https://github.com/fluencelabs/spectrum-ng/issues/199)) ([0ccfc6c](https://github.com/fluencelabs/spectrum-ng/commit/0ccfc6cc18860b4a8973fc88c11262c98fd2095e))
+* **observability:** alert when a VPC cannot attach to the egress fabric ([#217](https://github.com/fluencelabs/spectrum-ng/issues/217)) ([c110a4a](https://github.com/fluencelabs/spectrum-ng/commit/c110a4aef52e0353316d5379a1bb8e6cc090a169))
+* **observability:** alert when tenant VMs cannot resolve DNS ([#218](https://github.com/fluencelabs/spectrum-ng/issues/218)) ([9e5ba85](https://github.com/fluencelabs/spectrum-ng/commit/9e5ba856a05a1772670c3e5316a8e2ea39c562d8))
+* **observability:** alert when the OIDC layer is down or a mesh workload lost its NetBird sidecar ([#213](https://github.com/fluencelabs/spectrum-ng/issues/213)) ([9b7dddb](https://github.com/fluencelabs/spectrum-ng/commit/9b7dddb5c8aeb25e26adfbe5c98264b67e701449))
+* **storage:** remove linstor Subnet and NAD from flux overlays ([#202](https://github.com/fluencelabs/spectrum-ng/issues/202)) ([40e16eb](https://github.com/fluencelabs/spectrum-ng/commit/40e16ebb1618f5a2e0dd84bb0b0a1b2569dd4be8))
+* **storage:** scrape drbd-reactor and alert on DRBD quorum and connection loss ([#207](https://github.com/fluencelabs/spectrum-ng/issues/207)) ([c13f87c](https://github.com/fluencelabs/spectrum-ng/commit/c13f87c77ff6aa2c0f29d573d8730001333b699b))
+
+
+### Bug Fixes
+
+* **cdi:** pin the importer back to 1.64.0 — 1.65/1.66 cannot write 4K block devices ([#227](https://github.com/fluencelabs/spectrum-ng/issues/227)) ([bdd2309](https://github.com/fluencelabs/spectrum-ng/commit/bdd2309081f8c53f5c1803571d02ca84be51f557))
+* **flux:** pair the operator's hostNetwork with a Recreate strategy ([#201](https://github.com/fluencelabs/spectrum-ng/issues/201)) ([f4ccbfe](https://github.com/fluencelabs/spectrum-ng/commit/f4ccbfec00fd7f5492f37b7ef0c1b082011ea7c6))
+* **ingress:** pin the Envoy LoadBalancer external address ([#196](https://github.com/fluencelabs/spectrum-ng/issues/196)) ([d9bc726](https://github.com/fluencelabs/spectrum-ng/commit/d9bc726b2e1da72f5f313f340e710867b00c3dfe))
+* **kube-ovn:** stop InconsistentPortBindings firing on completed setup Jobs ([#228](https://github.com/fluencelabs/spectrum-ng/issues/228)) ([0e89dd3](https://github.com/fluencelabs/spectrum-ng/commit/0e89dd3e41e1f6e79c7cb9c758ccc9e550cbda6c))
+* **kubevirt:** CDI 1.65.0 -&gt; 1.66.0 to fix imports into 4k block devices ([#226](https://github.com/fluencelabs/spectrum-ng/issues/226)) ([5c5fd88](https://github.com/fluencelabs/spectrum-ng/commit/5c5fd88714d5cf625a745ccfca328e9b87972abe))
+* **netbird:** make missed sidecar injection impossible instead of silent ([#229](https://github.com/fluencelabs/spectrum-ng/issues/229)) ([bd2b863](https://github.com/fluencelabs/spectrum-ng/commit/bd2b863058b2259dbea746304bbd0b58664bf4d2))
+* **netbird:** scope PAT rotation to the cluster's own tokens, and stop leaking the PAT into an annotation ([#224](https://github.com/fluencelabs/spectrum-ng/issues/224)) ([f372eec](https://github.com/fluencelabs/spectrum-ng/commit/f372eec421c25384444508495693c6a39d302bf2))
+* **netbird:** strip the leaked PAT annotation on every run, not only when rotating ([#225](https://github.com/fluencelabs/spectrum-ng/issues/225)) ([ae9d44c](https://github.com/fluencelabs/spectrum-ng/commit/ae9d44c244c9939ffa82b8e0e04c2063b2bb7f36))
+* **observability:** put the crd-operator vlogs filters in expr — they were alerting on INFO logs ([#216](https://github.com/fluencelabs/spectrum-ng/issues/216)) ([a0012c3](https://github.com/fluencelabs/spectrum-ng/commit/a0012c3365e9e6a899f560e76f378bbb0d81db1c))
+* **observability:** put the OIDC vlogs filter in expr — params.query is never applied ([#215](https://github.com/fluencelabs/spectrum-ng/issues/215)) ([89dceb8](https://github.com/fluencelabs/spectrum-ng/commit/89dceb8d47f9f622934bf510549888a4e993cea3))
+* **observability:** restore cluster-wide rule discovery for both vmalert instances ([#210](https://github.com/fluencelabs/spectrum-ng/issues/210)) ([b20a7e6](https://github.com/fluencelabs/spectrum-ng/commit/b20a7e6462ab01c2047203fc8a1bf38dc6283042))
+* **observability:** scope the OIDC vlogs alert to a time window so it stops firing on old logs ([#214](https://github.com/fluencelabs/spectrum-ng/issues/214)) ([0fc63ea](https://github.com/fluencelabs/spectrum-ng/commit/0fc63ea37caaa961bd3e53526dc68ea97a1f8ae1))
+* **observability:** split PromQL readiness rules out of the vlogs-labelled VMRule ([#211](https://github.com/fluencelabs/spectrum-ng/issues/211)) ([61f0621](https://github.com/fluencelabs/spectrum-ng/commit/61f06211dc523b713ddda247d37d35cd1e10a1d3))
+* **observability:** stop the metrics vmalert from evaluating vlogs rules ([#209](https://github.com/fluencelabs/spectrum-ng/issues/209)) ([1db93ce](https://github.com/fluencelabs/spectrum-ng/commit/1db93ced90906bde38732ac6cfe52446e662b2d8))
+* **storage:** scrape drbd-reactor through a Service so the DRBD alerts get data ([#208](https://github.com/fluencelabs/spectrum-ng/issues/208)) ([f3d4b4b](https://github.com/fluencelabs/spectrum-ng/commit/f3d4b4b9f7e6b3d97772a6bc52d28e3b188c53a4))
+
 ## [0.2.2](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.1...v0.2.2) (2026-07-31)
 
 
