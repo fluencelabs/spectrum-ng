@@ -44,9 +44,10 @@ spec:
       # webhook CA via cert-manager.io/inject-ca-from (cert-manager + cainjector are already
       # installed, see flux/apps/ingress/cert-manager). No issuer wiring needed from us.
       enableCertManager: true
-      # The mutating webhook intercepts ALL pod CREATE cluster-wide to do sidecar injection. Use
-      # Ignore so a transiently-unavailable operator never blocks pod scheduling cluster-wide (with
-      # the default Fail it would). Injection still happens whenever the webhook is up.
+      # failurePolicy applies to BOTH webhooks the chart renders: the mutating pod webhook and the
+      # validating NBGroup-DELETE webhook. Keep it Ignore here so the NBGroup one stays non-blocking;
+      # the pod webhook is flipped to Fail by the postRenderer below, where it can be paired with the
+      # matchConditions that make Fail safe.
       failurePolicy: Ignore
     # netbird-services exposes mesh names two ways and BOTH need the operator's "ingress"
     # (Service-annotation) path: explicit NBResource CRs (grafana-spectrum / kube-oidc-proxy-spectrum,
@@ -66,3 +67,41 @@ spec:
         enabled: false
     gatewayAPI:
       enabled: false
+  # Make missed sidecar injection impossible instead of silent.
+  #
+  # The chart's pod webhook matches EVERY pod CREATE in the cluster, so it has to run failurePolicy:
+  # Ignore — with Fail, an operator that is rolling (or whose serving cert is mid-renewal) would stop
+  # the entire cluster from creating pods, including the operator itself. The cost of Ignore is that
+  # a pod admitted during that window gets NO sidecar, with no error, no event and no retry, and
+  # stays bare for its whole life: exactly the 2026-08-19 incident, and again on testnet 2026-08-22
+  # where both kube-oidc-proxy (crash-looping on `lookup authentik.infra: no such host`) and grafana
+  # (1/1 Ready, silently off the mesh) came up bare.
+  #
+  # matchConditions are evaluated by the API server BEFORE it dials the webhook, so they still apply
+  # when the operator is down. Narrowing the webhook to just the pods that actually ask for injection
+  # — the `netbird.io/setup-key` pod annotation is the only trigger; the `router` pod runs netbird as
+  # its main container and is not injected — makes Fail safe: an unavailable operator now blocks only
+  # those pods, their ReplicaSet retries, and they come up WITH the sidecar once it is back. Every
+  # other pod in the cluster is never sent to the webhook at all.
+  #
+  # The chart exposes neither matchConditions nor a per-webhook failurePolicy (see values.webhook
+  # above), hence the patch. /webhooks/0 is the only entry in this MutatingWebhookConfiguration.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              group: admissionregistration.k8s.io
+              version: v1
+              kind: MutatingWebhookConfiguration
+              name: netbird-operator-mpod-webhook
+            patch: |
+              - op: replace
+                path: /webhooks/0/failurePolicy
+                value: Fail
+              - op: add
+                path: /webhooks/0/matchConditions
+                value:
+                  - name: has-netbird-setup-key
+                    expression: >-
+                      has(object.metadata.annotations) &&
+                      'netbird.io/setup-key' in object.metadata.annotations
