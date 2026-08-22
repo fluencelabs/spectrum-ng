@@ -53,7 +53,7 @@ metadata:
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 180
-  ttlSecondsAfterFinished: 600
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       serviceAccountName: grafana-admin-bootstrap

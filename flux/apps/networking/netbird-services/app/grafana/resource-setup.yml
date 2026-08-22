@@ -50,7 +50,7 @@ metadata:
     kustomize.toolkit.fluxcd.io/force: "Enabled"
 spec:
   backoffLimit: 10
-  ttlSecondsAfterFinished: 600
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       serviceAccountName: grafana-nbresource-setup
