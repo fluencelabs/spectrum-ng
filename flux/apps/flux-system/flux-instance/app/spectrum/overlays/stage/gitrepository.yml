@@ -1,7 +1,15 @@
+# TEMPORARY — DO NOT MERGE TO main WITH THIS VALUE.
+#
+# Points stage at the NetBird new-CRD migration branch so it can be exercised on a real cluster.
+# The ref has to be committed here rather than patched on the cluster: the nested flux-instance
+# reconciles this GitRepository, so a hand-patched ref is reverted within one interval. Switching it
+# in the branch that stage is being pointed AT makes the value self-reinforcing.
+#
+# Revert to `main` before this branch is merged, or stage silently stays pinned to a dead branch.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: spectrum
 spec:
   ref:
-    branch: main
+    branch: feat/netbird-new-crds-stage
