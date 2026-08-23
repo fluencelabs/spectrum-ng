@@ -12,18 +12,35 @@ spec:
     metadata:
       labels:
         app: kube-oidc-proxy
-      annotations:
-        # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook. The
-        # value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected `netbird`
-        # container joins the mesh and — running as root — creates the WireGuard interface AND rewrites
-        # the pod's shared /etc/resolv.conf, so the proxy container resolves & routes the mesh-only
-        # authentik.infra for OIDC discovery/JWKS. No dnsConfig and no hand-rolled sidecar. Mirrors the
-        # Grafana OIDC back-channel (PR #142, validated on stage 2026-06-05).
-        # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
-        # stuck (Init / no sandbox) under kube-ovn; a regular container works (the proxy re-reads
-        # resolv.conf once netbird is up, per glibc).
-        netbird.io/setup-key: kube-oidc-proxy
+        # EXPERIMENT (stage, 2026-08-23): selects this pod for the SidecarProfile in
+        # netbird-setupkey.yml, replacing the legacy `netbird.io/setup-key` annotation. The webhook's
+        # matchCondition admits BOTH this label and the legacy annotation while grafana is still on
+        # the old path — see flux/apps/networking/netbird-operator/app/release.yml.
+        netbird.io/inject: "true"
     spec:
+      # Point the proxy at netbird's own resolver instead of relying on the sidecar rewriting a
+      # SHARED /etc/resolv.conf — the new injector gives netbird a private copy, so that rewrite no
+      # longer reaches this container. The sidecar is pinned to 127.0.0.1:53 via
+      # NB_DNS_RESOLVER_ADDRESS (see netbird-setupkey.yml); loopback is reachable because every
+      # container in a pod shares one network namespace.
+      #
+      # Cluster DNS is listed second for two reasons: it is netbird's upstream for everything that is
+      # not a mesh name (netbird learns upstreams from the resolv.conf it is handed at start, and
+      # with dnsPolicy None that file is THIS list — without a real server here it would forward to
+      # itself), and it keeps ordinary cluster resolution working if the sidecar is down.
+      # The address is stage's kube-dns ClusterIP; this is why the change is stage-scoped for now.
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+          - 10.112.0.10
+        searches:
+          - kube-oidc-proxy.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+        options:
+          - name: ndots
+            value: "5"
       serviceAccountName: kube-oidc-proxy
       # No pod-level securityContext: the operator-injected netbird sidecar inherits pod-level context
       # and MUST run as root (WireGuard + /etc/resolv.conf rewrite). Hardening is set on the proxy

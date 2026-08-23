@@ -101,7 +101,13 @@ spec:
               - op: add
                 path: /webhooks/0/matchConditions
                 value:
-                  - name: has-netbird-setup-key
+                  # Admits BOTH injection paths while the migration is half-done: grafana still
+                  # uses the legacy `netbird.io/setup-key` annotation, kube-oidc-proxy is on the
+                  # SidecarProfile label. Gating on only one of them would leave the other silently
+                  # bare — the 2026-08-19 failure. Drop the annotation arm once nothing uses it.
+                  - name: asks-for-netbird-injection
                     expression: >-
-                      has(object.metadata.annotations) &&
-                      'netbird.io/setup-key' in object.metadata.annotations
+                      (has(object.metadata.annotations) &&
+                       'netbird.io/setup-key' in object.metadata.annotations) ||
+                      (has(object.metadata.labels) &&
+                       'netbird.io/inject' in object.metadata.labels)
