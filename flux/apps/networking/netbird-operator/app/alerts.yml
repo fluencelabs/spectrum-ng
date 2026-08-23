@@ -14,10 +14,9 @@ spec:
     - name: netbird-sidecar
       rules:
         # kube-state-metrics collects neither kube_pod_annotations nor
-        # kube_pod_labels here, so "selected for injection" cannot be expressed
+        # kube_pod_labels here, so "annotated for injection" cannot be expressed
         # generically — the mesh workloads are listed by hand. ADD A LINE HERE
-        # whenever a workload gains the `netbird.io/inject` label, or it is
-        # uncovered.
+        # whenever a workload gains `netbird.io/setup-key`, or it is uncovered.
         - alert: NetbirdSidecarMissing
           expr: |
             (

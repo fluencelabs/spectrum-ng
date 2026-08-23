@@ -108,23 +108,17 @@ spec:
         type: Recreate
       template:
         metadata:
-          labels:
-            # Trigger NetBird sidecar injection by the netbird-operator's mutating webhook. This label
-            # is what the SidecarProfile's podSelector matches (see netbird-setupkey.yml); it replaces
-            # the legacy `netbird.io/setup-key` annotation, whose NBSetupKey shim is on the deprecated
-            # NB* API. It is also the webhook's matchCondition, so ONLY pods carrying it are ever sent
-            # to the webhook at all — see the postRenderer in
-            # flux/apps/networking/netbird-operator/app/release.yml. Adding it here is safe: the
-            # Deployment selector stays `app: grafana`.
-            # The injected `netbird` container joins the mesh and — running as root (see the
-            # securityContext split below) — creates the WireGuard interface AND rewrites the pod's
-            # shared /etc/resolv.conf, so the grafana container resolves & routes the mesh-only
-            # authentik.infra for the OIDC token/userinfo back-channel. No dnsConfig and no
-            # hand-rolled sidecar. Injection stays a regular container (SidecarProfile
-            # injectionMode: Container): native-sidecar injection left the pod stuck (Init / no
-            # sandbox) under kube-ovn here; a regular container works, as grafana re-reads
-            # resolv.conf once netbird is up (per glibc).
-            netbird.io/inject: "true"
+          annotations:
+            # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook.
+            # The value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected
+            # `netbird` container joins the mesh and — running as root (see the securityContext split
+            # below) — creates the WireGuard interface AND rewrites the pod's shared /etc/resolv.conf,
+            # so the grafana container resolves & routes the mesh-only authentik.infra for the OIDC
+            # token/userinfo back-channel. No dnsConfig and no hand-rolled sidecar.
+            # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
+            # stuck (Init / no sandbox) under kube-ovn here; a regular container works (grafana
+            # re-reads resolv.conf once netbird is up, per glibc).
+            netbird.io/setup-key: grafana
         spec:
           containers:
             - name: grafana

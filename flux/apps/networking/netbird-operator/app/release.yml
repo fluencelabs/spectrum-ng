@@ -79,17 +79,10 @@ spec:
   #
   # matchConditions are evaluated by the API server BEFORE it dials the webhook, so they still apply
   # when the operator is down. Narrowing the webhook to just the pods that actually ask for injection
-  # makes Fail safe: an unavailable operator now blocks only those pods, their ReplicaSet retries,
-  # and they come up WITH the sidecar once it is back. Every other pod in the cluster is never sent
-  # to the webhook at all.
-  #
-  # The trigger is the `netbird.io/inject` pod LABEL, which is also the podSelector on both
-  # SidecarProfiles (grafana, kube-oidc-proxy). It must be kept in lockstep with them: the webhook
-  # picks a profile by matching pod labels, so gating on anything the profiles do not select — or
-  # selecting pods this condition does not admit — silently reopens the 2026-08-19 hole. The legacy
-  # `netbird.io/setup-key` annotation is still honoured by the webhook's own code path but is no
-  # longer used here; it belongs to the deprecated NB* API. The `router` pod runs netbird as its main
-  # container and is not injected, so it carries neither.
+  # — the `netbird.io/setup-key` pod annotation is the only trigger; the `router` pod runs netbird as
+  # its main container and is not injected — makes Fail safe: an unavailable operator now blocks only
+  # those pods, their ReplicaSet retries, and they come up WITH the sidecar once it is back. Every
+  # other pod in the cluster is never sent to the webhook at all.
   #
   # The chart exposes neither matchConditions nor a per-webhook failurePolicy (see values.webhook
   # above), hence the patch. /webhooks/0 is the only entry in this MutatingWebhookConfiguration.
@@ -108,7 +101,7 @@ spec:
               - op: add
                 path: /webhooks/0/matchConditions
                 value:
-                  - name: has-netbird-inject-label
+                  - name: has-netbird-setup-key
                     expression: >-
-                      has(object.metadata.labels) &&
-                      'netbird.io/inject' in object.metadata.labels
+                      has(object.metadata.annotations) &&
+                      'netbird.io/setup-key' in object.metadata.annotations

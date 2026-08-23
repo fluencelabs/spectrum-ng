@@ -1,25 +1,19 @@
-# NetBird mesh membership for the Grafana pod's injected sidecar (OIDC back-channel to
-# authentik.infra).
+# NetBird setup key for the Grafana pod's injected sidecar (OIDC back-channel to authentik.infra).
 #
-# Two resources, both netbird.io/v1alpha1 — the current, non-deprecated API:
-#  1. SetupKey — the operator MINTS a reusable+ephemeral setup key through the NetBird API (its
-#     NB_API_KEY), writes it into a Secret it owns named `setup-key-<name>` (key `setup-key`), and
-#     rotates it. Nothing is hand-created or copied.
-#  2. SidecarProfile — tells the operator's pod webhook which pods to inject and which key to use.
-#     Selection is by POD LABEL (`netbird.io/inject`), which replaces the legacy
-#     `netbird.io/setup-key` annotation and its NBSetupKey shim; the whole NB* API is deprecated
-#     upstream and takes no further fixes.
+# Two resources, both consumed by the netbird-operator (>=0.3.x, see HelmRelease bump in
+# flux/apps/networking/netbird-operator):
 #
-# The selector must stay narrow: an empty podSelector matches EVERY pod in the namespace, and
-# `observability` also runs the VictoriaMetrics stack and kube-state-metrics, none of which belong
-# on the mesh.
+#  1. SetupKey (netbird.io/v1alpha1) — the operator MINTS a reusable+ephemeral setup key via the
+#     NetBird API (its NB_API_KEY) and writes it into a Secret it owns named `setup-key-<name>`
+#     (key `setup-key`), and rotates it. Nothing is hand-created or copied.
+#  2. NBSetupKey (netbird.io/v1, legacy) — references that minted Secret so the legacy
+#     annotation-based pod injection (`netbird.io/setup-key: grafana` on the Grafana pod template)
+#     works. We use the legacy annotation path because the v1alpha1 SidecarProfile (label-based)
+#     injection is NOT wired in the operator webhook on 0.3.1 (verified on stage: the webhook ran
+#     but did not inject); the annotation path does work.
 #
-# injectionMode: Container is deliberate and must not be dropped to the `Sidecar` default. Native
-# sidecar injection leaves the pod stuck (Init / no sandbox) under kube-ovn here; a regular
-# container works, because grafana re-reads resolv.conf once netbird is up (per glibc).
-#
-# authentik.infra's policy source group is `All`, so this peer needs no extra autoGroups or policy.
-# Do NOT force-remove the netbird CR finalizers on teardown.
+# authentik.infra's NBResource policy source group is `All`, so this peer is permitted to reach it
+# with no extra autoGroups/policy. Do NOT force-remove the netbird CR finalizers on teardown.
 ---
 apiVersion: netbird.io/v1alpha1
 kind: SetupKey
@@ -30,15 +24,12 @@ spec:
   name: spectrum-${NETWORK}-grafana
   ephemeral: true
 ---
-apiVersion: netbird.io/v1alpha1
-kind: SidecarProfile
+apiVersion: netbird.io/v1
+kind: NBSetupKey
 metadata:
   name: grafana
   namespace: observability
 spec:
-  setupKeyRef:
-    name: grafana
-  podSelector:
-    matchLabels:
-      netbird.io/inject: "true"
-  injectionMode: Container
+  secretKeyRef:
+    name: setup-key-grafana # operator-owned Secret minted by the SetupKey above
+    key: setup-key
