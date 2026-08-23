@@ -12,17 +12,18 @@ spec:
     metadata:
       labels:
         app: kube-oidc-proxy
-      annotations:
-        # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook. The
-        # value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected `netbird`
-        # container joins the mesh and — running as root — creates the WireGuard interface AND rewrites
-        # the pod's shared /etc/resolv.conf, so the proxy container resolves & routes the mesh-only
-        # authentik.infra for OIDC discovery/JWKS. No dnsConfig and no hand-rolled sidecar. Mirrors the
-        # Grafana OIDC back-channel (PR #142, validated on stage 2026-06-05).
-        # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
-        # stuck (Init / no sandbox) under kube-ovn; a regular container works (the proxy re-reads
-        # resolv.conf once netbird is up, per glibc).
-        netbird.io/setup-key: kube-oidc-proxy
+        # Trigger NetBird sidecar injection by the netbird-operator's mutating webhook: this label is
+        # what the SidecarProfile's podSelector matches (see netbird-setupkey.yml) and what the
+        # webhook's matchCondition gates on, so only pods carrying it reach the webhook at all. It
+        # replaces the legacy `netbird.io/setup-key` annotation and its NBSetupKey shim on the
+        # deprecated NB* API. The injected `netbird` container joins the mesh and — running as root —
+        # creates the WireGuard interface AND rewrites the pod's shared /etc/resolv.conf, so the proxy
+        # container resolves & routes the mesh-only authentik.infra for OIDC discovery/JWKS. No
+        # dnsConfig and no hand-rolled sidecar. Mirrors the Grafana OIDC back-channel (PR #142,
+        # validated on stage 2026-06-05). Injection stays a regular container (SidecarProfile
+        # injectionMode: Container): native-sidecar injection left the pod stuck (Init / no sandbox)
+        # under kube-ovn.
+        netbird.io/inject: "true"
     spec:
       serviceAccountName: kube-oidc-proxy
       # No pod-level securityContext: the operator-injected netbird sidecar inherits pod-level context
