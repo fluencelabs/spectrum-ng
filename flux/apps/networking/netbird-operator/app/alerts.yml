@@ -47,19 +47,27 @@ spec:
               once the netbird-operator is up, then confirm the new pod has two
               containers.
 ---
-# The other half of the same silence. The operator matches its NBResource CRs to
-# records in NetBird by name alone and never records the id it created, while
-# creation runs in two steps — the resource, then its group binding. Interrupted
-# between them it orphans a record with `groups: null`: bound to no group, so it
-# is distributed to no peer and its mesh name stops resolving, and owned by no CR,
-# so every later reconcile tries to create it again and gets 409. The CR then sits
-# at Ready=False/DuplicateName indefinitely. Nothing else reports this — the
+# The other half of the same silence. The operator creates the record in NetBird
+# first and patches its id into `status.NetworkResourceID` afterwards; when that
+# patch does not land, the record survives with `groups: null` and no owner —
+# bound to no group, so it is distributed to no peer and its mesh name stops
+# resolving. Every later reconcile tries to create it again and gets 409, because
+# adopting an existing record by name is not implemented. The CR then sits at
+# Ready=False/DuplicateName indefinitely. Nothing else reports this — the
 # operator is Running, the sidecars are injected and logged in, the workload is
 # 1/1 Ready; only the name is gone. On poz-bey-c01 all four NBResources were stuck
 # like that and it surfaced on 2026-08-23 only because someone tried to reach the
 # cluster. Recovery is not automatic: delete the orphaned record through the
 # NetBird API, then restart the operator, which does not see the deletion and is
 # in exponential backoff.
+#
+# Upstream will not fix this: netbirdio/kubernetes-operator#363 reports exactly this
+# failure and was closed `not planned` — the whole NB* CRD set is deprecated in favour
+# of a refactored controller, and the maintainers take no further changes to these.
+# v0.8.0 is the newest release, so there is no version to upgrade into. The equivalent
+# bug on the new side is being fixed (their PR #394, "adopt an exact, unowned record
+# when status persistence was interrupted"), which is where the real fix lives — after
+# a migration off NB*. Until then this rule is the only cover.
 #
 # Depends on the NBResource entry in customResourceState (see
 # flux/apps/observability/kube-state-metrics/app/release.yml) — without it this

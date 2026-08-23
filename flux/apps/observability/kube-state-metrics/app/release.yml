@@ -229,13 +229,13 @@ spec:
                         condition_status: [status]
                         condition_reason: [reason]
 
-            # The netbird-operator binds its CRs to records in NetBird by NAME only —
-            # it never stores the created resource id — and creation is not atomic:
-            # first the resource, then its group binding. Interrupted in between (pod
-            # restart, management timeout, lost leadership) it leaves a record with
-            # `groups: null` that is bound to nobody and owned by nothing, so the mesh
-            # name silently stops resolving. Every later reconcile tries to CREATE it
-            # again, gets 409, and the CR sits at Ready=False/DuplicateName forever;
+            # The netbird-operator creates a record in NetBird and only then patches the
+            # id into `status.NetworkResourceID`. If that patch does not land (pod
+            # restart, lost leadership, API hiccup) the record exists but nothing owns
+            # it, and it is left with `groups: null` — bound to no group, so it is
+            # distributed to no peer and its mesh name silently stops resolving. Every
+            # later reconcile tries to CREATE it again, gets 409, and the CR sits at
+            # Ready=False/DuplicateName forever; adoption by name is not implemented;
             # nothing else anywhere reports it. On poz-bey-c01 all four NBResources
             # (k8s, k8s-spectrum, grafana, grafana-spectrum) were stuck that way and it
             # only surfaced on 2026-08-23 when someone tried to use the cluster. This
