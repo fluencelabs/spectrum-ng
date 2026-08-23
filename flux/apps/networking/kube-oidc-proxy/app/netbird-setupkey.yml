@@ -62,8 +62,13 @@ spec:
         value: console
       - name: NB_DISABLE_PROFILES
         value: "true"
+      # The operator hardcodes this to "true", and upstream documents it as blocking EVERY
+      # configuration change "from the client UI and from the CLI (netbird up / login / setconfig)".
+      # That is why NB_DNS_RESOLVER_ADDRESS had no effect on the first attempt: the variable reached
+      # the container and the flag reached `netbird up`, but the daemon refused to apply it, silently
+      # — the resolver stayed on the peer's dynamic mesh IP.
       - name: NB_DISABLE_UPDATE_SETTINGS
-        value: "true"
+        value: "false"
       - name: NB_DAEMON_ADDR
         value: unix:///var/run/netbird/netbird.sock
       - name: NB_ENTRYPOINT_SERVICE_TIMEOUT
