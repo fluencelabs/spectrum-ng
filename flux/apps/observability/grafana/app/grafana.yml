@@ -171,6 +171,19 @@ spec:
                 - name: grafana-tls
                   mountPath: /etc/grafana-tls
                   readOnly: true
+                # Mesh DNS for the grafana container. The SidecarProfile injector mounts
+                # /etc/resolv.conf from an emptyDir into the NETBIRD container only, so netbird
+                # rewrites its own private copy and grafana would keep kubelet's cluster DNS —
+                # verified on stage 2026-08-23 on kube-oidc-proxy, which failed exactly that way.
+                # The legacy annotation injector rewrote the pod's SHARED resolv.conf, which is why
+                # this mount was not needed before. Grafana is the worse case of the two: it goes
+                # 1/1 Ready regardless, so a missing mesh resolver shows up only as broken OIDC
+                # logins. The `resolv-conf` volume is created by the webhook at admission, so this
+                # mount is valid only on an injected pod — deliberately: if injection is ever
+                # skipped the pod is REJECTED rather than coming up silently off the mesh.
+                - name: resolv-conf
+                  mountPath: /etc/resolv.conf
+                  subPath: resolv.conf
                 # Fluence Mesh Root (public cert) so the server-side OAuth client trusts
                 # authentik.infra (tls_client_ca above). See volumes.fluence-ca.
                 - name: fluence-ca

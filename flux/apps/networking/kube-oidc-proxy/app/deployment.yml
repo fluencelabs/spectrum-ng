@@ -105,6 +105,18 @@ spec:
             - name: fluence-ca
               mountPath: /etc/fluence-ca
               readOnly: true
+            # Mesh DNS for the proxy container. The SidecarProfile injector mounts /etc/resolv.conf
+            # from an emptyDir into the NETBIRD container only, so netbird rewrites its own private
+            # copy (nameserver <mesh-resolver>) and the app container keeps kubelet's cluster DNS —
+            # verified on stage 2026-08-23: the proxy kept resolving authentik.infra against
+            # 10.112.0.10 and failed. The legacy annotation injector edited the pod's SHARED
+            # resolv.conf, which is why this mount was not needed before. The `resolv-conf` volume
+            # itself is created by the webhook at admission, so this mount is only valid on an
+            # injected pod — which is the intended behaviour: if injection is ever skipped the pod is
+            # REJECTED instead of coming up silently off the mesh.
+            - name: resolv-conf
+              mountPath: /etc/resolv.conf
+              subPath: resolv.conf
       volumes:
         - name: tls
           secret:
