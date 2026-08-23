@@ -44,11 +44,17 @@ spec:
   networkRouterRef:
     name: newapi-probe
     namespace: networking
-  # The real proxy Service, which has a ClusterIP. The `k8s` Service in this namespace is
-  # ExternalName and cannot be used: the controller reads svc.Spec.ClusterIP for both the resource
-  # address and the DNS record content.
+  # serviceRef is namespace-LOCAL: the CRD has no `namespace` field (verified — a cross-namespace
+  # ref fails the dry-run with `.spec.serviceRef.namespace: field not declared in schema`). So a
+  # NetworkResource must live beside the Service it publishes, and since the record name is
+  # `<svc>.<namespace>.<zone>`, that namespace ends up inside the published name. Our current
+  # publishing CRs all sit in `networking`; a real migration would scatter them into
+  # kube-oidc-proxy/observability and rename everything accordingly.
+  #
+  # The probe therefore targets a ClusterIP Service that already exists in THIS namespace. The `k8s`
+  # Service here is ExternalName and cannot be used at all: the controller reads svc.Spec.ClusterIP
+  # for both the resource address and the A record content.
   serviceRef:
-    name: kube-oidc-proxy
-    namespace: kube-oidc-proxy
+    name: netbird-operator-metrics
   groups:
     - name: spectrum-${NETWORK}
