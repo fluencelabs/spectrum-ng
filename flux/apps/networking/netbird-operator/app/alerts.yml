@@ -46,3 +46,49 @@ spec:
               `kubectl -n {{ $labels.namespace }} rollout restart deploy/{{ $labels.deployment }}`
               once the netbird-operator is up, then confirm the new pod has two
               containers.
+---
+# The other half of the same silence. The operator matches its NBResource CRs to
+# records in NetBird by name alone and never records the id it created, while
+# creation runs in two steps — the resource, then its group binding. Interrupted
+# between them it orphans a record with `groups: null`: bound to no group, so it
+# is distributed to no peer and its mesh name stops resolving, and owned by no CR,
+# so every later reconcile tries to create it again and gets 409. The CR then sits
+# at Ready=False/DuplicateName indefinitely. Nothing else reports this — the
+# operator is Running, the sidecars are injected and logged in, the workload is
+# 1/1 Ready; only the name is gone. On poz-bey-c01 all four NBResources were stuck
+# like that and it surfaced on 2026-08-23 only because someone tried to reach the
+# cluster. Recovery is not automatic: delete the orphaned record through the
+# NetBird API, then restart the operator, which does not see the deletion and is
+# in exponential backoff.
+#
+# Depends on the NBResource entry in customResourceState (see
+# flux/apps/observability/kube-state-metrics/app/release.yml) — without it this
+# series does not exist and the rule is silently inert.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: netbird-resource
+spec:
+  groups:
+    - name: netbird-resource
+      rules:
+        - alert: NetbirdResourceNotReady
+          expr: kube_customresource_netbird_nbresource_condition{condition_type="Ready"} != 1
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: >-
+              NBResource {{ $labels.namespace }}/{{ $labels.name }} is not Ready
+              (reason: {{ $labels.condition_reason }}).
+            description: >-
+              The mesh name `{{ $labels.resource_name }}` is not published, so it does
+              not resolve for anyone on the network. With reason DuplicateName the
+              operator is stuck recreating a record it already orphaned in NetBird and
+              will never recover on its own: list the network's resources through the
+              NetBird API, delete the one carrying this name (it will have
+              `groups: null`), then
+              `kubectl -n {{ $labels.namespace }} rollout restart deploy/netbird-operator`.
+              The API token is in the `netbird-api-token` secret in the operator's
+              namespace.

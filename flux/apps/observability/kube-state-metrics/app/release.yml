@@ -28,6 +28,9 @@ spec:
         - apiGroups: ["kubeovn.io"]
           resources: ["provider-networks"]
           verbs: ["list", "watch"]
+        - apiGroups: ["netbird.io"]
+          resources: ["nbresources"]
+          verbs: ["list", "watch"]
 
     customResourceState:
       enabled: true
@@ -222,6 +225,41 @@ spec:
                       valueFrom: [status]
                       labelsFromPath:
                         node: [node]
+                        condition_type: [type]
+                        condition_status: [status]
+                        condition_reason: [reason]
+
+            # The netbird-operator binds its CRs to records in NetBird by NAME only —
+            # it never stores the created resource id — and creation is not atomic:
+            # first the resource, then its group binding. Interrupted in between (pod
+            # restart, management timeout, lost leadership) it leaves a record with
+            # `groups: null` that is bound to nobody and owned by nothing, so the mesh
+            # name silently stops resolving. Every later reconcile tries to CREATE it
+            # again, gets 409, and the CR sits at Ready=False/DuplicateName forever;
+            # nothing else anywhere reports it. On poz-bey-c01 all four NBResources
+            # (k8s, k8s-spectrum, grafana, grafana-spectrum) were stuck that way and it
+            # only surfaced on 2026-08-23 when someone tried to use the cluster. This
+            # gauge is the only signal for that state. Recovery is manual: delete the
+            # orphaned record via the NetBird API, then restart the operator — it does
+            # not observe the deletion and sits in exponential backoff.
+            - groupVersionKind:
+                group: netbird.io
+                version: v1
+                kind: NBResource
+              labelsFromPath:
+                name: [metadata, name]
+                namespace: [metadata, namespace]
+                resource_name: [spec, name]
+              metrics:
+                - name: netbird_nbresource_condition
+                  help: "netbird.io NBResource condition"
+                  each:
+                    type: Gauge
+                    gauge:
+                      nilIsZero: true
+                      path: [status, conditions]
+                      valueFrom: [status]
+                      labelsFromPath:
                         condition_type: [type]
                         condition_status: [status]
                         condition_reason: [reason]
