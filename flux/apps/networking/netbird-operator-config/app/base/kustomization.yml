@@ -4,3 +4,5 @@ resources:
   - router.yml
   - groups.yml
   - policy.yml
+  # One-off cleanup of an orphaned cluster-wide secret-read binding; see the file header.
+  - support-rbac-cleanup.yml
