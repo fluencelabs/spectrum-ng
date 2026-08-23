@@ -5,9 +5,18 @@
 # Deliberately additive: nothing here touches the live `router` NBRoutingPeer or the four NBResources
 # that currently serve k8s./grafana.<cluster>.stage.spectrum. Both stacks run side by side.
 #
-# The DNS zone is `nbtest.spectrum`, NOT `stage.spectrum`. The NetBird instance is shared by every
-# environment, and a zone named after a live suffix could shadow resolution of the names people use
-# to reach stage today. A disjoint label cannot.
+# The DNS zone is `<CLUSTER_ID>.nbtest.spectrum`, NOT `<CLUSTER_ID>.stage.spectrum`. The NetBird
+# instance is shared by every environment, and a zone named after a live suffix could shadow
+# resolution of the names people use to reach stage today; a disjoint label cannot. Per-cluster,
+# because that is the shape a real migration would need: the record name is built as
+# `<svc>.<namespace>.<zone>` with no override, so the cluster id has to live in the zone or in the
+# namespace.
+#
+# Created out of band (the operator only references zones, never creates them):
+#   POST /api/dns/zones {name, domain, distribution_groups}
+# `domain` is a separate field from `name`, and at least one distribution group is REQUIRED — the
+# zone is only served to peers in those groups. Distributed to spectrum-${NETWORK} and to this
+# cluster's own group.
 #
 # Things this probe is meant to answer:
 #  - what the created DNS record is actually named (the controller hardcodes
@@ -23,7 +32,7 @@ metadata:
 spec:
   # Must already exist in NetBird — the operator only references zones, it never creates them.
   dnsZoneRef:
-    name: nbtest.spectrum
+    name: 7b0c4ed4-4a1c-4ebb-85a4-28ca3e473684.nbtest.spectrum
 ---
 apiVersion: netbird.io/v1alpha1
 kind: NetworkResource
