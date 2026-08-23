@@ -1,0 +1,45 @@
+# EXPERIMENT, stage only (2026-08-23) — publishing a service through the NON-deprecated NetBird API
+# (netbird.io/v1alpha1 NetworkRouter + NetworkResource) alongside the existing NB* setup, to see what
+# the new model actually produces before deciding whether to migrate.
+#
+# Deliberately additive: nothing here touches the live `router` NBRoutingPeer or the four NBResources
+# that currently serve k8s./grafana.<cluster>.stage.spectrum. Both stacks run side by side.
+#
+# The DNS zone is `nbtest.spectrum`, NOT `stage.spectrum`. The NetBird instance is shared by every
+# environment, and a zone named after a live suffix could shadow resolution of the names people use
+# to reach stage today. A disjoint label cannot.
+#
+# Things this probe is meant to answer:
+#  - what the created DNS record is actually named (the controller hardcodes
+#    `<svc>.<namespace>.<zone>`, with no override),
+#  - whether an A record pointing at a ClusterIP is reachable from a mesh peer,
+#  - whether the resource comes up Ready without a policy (the new API has no policy CRD at all).
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkRouter
+metadata:
+  name: newapi-probe
+  namespace: networking
+spec:
+  # Must already exist in NetBird — the operator only references zones, it never creates them.
+  dnsZoneRef:
+    name: nbtest.spectrum
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: newapi-probe
+  namespace: networking
+spec:
+  # namespace is required on this ref, unlike the NB* API's local-only references.
+  networkRouterRef:
+    name: newapi-probe
+    namespace: networking
+  # The real proxy Service, which has a ClusterIP. The `k8s` Service in this namespace is
+  # ExternalName and cannot be used: the controller reads svc.Spec.ClusterIP for both the resource
+  # address and the DNS record content.
+  serviceRef:
+    name: kube-oidc-proxy
+    namespace: kube-oidc-proxy
+  groups:
+    - name: spectrum-${NETWORK}
