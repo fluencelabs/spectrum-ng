@@ -40,7 +40,8 @@ spec:
   # Container, not the `Sidecar` default: native sidecar injection leaves the pod stuck
   # (Init / no sandbox) under kube-ovn here.
   injectionMode: Container
+  # ISOLATION STEP: override carries only `image`, set to the same image the operator injects
+  # anyway, so the merge path runs but nothing should change. If the pod is still rejected, the bug
+  # is containerOverride as a whole; if it is accepted, the bug is specific to `env`.
   containerOverride:
-    env:
-      - name: NB_DNS_RESOLVER_ADDRESS
-        value: "127.0.0.1:53"
+    image: ghcr.io/netbirdio/netbird:0.72.4
