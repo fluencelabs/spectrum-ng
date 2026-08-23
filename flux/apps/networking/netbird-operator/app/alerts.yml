@@ -88,7 +88,7 @@ spec:
             severity: critical
           annotations:
             summary: >-
-              NBResource {{ $labels.namespace }}/{{ $labels.name }} is not Ready
+              NBResource {{ $labels.resource_namespace }}/{{ $labels.name }} is not Ready
               (reason: {{ $labels.condition_reason }}).
             description: >-
               The mesh name `{{ $labels.resource_name }}` is not published, so it does
@@ -97,6 +97,6 @@ spec:
               will never recover on its own: list the network's resources through the
               NetBird API, delete the one carrying this name (it will have
               `groups: null`), then
-              `kubectl -n {{ $labels.namespace }} rollout restart deploy/netbird-operator`.
+              `kubectl -n {{ $labels.resource_namespace }} rollout restart deploy/netbird-operator`.
               The API token is in the `netbird-api-token` secret in the operator's
               namespace.

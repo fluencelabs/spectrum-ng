@@ -17,6 +17,14 @@ spec:
         additionalLabels:
           scrape: "true"
 
+    # customResourceState below is mounted from a fixed-name ConfigMap and parsed only
+    # at startup, and the chart adds no checksum annotation — so editing that config
+    # updates the ConfigMap while the running pod keeps serving the old one, and the
+    # new series never appears. BUMP THIS whenever customResourceState changes, to
+    # force the rollout that makes the change take effect.
+    podAnnotations:
+      customresourcestate-revision: "2026-08-23-nbresource"
+
     rbac:
       extraRules:
         - apiGroups: ["kubevirt.io"]
@@ -248,7 +256,11 @@ spec:
                 kind: NBResource
               labelsFromPath:
                 name: [metadata, name]
-                namespace: [metadata, namespace]
+                # NOT `namespace`: the scrape target already carries a `namespace`
+                # label (kube-state-metrics' own namespace, added by relabeling) and it
+                # wins, so a `namespace` here is silently replaced by "observability" —
+                # which would send whoever reads the alert to the wrong namespace.
+                resource_namespace: [metadata, namespace]
                 resource_name: [spec, name]
               metrics:
                 - name: netbird_nbresource_condition
