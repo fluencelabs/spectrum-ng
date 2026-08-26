@@ -4,6 +4,17 @@ metadata:
   name: stack
 spec:
   retentionPeriod: "1"
+  extraArgs:
+    # A hard ceiling below the PVC size, because retention alone does not bound
+    # disk: guest consoles (`guest-console-log`) are written at a rate the tenant
+    # controls, so a single VM spinning on kernel messages can fill the volume
+    # long before the retention period expires and evict every other component's
+    # logs with it. VictoriaLogs then drops the oldest data to stay under this
+    # instead — the loss stays bounded and predictable.
+    #
+    # 8GiB of the 10Gi PVC: on 2026-08-26 kabat-stage held 813MB, so this is
+    # ~10x headroom while still leaving the volume room to breathe.
+    "retention.maxDiskSpaceUsageBytes": "8GiB"
   storage:
     accessModes:
       - ReadWriteOnce
