@@ -96,16 +96,45 @@ spec:
           # ~7 minute cloud-init, and VMs boot sporadically, so a short window
           # would fall between them and the alert would never hold its `for:`.
           # hits:>5 so one unlucky guest with a broken image does not page.
-          expr: '_time:30m AND "Temporary failure resolving" | stats count(*) as hits | filter hits:>5'
+          #
+          # COVERAGE IS PARTIAL, and this alert staying silent is NOT evidence
+          # that egress works. The lines only exist for VMs whose virt-launcher
+          # carries the `guest-console-log` container (KubeVirt `logSerialConsole`);
+          # on kabat-stage on 2026-08-26 that was 4 of 18 running VMs. Enabling it
+          # fleet-wide was considered and rejected: the write rate is controlled by
+          # the guest, so one noisy tenant can evict the whole cluster's logs from a
+          # 10Gi PVC, and guest consoles carry tenant data into the shared Grafana.
+          # The durable fixes are a canary VM we own and a CR-consistency metric,
+          # not more guest logging.
+          #
+          # `stats by (namespace, pod)` — the threshold is PER VM. A cluster-wide
+          # count summed unrelated guests, so two or three VMs on subnets with no
+          # egress at all could raise a critical between them without any one of
+          # them being broken. That is a supported configuration, not a fault: on
+          # kabat-stage 8 of 18 cloudless Subnets carry no `spec.egress`, and their
+          # guests legitimately cannot resolve. There is no way to exclude them in
+          # the query — the log stream carries only namespace/pod/container, and the
+          # VM's subnet lives in a pod annotation whose key is dynamic, so Alloy
+          # cannot relabel it. Grouping at least names the VM in the alert.
+          # See the description for what to check first.
+          #
+          # `container:guest-console-log` costs no coverage: over 7 days every single
+          # `Temporary failure resolving` line in vlogs came from that container.
+          expr: '_time:30m AND container:guest-console-log AND "Temporary failure resolving" | stats by (namespace, pod) count(*) as hits | filter hits:>5'
           for: 5m
           labels:
             team: devops
             severity: critical
           annotations:
-            summary: Tenant VMs cannot reach the internet — cloud-init is failing in the guests.
+            summary: A tenant VM cannot reach the internet — cloud-init is failing in the guest.
             description: >-
-              {{ $value }} DNS resolution failures in guest consoles in the last 30m.
-              The VMs boot and report Ready, but cloud-init cannot fetch packages, so
+              {{ $value }} DNS resolution failures in the console of VM
+              `{{ $labels.pod }}` (namespace `{{ $labels.namespace }}`) in the last
+              30m. First rule out the supported case: a VM on a Subnet with no
+              `spec.egress` has no path out by design and will log exactly this —
+              check with `kubectl get clsn -o yaml` for the workspace before chasing
+              the network. Otherwise the VM booted and reports Ready, but cloud-init
+              cannot fetch packages, so
               qemu-guest-agent is never installed and vm-api's password setting fails
               with `409 qemu-guest-agent not connected` forever after. Check the egress
               path end to end, starting at the hub: `ovn-nbctl show ovn-egress-test`
