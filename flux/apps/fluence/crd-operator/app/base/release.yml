@@ -8,10 +8,27 @@ spec:
     strategy:
       name: RetryOnFailure
       retryInterval: 5m
+    crds: Create
   upgrade:
     strategy:
       name: RetryOnFailure
       retryInterval: 5m
+    # Without this the cluster has NO automatic path for CRD changes at all.
+    # The CRDs ship in `charts/crd-operator/crds/`, and Helm never upgrades that
+    # directory; Flux's default is `crds: Create`, which creates them once and
+    # then leaves them untouched forever. So a chart release carrying a new CRD
+    # field installs the new controller against the old schema — the apiserver
+    # silently prunes the unknown fields, and the feature behaves as if it were
+    # switched off. Lightmare's documented remedy is a hand-run
+    # `crd-gen | kubectl apply` before the image bump, i.e. a step that lives in
+    # a PR description and is guaranteed by nothing.
+    #
+    # `CreateReplace` replaces the CRDs on every chart upgrade. That is the
+    # point, and it is also the cost: a chart rollback carries the schema back
+    # with it. It cannot drop data on its own (a replace preserves stored
+    # objects), but a field removed from the schema stops being served, so
+    # sequence a rollback the same way as a rollout — schema and image together.
+    crds: CreateReplace
   driftDetection:
     mode: enabled
   values:
