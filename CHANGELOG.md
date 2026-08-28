@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.3...v0.2.4) (2026-08-28)
+
+
+### Bug Fixes
+
+* **crd-operator:** let Flux deliver CRD changes instead of leaving them to a hand-run apply ([#236](https://github.com/fluencelabs/spectrum-ng/issues/236)) ([15cc429](https://github.com/fluencelabs/spectrum-ng/commit/15cc429911085e97023b7b371491b40ba757ba3e))
+
 ## [0.2.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.2...v0.2.3) (2026-08-26)
 
 
