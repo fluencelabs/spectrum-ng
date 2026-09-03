@@ -41,15 +41,27 @@ another and each per-VPC EIP is SNAT-only, so tenant CIDRs may overlap freely.
 | Var | Meaning | kabat-stage |
 |---|---|---|
 | `ENABLE_EXTERNAL_VPCS` | kube-ovn `--enable-external-vpc`; without it `OvnEip` / `enableExternal` do nothing | `true` |
-| `EXTERNAL_NETWORK_ENABLED` | lightmare `ExternalNetworkConfig` | `true` |
 | `EGRESS_ENABLED` | lightmare `EgressConfig` feature gate | `true` |
 | `EGRESS_FABRIC_SUBNET` | name of the shared fabric subnet | `egress-fabric` |
 | `EGRESS_HUB_NEXT_HOP` | the hub's fabric-side LRP address | `100.65.0.2` |
+| `EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK` | whether the cluster defines a default external network (`ovn-external-gw-config`) | `false` |
 
-Five variables, and only five: `EgressConfig` has exactly two fields,
-`fabric_subnet` and `hub_next_hop`, plus the gate. `EGRESS_EXTERNAL_SUBNET`,
+Five variables, and only five: `EgressConfig` has exactly three fields,
+`fabric_subnet`, `hub_next_hop` and `cluster_default_external_network`, plus
+the gate. `EXTERNAL_NETWORK_ENABLED` went away with crd-controller 0.9.0 —
+the egress reconcile is now the single owner of the tenant VPC's
+`enableExternal` (lightmare #689). `EGRESS_EXTERNAL_SUBNET`,
 `EGRESS_GW_NAMESPACE` and `EGRESS_REPLICAS` belonged to the deprecated per-VPC
 gateway form and are gone.
+
+**`EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK` must be right before egress is
+first enabled.** The controller stamps its answer per VPC into the annotation
+`egress.cloudless.dev/owns-external` on the first egress pass and never
+re-consults the setting afterwards; a wrong `false` makes the next teardown
+disconnect the cluster default gateway. Recovery is manual, per VPC:
+`kubectl annotate vpcs.kubeovn.io <name> egress.cloudless.dev/owns-external-`.
+None of our clusters has `ovn-external-gw-config` today, so `false` is correct
+everywhere.
 
 `--enable-eip-snat=true` is also required; it is already the default on our
 clusters.
