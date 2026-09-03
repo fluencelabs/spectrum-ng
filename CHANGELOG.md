@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.4...v0.3.0) (2026-09-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **crd-operator:** bump lightmare components to the 2026-09-03 release ([#242](https://github.com/fluencelabs/spectrum-ng/issues/242))
+
+### Bug Fixes
+
+* **crd-operator:** bump lightmare components to the 2026-09-03 release ([#242](https://github.com/fluencelabs/spectrum-ng/issues/242)) ([3a36426](https://github.com/fluencelabs/spectrum-ng/commit/3a3642666f271a973202f4ad8acd0e0219529f2d))
+
 ## [0.2.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.3...v0.2.4) (2026-08-28)
 
 
