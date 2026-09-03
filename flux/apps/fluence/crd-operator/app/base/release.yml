@@ -38,15 +38,23 @@ spec:
         LTM_CRD_CTRL__PUBLIC_NETWORK__ENABLED: "true"
         LTM_CRD_CTRL__PUBLIC_NETWORK__NAD_NAME: public
         LTM_CRD_CTRL__PUBLIC_NETWORK__SUBNETS: ${PUBLIC_SUBNET_LIST}
-        # Egress, per-cluster via spectrum-manual-vars. The two ENABLED gates
-        # default to false so a cluster that sets nothing keeps egress off;
+        # Egress, per-cluster via spectrum-manual-vars. The ENABLED gate
+        # defaults to false so a cluster that sets nothing keeps egress off;
         # FABRIC_SUBNET and HUB_NEXT_HOP carry no default on purpose — with
         # egress switched on, a missing value must fail the substitution loudly
         # rather than silently wire the fabric somewhere unintended.
-        LTM_CRD_CTRL__EXTERNAL_NETWORK__ENABLED: "${EXTERNAL_NETWORK_ENABLED:=false}"
+        # (EXTERNAL_NETWORK__ENABLED is gone since crd-controller 0.9.0: the
+        # egress reconcile is the single owner of the VPC's `enableExternal`.)
         LTM_CRD_CTRL__EGRESS__ENABLED: "${EGRESS_ENABLED:=false}"
         LTM_CRD_CTRL__EGRESS__FABRIC_SUBNET: "${EGRESS_FABRIC_SUBNET}"
         LTM_CRD_CTRL__EGRESS__HUB_NEXT_HOP: "${EGRESS_HUB_NEXT_HOP}"
+        # Whether this cluster defines a DEFAULT external network
+        # (`ovn-external-gw-config` in kube-system). None of our clusters does,
+        # hence false. A wrong "false" LATCHES per VPC in the annotation
+        # `egress.cloudless.dev/owns-external` once the first egress pass has
+        # run, and the next teardown then disconnects the default gateway —
+        # so set it to "true" BEFORE enabling egress on a cluster that has one.
+        LTM_CRD_CTRL__EGRESS__CLUSTER_DEFAULT_EXTERNAL_NETWORK: "${EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK:=false}"
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__NAMESERVERS: '["1.1.1.1" ,"8.8.8.8"]'
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__SEARCHES: '[]'
       persistence:
