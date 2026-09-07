@@ -23,7 +23,7 @@ spec:
       # appVersion. A top-level `images.kubeovn.tag` (as this file carried
       # until 1.15.23) is silently ignored, so the daemons have always
       # followed the chart version alone — this line is the only lever.
-      version: 1.15.23
+      version: 1.16.3
       sourceRef:
         kind: HelmRepository
         name: kube-ovn
