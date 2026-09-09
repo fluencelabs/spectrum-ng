@@ -6,6 +6,10 @@ metadata:
     alpha.kubevirt.io/EmulatorThreadCompleteToEvenParity: ""
 spec:
   configuration:
+    network:
+      binding:
+        managedtap:
+          domainAttachmentType: managedTap
     developerConfiguration:
       featureGates:
         - CPUManager
