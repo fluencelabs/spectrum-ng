@@ -17,7 +17,7 @@ spec:
 
         - record: tenant:vm_egress_bits:rate5m
           expr: |
-            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
               rate(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
@@ -25,7 +25,7 @@ spec:
 
         - record: tenant:vm_ingress_bits:rate5m
           expr: |
-            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
               rate(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
@@ -33,7 +33,7 @@ spec:
 
         - record: tenant:vm_egress_packets:rate5m
           expr: |
-            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
               rate(kube_ovn_interface_tx_packets{pod_namespace=~"workspace-.*"}[5m])
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
@@ -48,7 +48,9 @@ spec:
       interval: 1m
       rules:
         - alert: TenantVmEgressBitrateHigh
-          expr: tenant:vm_egress_bits:rate5m > 100e6
+          expr: |
+            (tenant:vm_egress_bits:rate5m > 100e6)
+            unless on (workspace_id) tenant_abuse_exempt
           for: 15m
           labels:
             team: devops
@@ -64,8 +66,7 @@ spec:
               signal=flood and signal=asymmetry on the same VM.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
-              node {{ $labels.hostname }}) has held
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }}) has held
               {{ $value | humanize }}bit/s outbound for over 15 minutes.
               WHAT TO DO: resolve the owner from vm_id (admin-app, search by
               resource); if abuse is confirmed, throttle the port via the
@@ -76,8 +77,12 @@ spec:
 
         - alert: TenantVmSmallPacketFlood
           expr: |
-            tenant:vm_egress_packets:rate5m > 5000
-            and tenant:vm_egress_avg_packet_bytes < 150
+            (
+              tenant:vm_egress_packets:rate5m > 5000
+              and
+              tenant:vm_egress_bits:rate5m / 8 / (tenant:vm_egress_packets:rate5m > 0) < 150
+            )
+            unless on (workspace_id) tenant_abuse_exempt
           for: 10m
           labels:
             team: devops
@@ -92,20 +97,24 @@ spec:
               at high pps is a shape useful transfer does not produce.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
-              node {{ $labels.hostname }}) is sending
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }}) is sending
               {{ $value | humanize }} packets/s averaging under 150 bytes.
               THIS IS THE WORST SIGNAL OF STAGE ONE — it strikes other people's
               networks and leads to upstream abuse complaints and our public
               block landing on blocklists. WHAT TO DO: confirm the owner from
               vm_id and throttle the port immediately, without waiting for a
-              full diagnosis.
+              full diagnosis. A workspace known to be noisy can be excluded by
+              publishing a tenant_abuse_exempt series carrying its
+              workspace_id, without editing these rules.
 
         - alert: TenantVmEgressAsymmetry
           expr: |
-            tenant:vm_egress_bits:rate5m > 10e6
-            and
-            tenant:vm_egress_bits:rate5m > 20 * tenant:vm_ingress_bits:rate5m
+            (
+              tenant:vm_egress_bits:rate5m > 10e6
+              and
+              tenant:vm_egress_bits:rate5m > 20 * tenant:vm_ingress_bits:rate5m
+            )
+            unless on (workspace_id) tenant_abuse_exempt
           for: 30m
           labels:
             team: devops
@@ -121,8 +130,7 @@ spec:
               rather than a consumer.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
-              node {{ $labels.hostname }}) has sent
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }}) has sent
               {{ $value | humanize }}bit/s for over 30 minutes against an
               inbound stream 20x smaller.
               WHAT TO DO: if signal=flood is firing alongside this, it is a
