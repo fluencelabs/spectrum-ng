@@ -4,3 +4,11 @@ metadata:
   name: observability
   labels:
     pod-security.kubernetes.io/enforce: privileged
+    # vmagent подписан на VMServiceScrape только в namespace с этой меткой
+    # (VMAgent.spec.serviceScrapeNamespaceSelector). Без неё семь скрейпов,
+    # которые оператор создаёт для собственных компонентов стека — vmalert,
+    # vmalertmanager, vmagent, vmsingle, vlogs, vmauth, — не читает НИКТО:
+    # Alloy их тоже не видит, он потребляет ServiceMonitor, а не VMServiceScrape.
+    # Следствие было ровно то, ради чего стек и стоит: ни одной метрики о том,
+    # доходят ли алерты, не существовало, и проверить доставку было нечем.
+    monitoring: enabled
