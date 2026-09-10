@@ -117,15 +117,21 @@ spec:
               never trip.
 
         - alert: ScrapesFailing
-          expr: rate(vm_promscrape_scrapes_failed_total[10m]) > 0
+          expr: |
+            sum(rate(vm_promscrape_scrapes_failed_total[10m]))
+            / sum(rate(vm_promscrape_scrapes_total[10m])) > 0.05
           for: 15m
           labels:
             team: devops
             severity: warning
-            component: alerting
+            component: scraping
           annotations:
             summary: "vmagent is failing to scrape targets"
             description: >-
-              {{ $value | humanize }} failed scrapes per second. A target that
-              stops being scraped produces no series, and a rule over an absent
-              series does not fire — it returns nothing, which reads as health.
+              {{ $value | humanizePercentage }} of scrapes are failing. A
+              target that stops being scraped produces no series, and a rule
+              over an absent series does not fire — it returns nothing, which
+              reads as health. Expressed as a ratio rather than a raw rate so a
+              handful of chronically unreachable targets does not keep this
+              firing; it carries its own component so silencing it cannot also
+              mute the delivery criticals in this group.
