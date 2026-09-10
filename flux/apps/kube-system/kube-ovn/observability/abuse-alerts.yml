@@ -9,12 +9,14 @@ spec:
       rules:
         - record: tenant:vm_info
           expr: |
-            max by (pod_name, pod_namespace, vm_id, workspace_id) (
-              label_replace(
+            topk by (pod_name, pod_namespace) (1,
+              max by (pod_name, pod_namespace, vm_id, workspace_id) (
                 label_replace(
-                  kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*"},
-                  "pod_name", "$1", "name", "(.*)"),
-                "pod_namespace", "$1", "exported_namespace", "(.*)")
+                  label_replace(
+                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*"},
+                    "pod_name", "$1", "name", "(.*)"),
+                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+              )
             )
 
         - record: tenant:vm_egress_bits:rate5m
@@ -70,9 +72,11 @@ spec:
               has held {{ $value | humanize }}bit/s outbound for over 15
               minutes.
               WHAT TO DO: resolve the owner from vm_id (admin-app, search by
-              resource); if abuse is confirmed, throttle the port via the
-              ovn.kubernetes.io/egress_rate annotation on the subnet or port
-              before escalating to removing egress altogether.
+              resource); if abuse is confirmed, throttle the VM's port with
+              kube-ovn's egress rate-limit annotation on its launcher pod
+              (confirm the exact key against the kube-ovn version in this
+              cluster before relying on it) before escalating to removing
+              egress altogether.
               LIMIT OF THIS STAGE: where the traffic is going is not visible
               here — interface counters do not know the destination.
 
@@ -107,7 +111,8 @@ spec:
           expr: |
             tenant:vm_egress_bits:rate5m > 10e6
             and
-            tenant:vm_egress_bits:rate5m > 20 * tenant:vm_ingress_bits:rate5m
+            tenant:vm_egress_bits:rate5m
+              > 20 * (tenant:vm_ingress_bits:rate5m or tenant:vm_egress_bits:rate5m * 0)
           for: 30m
           labels:
             team: devops
@@ -134,7 +139,7 @@ spec:
         - alert: TenantAbuseSignalsMissing
           expr: |
             absent(tenant:vm_egress_bits:rate5m)
-            and on () (count(tenant:vm_info) > 0)
+            and on () (count(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}) > 0)
           for: 30m
           labels:
             team: devops
@@ -145,10 +150,12 @@ spec:
             summary: "Tenant abuse signals have gone dark while tenant VMs exist"
             description: >-
               tenant:vm_egress_bits:rate5m has produced no series for 30
-              minutes although tenant:vm_info still lists VMs, so this is not
-              an empty cluster: the join that resolves an interface to a vm_id
-              has stopped matching, and a label rename on either side is enough
-              to do it. Every abuse alert in this file is built on that series,
+              minutes although tenant VMs still have live interface counters,
+              so this is not an empty cluster: the join that resolves an
+              interface to a vm_id has stopped matching. The gate deliberately
+              reads the TRAFFIC side, which does not depend on the join — a
+              gate on the metadata side would be emptied by the very failure
+              this alert exists to catch, and would mute it. Every abuse alert in this file is built on that series,
               so while it is absent they are all unable to fire, and their
               quiet is indistinguishable from an absence of abuse. Compare
               count(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"})
@@ -156,10 +163,8 @@ spec:
 
         - alert: TenantAbuseCoveragePartial
           expr: |
-            count(tenant:vm_egress_bits:rate5m)
-            < 0.9 * count(count by (pod_name, pod_namespace) (
-                kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}
-              ))
+            (count(tenant:vm_egress_bits:rate5m) or vector(0))
+            < count(tenant:vm_info)
           for: 30m
           labels:
             team: devops
@@ -169,10 +174,30 @@ spec:
           annotations:
             summary: "Abuse signals cover only part of the running tenant VMs"
             description: >-
-              {{ $value }} VMs carry abuse signals while more than that have
-              live interface counters, so some VMs resolve to no vm_id and are
-              silently unpoliced. TenantAbuseSignalsMissing only catches total
-              loss; this catches the partial case, which is the more likely one
-              — a VM whose annotation metadata is missing, stale or not yet
-              scraped drops out of the join on its own, and nothing else says
-              so.
+              {{ $value }} VMs carry abuse signals while the inventory lists
+              more, so some VMs are silently unpoliced. The denominator is the
+              VM inventory rather than the same interface counters that feed
+              the numerator: anchoring it to what SHOULD exist also catches a
+              per-node metrics outage, which would otherwise remove that
+              node's VMs from both sides at once and look like full coverage.
+              Any shortfall counts, not a fraction of one — a single
+              unpoliced VM is the whole point.
+
+        - alert: TenantVmInventoryMissing
+          expr: absent(tenant:vm_info)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "The tenant VM inventory has gone empty"
+            description: >-
+              tenant:vm_info has produced no series for 15 minutes. Either no
+              tenant VM exists anywhere, or the metadata source went away —
+              kube-state-metrics not scraped, its customResourceState config
+              changed, or the annotations it reads renamed. This alert is
+              armed unconditionally on purpose: every other rule in this file
+              needs the inventory to resolve a VM, so when it empties they all
+              go quiet together, and something has to stay loud.

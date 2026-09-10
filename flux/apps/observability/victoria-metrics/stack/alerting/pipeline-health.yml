@@ -135,3 +135,22 @@ spec:
               handful of chronically unreachable targets does not keep this
               firing; it carries its own component so silencing it cannot also
               mute the delivery criticals in this group.
+
+        - alert: MetricCollectionDown
+          expr: absent(vm_promscrape_scrapes_total)
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: scraping
+          annotations:
+            summary: "vmagent is not collecting anything"
+            description: >-
+              vm_promscrape_scrapes_total has produced no series for 10
+              minutes, which means vmagent is not scraping — crashlooping,
+              evicted, or no longer scraping itself. Every other rule in this
+              group is a rate() over a counter vmagent publishes about itself,
+              so when vmagent dies they all evaluate over an absent series,
+              return nothing, and go green. This one is armed on absence
+              instead, because that is the only shape that survives the
+              collector disappearing.
