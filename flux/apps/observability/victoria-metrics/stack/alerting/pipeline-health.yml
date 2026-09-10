@@ -25,7 +25,7 @@ spec:
               side (the Grafana OnCall webhook) and the network path to it.
 
         - alert: AlertDeliveryStopped
-          expr: sum(increase(alertmanager_notifications_total[6h])) == 0
+          expr: (sum(increase(alertmanager_notifications_total[6h])) or vector(0)) == 0
           for: 30m
           labels:
             team: devops
@@ -81,3 +81,47 @@ spec:
               {{ $value | humanize }} write errors per second. Recording rules
               (including the abuse detector's tenant:vm_* series) stop landing
               in the database, and alerts built on them silently lose data.
+
+        - alert: MetricIngestionFailing
+          expr: sum by (url) (rate(vmagent_remotewrite_requests_total{status_code!="2XX"}[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: alerting
+          annotations:
+            summary: "vmagent cannot write scraped metrics to storage"
+            description: >-
+              {{ $value | humanize }} non-2XX remote-write requests per second.
+              Detection dies before evaluation: rules keep running against data
+              that stops arriving, so they go green rather than firing. Every
+              other rule in this group watches the DELIVERY half of the path
+              and would stay quiet through this.
+
+        - alert: MetricSamplesDropped
+          expr: sum by (url) (rate(vmagent_remotewrite_packets_dropped_total[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+            component: alerting
+          annotations:
+            summary: "vmagent is dropping samples on the way to storage"
+            description: >-
+              {{ $value | humanize }} packets dropped per second. Data loss is
+              partial and silent — alerts built on the missing series simply
+              never trip.
+
+        - alert: ScrapesFailing
+          expr: rate(vm_promscrape_scrapes_failed_total[10m]) > 0
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: alerting
+          annotations:
+            summary: "vmagent is failing to scrape targets"
+            description: >-
+              {{ $value | humanize }} failed scrapes per second. A target that
+              stops being scraped produces no series, and a rule over an absent
+              series does not fire — it returns nothing, which reads as health.

@@ -7,17 +7,21 @@ spec:
     - name: tenant-vm-traffic
       interval: 1m
       rules:
+        - record: tenant:vm_info
+          expr: |
+            label_replace(
+              label_replace(
+                kube_customresource_kubevirt_vm_annotation_info,
+                "pod_name", "$1", "name", "(.*)"),
+              "pod_namespace", "$1", "exported_namespace", "(.*)")
+
         - record: tenant:vm_egress_bits:rate5m
           expr: |
             sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
               rate(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
-            label_replace(
-              label_replace(
-                kube_customresource_kubevirt_vm_annotation_info,
-                "pod_name", "$1", "name", "(.*)"),
-              "pod_namespace", "$1", "exported_namespace", "(.*)")
+            tenant:vm_info
 
         - record: tenant:vm_ingress_bits:rate5m
           expr: |
@@ -25,11 +29,7 @@ spec:
               rate(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
-            label_replace(
-              label_replace(
-                kube_customresource_kubevirt_vm_annotation_info,
-                "pod_name", "$1", "name", "(.*)"),
-              "pod_namespace", "$1", "exported_namespace", "(.*)")
+            tenant:vm_info
 
         - record: tenant:vm_egress_packets:rate5m
           expr: |
@@ -37,11 +37,7 @@ spec:
               rate(kube_ovn_interface_tx_packets{pod_namespace=~"workspace-.*"}[5m])
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
-            label_replace(
-              label_replace(
-                kube_customresource_kubevirt_vm_annotation_info,
-                "pod_name", "$1", "name", "(.*)"),
-              "pod_namespace", "$1", "exported_namespace", "(.*)")
+            tenant:vm_info
 
         - record: tenant:vm_egress_avg_packet_bytes
           expr: |
@@ -109,8 +105,7 @@ spec:
           expr: |
             tenant:vm_egress_bits:rate5m > 10e6
             and
-            tenant:vm_egress_bits:rate5m
-              > 20 * (tenant:vm_ingress_bits:rate5m > 0)
+            tenant:vm_egress_bits:rate5m > 20 * tenant:vm_ingress_bits:rate5m
           for: 30m
           labels:
             team: devops
@@ -134,3 +129,24 @@ spec:
               scan — work that one. If not, mailing is more likely; telling
               spam from legitimate seeding is IMPOSSIBLE from counters alone
               and needs a destination port, which is stage two.
+
+        - alert: TenantAbuseSignalsMissing
+          expr: absent(tenant:vm_egress_bits:rate5m)
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "Tenant abuse signals have gone dark"
+            description: >-
+              tenant:vm_egress_bits:rate5m has produced no series for 30
+              minutes. Either no tenant VM is running, or the join that
+              resolves an interface to a vm_id has stopped matching — a label
+              rename on either side is enough. Every abuse alert in this file
+              is built on this series, so while it is absent they are all
+              silently unable to fire, and their quiet is indistinguishable
+              from an absence of abuse. Check
+              count(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"})
+              and count(tenant:vm_info) to see which side went away.

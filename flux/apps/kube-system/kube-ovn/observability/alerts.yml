@@ -360,7 +360,7 @@ spec:
           component: cni
         annotations:
           summary: "High CNI connectivity wait time"
-          description: "CNI is waiting {{ $value }}s per operation for connectivity on {{ $labels.instance }}"
+          description: "CNI connectivity probing on {{ $labels.instance }} is accumulating {{ $value }} probe-seconds per second. This counter advances on the healthy path too (it adds the probe count after connectivity succeeds), so it tracks pod-creation churn as much as slowness — the idle baseline here is ~0.2/s."
 
       - alert: HighOVSClientLatency
         expr: histogram_quantile(0.99, rate(ovs_client_request_latency_milliseconds_bucket[5m])) > 1000
