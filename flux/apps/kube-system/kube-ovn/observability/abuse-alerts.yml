@@ -19,15 +19,19 @@ spec:
               )
             )
 
-        - record: tenant:vm_egress_bits:rate5m
+        - record: tenant:vm_running
           expr: |
-            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
-              rate(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
+            topk by (pod_name, pod_namespace) (1,
+              max by (pod_name, pod_namespace, vm_id, workspace_id) (
+                label_replace(
+                  label_replace(
+                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*", status="Running"},
+                    "pod_name", "$1", "name", "(.*)"),
+                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+              )
             )
-            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
-            tenant:vm_info
 
-        - record: tenant:vm_ingress_bits:rate5m
+        - record: tenant:vm_egress_bits:rate5m
           expr: |
             sum by (pod_name, pod_namespace, vm_id, workspace_id) (
               rate(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
@@ -35,10 +39,18 @@ spec:
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
             tenant:vm_info
 
+        - record: tenant:vm_ingress_bits:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
+              rate(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            tenant:vm_info
+
         - record: tenant:vm_egress_packets:rate5m
           expr: |
             sum by (pod_name, pod_namespace, vm_id, workspace_id) (
-              rate(kube_ovn_interface_tx_packets{pod_namespace=~"workspace-.*"}[5m])
+              rate(kube_ovn_interface_rx_packets{pod_namespace=~"workspace-.*"}[5m])
             )
             * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
             tenant:vm_info
@@ -139,7 +151,7 @@ spec:
         - alert: TenantAbuseSignalsMissing
           expr: |
             absent(tenant:vm_egress_bits:rate5m)
-            and on () (count(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}) > 0)
+            and on () (count(kube_ovn_interface_rx_bytes) > 0)
           for: 30m
           labels:
             team: devops
@@ -152,19 +164,21 @@ spec:
               tenant:vm_egress_bits:rate5m has produced no series for 30
               minutes although tenant VMs still have live interface counters,
               so this is not an empty cluster: the join that resolves an
-              interface to a vm_id has stopped matching. The gate deliberately
-              reads the TRAFFIC side, which does not depend on the join — a
-              gate on the metadata side would be emptied by the very failure
-              this alert exists to catch, and would mute it. Every abuse alert in this file is built on that series,
+              interface to a vm_id has stopped matching. The gate counts
+              interface counters with NO label selector, deliberately: both
+              join keys are external_ids stamped by the same kube-ovn CNI
+              call, so a gate that filtered on pod_namespace would be emptied
+              by the very failure this alert exists to catch. It asks only
+              whether the exporter is alive at all. Every abuse alert in this file is built on that series,
               so while it is absent they are all unable to fire, and their
               quiet is indistinguishable from an absence of abuse. Compare
-              count(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"})
+              count(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"})
               with count(tenant:vm_info) to see which side went away.
 
         - alert: TenantAbuseCoveragePartial
           expr: |
             (count(tenant:vm_egress_bits:rate5m) or vector(0))
-            < count(tenant:vm_info)
+            < count(tenant:vm_running)
           for: 30m
           labels:
             team: devops
@@ -174,8 +188,14 @@ spec:
           annotations:
             summary: "Abuse signals cover only part of the running tenant VMs"
             description: >-
-              {{ $value }} VMs carry abuse signals while the inventory lists
-              more, so some VMs are silently unpoliced. The denominator is the
+              {{ $value }} VMs carry abuse signals while more than that are
+              RUNNING, so some VMs are silently unpoliced. The denominator
+              counts only running VMs: kube-state-metrics keeps an inventory
+              series for a stopped VM, which has no interface and therefore no
+              signals, so counting the whole inventory would leave this alert
+              stuck firing for as long as any tenant leaves a machine shut
+              down — and a watchdog that is always red gets silenced, which is
+              how it stops covering the case it exists for. The denominator is the
               VM inventory rather than the same interface counters that feed
               the numerator: anchoring it to what SHOULD exist also catches a
               per-node metrics outage, which would otherwise remove that
