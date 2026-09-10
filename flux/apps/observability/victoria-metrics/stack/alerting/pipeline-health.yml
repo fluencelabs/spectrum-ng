@@ -1,23 +1,3 @@
-# Наблюдение за самим путём алерта. До 2026-09-10 его не было вовсе: namespace
-# observability не нёс метку monitoring=enabled, под которую подписан vmagent,
-# и семь VMServiceScrape компонентов стека не читал никто. То есть стек, чья
-# работа — сообщать об отказах, о собственных отказах сообщить не мог.
-#
-# ЧТО ЭТИ ПРАВИЛА ЗАКРЫВАЮТ, А ЧТО НЕТ.
-# Закрывают ВНУТРЕННЮЮ половину пути: правило посчиталось → vmalert донёс его
-# до alertmanager → alertmanager отдал вебхуку. Каждый стык здесь теперь имеет
-# свой счётчик отказов, и молчание на нём больше не выглядит как здоровье.
-# НЕ закрывают ВНЕШНЮЮ половину: принял ли Grafana OnCall, дошло ли до
-# дежурного, и — главное — следит ли кто-нибудь за ПРОПАЖЕЙ deadmanswitch.
-# Изнутри кластера это непроверяемо. Всегда горящий deadmanswitch бесполезен,
-# если на той стороне никто не заметит его отсутствия: он тогда не проверка,
-# а украшение. Это вопрос к владельцу интеграции, а не к этому файлу.
-#
-# ПОЧЕМУ ПОРОГИ ИМЕННО НА СКОРОСТИ, А НЕ НА СУММЕ.
-# vmalert_execution_errors_total на stage накопил 269k с момента запуска, при
-# том что ни у одного правила сейчас нет lastError. Это исторические ошибки
-# опроса датасорса — вероятно, рестарты. Порог на сумме кричал бы вечно и был
-# бы немедленно заглушен; порог на скорости ловит то, что происходит сейчас.
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
@@ -27,8 +7,6 @@ spec:
     - name: alerting-pipeline
       interval: 1m
       rules:
-        # СТЫК 3 — alertmanager → внешний приёмник. Самый важный: отсюда алерт
-        # уходит из кластера, и дальше мы слепы.
         - alert: AlertNotificationsFailing
           expr: sum by (integration) (rate(alertmanager_notifications_failed_total[10m])) > 0
           for: 10m
@@ -37,20 +15,15 @@ spec:
             severity: critical
             component: alerting
           annotations:
-            summary: "Alertmanager не может доставить уведомления ({{ $labels.integration }})"
+            summary: "Alertmanager cannot deliver notifications ({{ $labels.integration }})"
             description: >-
-              Интеграция {{ $labels.integration }} отдаёт ошибки доставки
-              ({{ $value | humanize }}/с). ЗНАЧЕНИЕ ОТКАЗА: обнаружение
-              продолжает работать, а до человека не доходит НИЧЕГО — все
-              остальные алерты в этот момент бесполезны, и их молчание
-              неотличимо от здоровья. Проверять в первую очередь приёмник на
-              той стороне (webhook Grafana OnCall) и сетевой путь до него.
+              Integration {{ $labels.integration }} is returning delivery
+              errors ({{ $value | humanize }}/s). WHAT THIS MEANS: detection
+              keeps working while NOTHING reaches a human — every other alert
+              is useless for as long as this lasts, and their silence is
+              indistinguishable from health. Check the receiver on the far
+              side (the Grafana OnCall webhook) and the network path to it.
 
-        # СТЫК 3, вторая сторона: доставка не отказывает, а просто прекратилась.
-        # deadmanswitch горит всегда и переотправляется по repeat_interval 4h,
-        # поэтому за 6 часов при живом пути обязана быть хотя бы одна отправка.
-        # Ноль означает, что либо alertmanager перестал отдавать, либо до него
-        # перестали доходить алерты — и то и другое одинаково слепит.
         - alert: AlertDeliveryStopped
           expr: sum(increase(alertmanager_notifications_total[6h])) == 0
           for: 30m
@@ -59,13 +32,13 @@ spec:
             severity: critical
             component: alerting
           annotations:
-            summary: "Из alertmanager шесть часов не ушло ни одного уведомления"
+            summary: "No notification has left alertmanager in six hours"
             description: >-
-              При живом пути deadmanswitch переотправляется каждые 4 часа, так
-              что ноль за шесть часов означает обрыв. Отличать от тишины
-              «всё хорошо» здесь нечем изнутри — именно поэтому правило и есть.
+              With a healthy path the deadmanswitch is re-sent every 4 hours,
+              so zero in six means a break. Either alertmanager stopped
+              sending, or alerts stopped reaching it; both blind us equally,
+              and nothing else distinguishes this from an all-clear.
 
-        # СТЫК 2 — vmalert → alertmanager.
         - alert: VmalertCannotReachAlertmanager
           expr: sum by (addr) (rate(vmalert_alerts_send_errors_total[10m])) > 0
           for: 10m
@@ -74,14 +47,12 @@ spec:
             severity: critical
             component: alerting
           annotations:
-            summary: "vmalert не может отдать алерты в alertmanager ({{ $labels.addr }})"
+            summary: "vmalert cannot hand alerts to alertmanager ({{ $labels.addr }})"
             description: >-
-              Правила считаются и срабатывают, но не доезжают до отправителя
-              ({{ $value | humanize }} ошибок/с). Снаружи это выглядит как
-              полная тишина.
+              Rules evaluate and fire, but never reach the sender
+              ({{ $value | humanize }} errors/s). From the outside this looks
+              like complete silence.
 
-        # СТЫК 1 — правило → датасорс. Ловит и опечатку в новом правиле, и
-        # недоступность vmsingle.
         - alert: VmalertRuleExecutionErrors
           expr: rate(vmalert_execution_errors_total[10m]) > 0
           for: 15m
@@ -90,16 +61,13 @@ spec:
             severity: warning
             component: alerting
           annotations:
-            summary: "vmalert не может выполнить правила"
+            summary: "vmalert cannot execute rules"
             description: >-
-              {{ $value | humanize }} ошибок выполнения в секунду. Смотреть
-              lastError по правилам в /api/v1/rules у vmalert: это либо
-              недоступный датасорс, либо правило, чей запрос не разбирается.
-              Правило с ошибкой выполнения НЕ срабатывает никогда, оставаясь
-              зелёным на вид.
+              {{ $value | humanize }} execution errors per second. Check
+              lastError per rule in vmalert's /api/v1/rules: either the
+              datasource is unreachable, or a rule's query no longer parses.
+              A rule that errors never fires, while still looking green.
 
-        # Запись правил в удалённое хранилище (рекординг-правила абьюз-детектора
-        # идут этим путём) — если она отказывает, признаки просто не появляются.
         - alert: VmalertRemoteWriteErrors
           expr: rate(vmalert_remotewrite_errors_total[10m]) > 0
           for: 15m
@@ -108,8 +76,8 @@ spec:
             severity: warning
             component: alerting
           annotations:
-            summary: "vmalert не может записать результаты рекординг-правил"
+            summary: "vmalert cannot write recording rule results"
             description: >-
-              {{ $value | humanize }} ошибок записи в секунду. Рекординг-правила
-              (в том числе tenant:vm_* абьюз-детектора) перестают появляться в
-              базе, и построенные на них алерты молча теряют данные.
+              {{ $value | humanize }} write errors per second. Recording rules
+              (including the abuse detector's tenant:vm_* series) stop landing
+              in the database, and alerts built on them silently lose data.

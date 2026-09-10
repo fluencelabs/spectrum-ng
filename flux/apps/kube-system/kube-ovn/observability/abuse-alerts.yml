@@ -1,40 +1,9 @@
-# Ступень 1 абьюз-детектора: признаки злоупотребления тенантской VM, считаемые
-# ТОЛЬКО по счётчикам, которые kube-ovn-pinger уже отдаёт. Ни IPFIX, ни нового
-# компонента на дата-плане здесь нет — это то, что можно включить сегодня.
-#
-# ЧТО ЭТА СТУПЕНЬ ЛОВИТ: объёмные признаки — исходящий флуд, участие в DDoS,
-# массовую рассылку, скан с большим числом мелких пакетов.
-# ЧЕГО НЕ ЛОВИТ: всё, что требует 5-tuple — куда именно шёл трафик, на какой
-# порт, скольким разным адресам. Это ступень 2 (IPFIX с OVS), и она гейтится
-# спайком: переживёт ли экспорт управление со стороны ovn-controller.
-#
-# --- ДЖОЙН ТРЕБУЕТ РОВНО ОДНОГО СКРЕЙПЕРА ---
-# `on(...)` ниже отказывает в many-to-many, если те же серии приходят от двух
-# скрейперов с разными наборами меток. Так и было на stage до 2026-09-10: с
-# апреля там жил осиротевший VMServiceScrape (переворот типа в service-monitor.yml
-# двумя коммитами wip, не удалённый из-за `prune: false` на Kustomization), и
-# vmagent скрейпил kube-ovn параллельно с Alloy. Объект удалён, единственный
-# потребитель ServiceMonitor снова Alloy. Если метрики kube-ovn когда-нибудь
-# опять начнут приходить в двух копиях — джойн сломается здесь первым.
-#
-# --- КАК ПОЛУЧАЕТСЯ vm_id ---
-# kube_ovn_interface_* несёт pod_name/pod_namespace, и для тенантской VM
-# pod_name — ЭТО имя kubevirt-овой VM (vm-0napo2h9...), а не virt-launcher-под.
-# kube_customresource_kubevirt_vm_annotation_info (kube-state-metrics,
-# customResourceState) несёт для той же VM name/exported_namespace вместе с
-# vm_id и workspace_id. Двойной label_replace приводит его метки к именам
-# левой стороны, и группировка group_left доносит vm_id/workspace_id до алерта.
-# Проверено запросом на kabat-05 (stage): 6 тенантских VM, у каждой пара
-# vm_id/workspace_id разрешилась.
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: kube-ovn-abuse
 spec:
   groups:
-    # Рекординг-правила существуют, чтобы джойн с vm_id был написан ОДИН раз.
-    # Повторять его в каждом алерте — верный способ развести варианты, которые
-    # расходятся при первой же правке.
     - name: tenant-vm-traffic
       interval: 1m
       rules:
@@ -74,10 +43,6 @@ spec:
                 "pod_name", "$1", "name", "(.*)"),
               "pod_namespace", "$1", "exported_namespace", "(.*)")
 
-        # Средний размер исходящего пакета — главный различитель этой ступени.
-        # Полезная передача набивает пакеты под MTU; флуд и скан гонят мелкие.
-        # `> 0` в знаменателе обязателен: молчащая VM даёт 0/0 и серию NaN,
-        # которая потом сравнивается с порогом непредсказуемо.
         - record: tenant:vm_egress_avg_packet_bytes
           expr: |
             tenant:vm_egress_bits:rate5m / 8
@@ -86,8 +51,6 @@ spec:
     - name: tenant-vm-abuse
       interval: 1m
       rules:
-        # ПРИЗНАК 1 — объём. Самый грубый и самый надёжный: столько исходящего
-        # трафика легитимная тенантская VM держит редко и недолго.
         - alert: TenantVmEgressBitrateHigh
           expr: tenant:vm_egress_bits:rate5m > 100e6
           for: 15m
@@ -97,29 +60,24 @@ spec:
             component: tenant-abuse
             signal: bitrate
           annotations:
-            summary: "VM {{ $labels.vm_id }} гонит наружу {{ $value | humanize }}bit/s"
+            summary: "VM {{ $labels.vm_id }} is pushing {{ $value | humanize }}bit/s outbound"
             suspected_cause: >-
-              Участие в исходящем DDoS, раздача пиратского контента, или
-              легитимная выгрузка данных. Признак объёмный и сам по себе
-              намерения не различает — смотреть вместе с signal=flood и
-              signal=asymmetry на той же VM.
+              Participation in an outbound DDoS, content seeding, or a
+              legitimate upload. This signal is volumetric and does not
+              distinguish intent on its own — read it together with
+              signal=flood and signal=asymmetry on the same VM.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
-              нода {{ $labels.hostname }}) держит исходящие
-              {{ $value | humanize }}bit/s дольше 15 минут.
-              ЧТО ДЕЛАТЬ: найти владельца по vm_id (admin-app, поиск по
-              ресурсу); если абьюз подтверждён — придушить порт через
-              аннотацию ovn.kubernetes.io/egress_rate на подсети/порту, и
-              только затем эскалировать до снятия egress.
-              ПРЕДЕЛ ЭТОЙ СТУПЕНИ: куда именно идёт трафик, здесь не видно —
-              счётчики интерфейса адресата не знают.
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
+              node {{ $labels.hostname }}) has held
+              {{ $value | humanize }}bit/s outbound for over 15 minutes.
+              WHAT TO DO: resolve the owner from vm_id (admin-app, search by
+              resource); if abuse is confirmed, throttle the port via the
+              ovn.kubernetes.io/egress_rate annotation on the subnet or port
+              before escalating to removing egress altogether.
+              LIMIT OF THIS STAGE: where the traffic is going is not visible
+              here — interface counters do not know the destination.
 
-        # ПРИЗНАК 2 — мелкие пакеты при высоком pps. Это то место, где
-        # счётчики всё-таки различают намерение: SYN-флуд и скан физически не
-        # могут набить пакет, а выгрузка данных физически не может его не
-        # набить. Оба условия обязательны: высокий pps сам по себе бывает у
-        # честной нагрузки, мелкий пакет сам по себе — у любого простоя.
         - alert: TenantVmSmallPacketFlood
           expr: |
             tenant:vm_egress_packets:rate5m > 5000
@@ -131,25 +89,22 @@ spec:
             component: tenant-abuse
             signal: flood
           annotations:
-            summary: "VM {{ $labels.vm_id }} шлёт мелкие пакеты пачками — похоже на скан или SYN-флуд"
+            summary: "VM {{ $labels.vm_id }} is emitting small packets in bulk — likely a scan or SYN flood"
             suspected_cause: >-
-              Сканирование портов/подсетей, SYN-флуд или участие в
-              амплификации. Средний исходящий пакет меньше 150 байт при
-              высоком pps — полезной передачи такой формы не бывает.
+              Port or subnet scanning, a SYN flood, or participation in an
+              amplification attack. An average outbound packet under 150 bytes
+              at high pps is a shape useful transfer does not produce.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
-              нода {{ $labels.hostname }}) шлёт {{ $value | humanize }} пакетов/с
-              при среднем размере пакета меньше 150 байт.
-              ЭТО САМЫЙ ЗЛОЙ ПРИЗНАК ступени 1 — он бьёт по чужим сетям и
-              приводит к жалобам апстриму и попаданию нашего публичного блока
-              в блок-листы. ЧТО ДЕЛАТЬ: подтвердить владельца по vm_id и
-              приглушать порт немедленно, не дожидаясь разбора.
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
+              node {{ $labels.hostname }}) is sending
+              {{ $value | humanize }} packets/s averaging under 150 bytes.
+              THIS IS THE WORST SIGNAL OF STAGE ONE — it strikes other people's
+              networks and leads to upstream abuse complaints and our public
+              block landing on blocklists. WHAT TO DO: confirm the owner from
+              vm_id and throttle the port immediately, without waiting for a
+              full diagnosis.
 
-        # ПРИЗНАК 3 — асимметрия. Клиентская нагрузка тянет больше, чем отдаёт.
-        # Устойчивый перекос в отдачу при заметном объёме — рассылка, флуд или
-        # раздача. Нижний порог по объёму нужен, чтобы тихая VM с одиноким
-        # heartbeat-пакетом не давала бесконечное отношение.
         - alert: TenantVmEgressAsymmetry
           expr: |
             tenant:vm_egress_bits:rate5m > 10e6
@@ -163,18 +118,19 @@ spec:
             component: tenant-abuse
             signal: asymmetry
           annotations:
-            summary: "VM {{ $labels.vm_id }} отдаёт в 20+ раз больше, чем принимает"
+            summary: "VM {{ $labels.vm_id }} is sending 20x more than it receives"
             suspected_cause: >-
-              Массовая рассылка (спам), исходящий флуд или раздача контента.
-              Клиентская нагрузка обычно принимает больше, чем отдаёт;
-              устойчивый обратный перекос при заметном объёме — признак того,
-              что VM работает источником, а не потребителем.
+              Bulk mailing (spam), an outbound flood, or content seeding. A
+              client workload normally receives more than it sends; a sustained
+              inversion at meaningful volume means the VM is acting as a source
+              rather than a consumer.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
-              нода {{ $labels.hostname }}) более 30 минут отдаёт
-              {{ $value | humanize }}bit/s при входящем потоке в 20+ раз меньше.
-              ЧТО ДЕЛАТЬ: если рядом горит signal=flood — это скан, работать по
-              нему. Если нет — вероятнее рассылка; отличить спам от легитимной
-              раздачи по счётчикам НЕЛЬЗЯ, нужен порт назначения, то есть
-              ступень 2.
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }},
+              node {{ $labels.hostname }}) has sent
+              {{ $value | humanize }}bit/s for over 30 minutes against an
+              inbound stream 20x smaller.
+              WHAT TO DO: if signal=flood is firing alongside this, it is a
+              scan — work that one. If not, mailing is more likely; telling
+              spam from legitimate seeding is IMPOSSIBLE from counters alone
+              and needs a destination port, which is stage two.
