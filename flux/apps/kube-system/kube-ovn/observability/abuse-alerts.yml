@@ -1,0 +1,179 @@
+# Ступень 1 абьюз-детектора: признаки злоупотребления тенантской VM, считаемые
+# ТОЛЬКО по счётчикам, которые kube-ovn-pinger уже отдаёт. Ни IPFIX, ни нового
+# компонента на дата-плане здесь нет — это то, что можно включить сегодня.
+#
+# ЧТО ЭТА СТУПЕНЬ ЛОВИТ: объёмные признаки — исходящий флуд, участие в DDoS,
+# массовую рассылку, скан с большим числом мелких пакетов.
+# ЧЕГО НЕ ЛОВИТ: всё, что требует 5-tuple — куда именно шёл трафик, на какой
+# порт, скольким разным адресам. Это ступень 2 (IPFIX с OVS), и она гейтится
+# спайком: переживёт ли экспорт управление со стороны ovn-controller.
+#
+# --- ПОЧЕМУ ВЕЗДЕ cluster="spectrum" ---
+# Каждая серия kube-ovn на этом кластере лежит в базе ДВАЖДЫ: её скрейпит и
+# Alloy (метки cluster="spectrum", instance=<hostname>), и vmagent через
+# ServiceScrape (метки prometheus="observability/stack", instance=<podIP:port>).
+# Значения идентичны, наборы меток разные. Без этого фильтра `sum by()` удвоит
+# любой объём, а `on(...)`-джойн ниже развалится в many-to-many. Фильтр — это
+# заплатка: настоящее решение — убрать одного из двух скрейперов.
+#
+# --- КАК ПОЛУЧАЕТСЯ vm_id ---
+# kube_ovn_interface_* несёт pod_name/pod_namespace, и для тенантской VM
+# pod_name — ЭТО имя kubevirt-овой VM (vm-0napo2h9...), а не virt-launcher-под.
+# kube_customresource_kubevirt_vm_annotation_info (kube-state-metrics,
+# customResourceState) несёт для той же VM name/exported_namespace вместе с
+# vm_id и workspace_id. Двойной label_replace приводит его метки к именам
+# левой стороны, и группировка group_left доносит vm_id/workspace_id до алерта.
+# Проверено запросом на kabat-05 (stage): 6 тенантских VM, у каждой пара
+# vm_id/workspace_id разрешилась.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-abuse
+spec:
+  groups:
+    # Рекординг-правила существуют, чтобы джойн с vm_id был написан ОДИН раз.
+    # Повторять его в каждом алерте — верный способ развести варианты, которые
+    # расходятся при первой же правке.
+    - name: tenant-vm-traffic
+      interval: 1m
+      rules:
+        - record: tenant:vm_egress_bits:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+              rate(kube_ovn_interface_tx_bytes{cluster="spectrum", pod_namespace=~"workspace-.*"}[5m]) * 8
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            label_replace(
+              label_replace(
+                kube_customresource_kubevirt_vm_annotation_info{cluster="spectrum"},
+                "pod_name", "$1", "name", "(.*)"),
+              "pod_namespace", "$1", "exported_namespace", "(.*)")
+
+        - record: tenant:vm_ingress_bits:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+              rate(kube_ovn_interface_rx_bytes{cluster="spectrum", pod_namespace=~"workspace-.*"}[5m]) * 8
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            label_replace(
+              label_replace(
+                kube_customresource_kubevirt_vm_annotation_info{cluster="spectrum"},
+                "pod_name", "$1", "name", "(.*)"),
+              "pod_namespace", "$1", "exported_namespace", "(.*)")
+
+        - record: tenant:vm_egress_packets:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, hostname, vm_id, workspace_id) (
+              rate(kube_ovn_interface_tx_packets{cluster="spectrum", pod_namespace=~"workspace-.*"}[5m])
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            label_replace(
+              label_replace(
+                kube_customresource_kubevirt_vm_annotation_info{cluster="spectrum"},
+                "pod_name", "$1", "name", "(.*)"),
+              "pod_namespace", "$1", "exported_namespace", "(.*)")
+
+        # Средний размер исходящего пакета — главный различитель этой ступени.
+        # Полезная передача набивает пакеты под MTU; флуд и скан гонят мелкие.
+        # `> 0` в знаменателе обязателен: молчащая VM даёт 0/0 и серию NaN,
+        # которая потом сравнивается с порогом непредсказуемо.
+        - record: tenant:vm_egress_avg_packet_bytes
+          expr: |
+            tenant:vm_egress_bits:rate5m / 8
+            / (tenant:vm_egress_packets:rate5m > 0)
+
+    - name: tenant-vm-abuse
+      interval: 1m
+      rules:
+        # ПРИЗНАК 1 — объём. Самый грубый и самый надёжный: столько исходящего
+        # трафика легитимная тенантская VM держит редко и недолго.
+        - alert: TenantVmEgressBitrateHigh
+          expr: tenant:vm_egress_bits:rate5m > 100e6
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: bitrate
+          annotations:
+            summary: "VM {{ $labels.vm_id }} гонит наружу {{ $value | humanize }}bit/s"
+            suspected_cause: >-
+              Участие в исходящем DDoS, раздача пиратского контента, или
+              легитимная выгрузка данных. Признак объёмный и сам по себе
+              намерения не различает — смотреть вместе с signal=flood и
+              signal=asymmetry на той же VM.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
+              нода {{ $labels.hostname }}) держит исходящие
+              {{ $value | humanize }}bit/s дольше 15 минут.
+              ЧТО ДЕЛАТЬ: найти владельца по vm_id (admin-app, поиск по
+              ресурсу); если абьюз подтверждён — придушить порт через
+              аннотацию ovn.kubernetes.io/egress_rate на подсети/порту, и
+              только затем эскалировать до снятия egress.
+              ПРЕДЕЛ ЭТОЙ СТУПЕНИ: куда именно идёт трафик, здесь не видно —
+              счётчики интерфейса адресата не знают.
+
+        # ПРИЗНАК 2 — мелкие пакеты при высоком pps. Это то место, где
+        # счётчики всё-таки различают намерение: SYN-флуд и скан физически не
+        # могут набить пакет, а выгрузка данных физически не может его не
+        # набить. Оба условия обязательны: высокий pps сам по себе бывает у
+        # честной нагрузки, мелкий пакет сам по себе — у любого простоя.
+        - alert: TenantVmSmallPacketFlood
+          expr: |
+            tenant:vm_egress_packets:rate5m > 5000
+            and tenant:vm_egress_avg_packet_bytes < 150
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: tenant-abuse
+            signal: flood
+          annotations:
+            summary: "VM {{ $labels.vm_id }} шлёт мелкие пакеты пачками — похоже на скан или SYN-флуд"
+            suspected_cause: >-
+              Сканирование портов/подсетей, SYN-флуд или участие в
+              амплификации. Средний исходящий пакет меньше 150 байт при
+              высоком pps — полезной передачи такой формы не бывает.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
+              нода {{ $labels.hostname }}) шлёт {{ $value | humanize }} пакетов/с
+              при среднем размере пакета меньше 150 байт.
+              ЭТО САМЫЙ ЗЛОЙ ПРИЗНАК ступени 1 — он бьёт по чужим сетям и
+              приводит к жалобам апстриму и попаданию нашего публичного блока
+              в блок-листы. ЧТО ДЕЛАТЬ: подтвердить владельца по vm_id и
+              приглушать порт немедленно, не дожидаясь разбора.
+
+        # ПРИЗНАК 3 — асимметрия. Клиентская нагрузка тянет больше, чем отдаёт.
+        # Устойчивый перекос в отдачу при заметном объёме — рассылка, флуд или
+        # раздача. Нижний порог по объёму нужен, чтобы тихая VM с одиноким
+        # heartbeat-пакетом не давала бесконечное отношение.
+        - alert: TenantVmEgressAsymmetry
+          expr: |
+            tenant:vm_egress_bits:rate5m > 10e6
+            and
+            tenant:vm_egress_bits:rate5m
+              > 20 * (tenant:vm_ingress_bits:rate5m > 0)
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: asymmetry
+          annotations:
+            summary: "VM {{ $labels.vm_id }} отдаёт в 20+ раз больше, чем принимает"
+            suspected_cause: >-
+              Массовая рассылка (спам), исходящий флуд или раздача контента.
+              Клиентская нагрузка обычно принимает больше, чем отдаёт;
+              устойчивый обратный перекос при заметном объёме — признак того,
+              что VM работает источником, а не потребителем.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} в {{ $labels.pod_namespace }},
+              нода {{ $labels.hostname }}) более 30 минут отдаёт
+              {{ $value | humanize }}bit/s при входящем потоке в 20+ раз меньше.
+              ЧТО ДЕЛАТЬ: если рядом горит signal=flood — это скан, работать по
+              нему. Если нет — вероятнее рассылка; отличить спам от легитимной
+              раздачи по счётчикам НЕЛЬЗЯ, нужен порт назначения, то есть
+              ступень 2.
