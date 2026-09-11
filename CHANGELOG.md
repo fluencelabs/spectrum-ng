@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.2...v0.3.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **kube-ovn:** drop TenantVmInventoryMissing — it is noise on a tenantless cluster ([9d2d87e](https://github.com/fluencelabs/spectrum-ng/commit/9d2d87e161e01e7ea98269460f76fd6be566f4f9))
+* **kube-ovn:** drop TenantVmInventoryMissing — noise on a tenantless cluster ([#265](https://github.com/fluencelabs/spectrum-ng/issues/265)) ([9d2d87e](https://github.com/fluencelabs/spectrum-ng/commit/9d2d87e161e01e7ea98269460f76fd6be566f4f9))
+
 ## [0.3.2](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.1...v0.3.2) (2026-09-11)
 
 
