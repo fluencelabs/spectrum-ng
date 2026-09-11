@@ -77,3 +77,14 @@ spec:
       ovnDirectory: "/var/lib/ovn"
     cni:
       mountToolingDirectory: false
+
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: DaemonSet
+              name: kube-ovn-pinger
+            patch: |
+              - op: add
+                path: /spec/template/spec/hostPID
+                value: true
