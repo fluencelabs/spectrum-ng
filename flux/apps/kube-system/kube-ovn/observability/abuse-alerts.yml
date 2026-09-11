@@ -13,9 +13,9 @@ spec:
               max by (pod_name, pod_namespace, vm_id, workspace_id) (
                 label_replace(
                   label_replace(
-                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*"},
+                    kube_customresource_kubevirt_vm_annotation_info{namespace=~"workspace-.*"},
                     "pod_name", "$1", "name", "(.*)"),
-                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+                  "pod_namespace", "$1", "namespace", "(.*)")
               )
             )
 
@@ -25,9 +25,9 @@ spec:
               max by (pod_name, pod_namespace, vm_id, workspace_id) (
                 label_replace(
                   label_replace(
-                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*", status="Running"},
+                    kube_customresource_kubevirt_vm_annotation_info{namespace=~"workspace-.*", status="Running"},
                     "pod_name", "$1", "name", "(.*)"),
-                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+                  "pod_namespace", "$1", "namespace", "(.*)")
               )
             )
 
