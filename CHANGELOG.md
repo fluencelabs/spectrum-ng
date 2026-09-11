@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.0...v0.3.1) (2026-09-11)
+
+
+### Features
+
+* **kubevirt:** register the managedtap network binding plugin ([#248](https://github.com/fluencelabs/spectrum-ng/issues/248)) ([81ba54d](https://github.com/fluencelabs/spectrum-ng/commit/81ba54d02b5fd2fdcb11e3506ed48327b2894855))
+
 ## [0.3.0](https://github.com/fluencelabs/spectrum-ng/compare/v0.2.4...v0.3.0) (2026-09-03)
 
 
