@@ -177,7 +177,7 @@ spec:
 
 
       - alert: HighInterfaceRxErrors
-        expr: rate(kube_ovn_interface_rx_errors[5m]) > 10
+        expr: topk by (instance) (3, rate(kube_ovn_interface_rx_errors[5m])) > 10
         for: 5m
         labels:
           team: devops
@@ -188,7 +188,7 @@ spec:
           description: "Interface {{ $labels.interfaceName }} on {{ $labels.instance }} has {{ $value }} RX errors per second"
 
       - alert: HighInterfaceTxErrors
-        expr: rate(kube_ovn_interface_tx_errors[5m]) > 10
+        expr: topk by (instance) (3, rate(kube_ovn_interface_tx_errors[5m])) > 10
         for: 5m
         labels:
           team: devops
@@ -199,7 +199,7 @@ spec:
           description: "Interface {{ $labels.interfaceName }} on {{ $labels.instance }} has {{ $value }} TX errors per second"
 
       - alert: HighInterfaceDroppedPackets
-        expr: rate(kube_ovn_interface_rx_dropped[5m]) > 50 or rate(kube_ovn_interface_tx_dropped[5m]) > 50
+        expr: topk by (instance) (3, rate(kube_ovn_interface_rx_dropped[5m])) > 50 or topk by (instance) (3, rate(kube_ovn_interface_tx_dropped[5m])) > 50
         for: 5m
         labels:
           team: devops

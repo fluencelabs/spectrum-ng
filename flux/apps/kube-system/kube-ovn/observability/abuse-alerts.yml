@@ -151,7 +151,7 @@ spec:
         - alert: TenantAbuseSignalsMissing
           expr: |
             absent(tenant:vm_egress_bits:rate5m)
-            and on () (count(kube_ovn_interface_rx_bytes) > 0)
+            and on () (count(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}) > 0)
           for: 30m
           labels:
             team: devops
@@ -164,12 +164,14 @@ spec:
               tenant:vm_egress_bits:rate5m has produced no series for 30
               minutes although tenant VMs still have live interface counters,
               so this is not an empty cluster: the join that resolves an
-              interface to a vm_id has stopped matching. The gate counts
-              interface counters with NO label selector, deliberately: both
-              join keys are external_ids stamped by the same kube-ovn CNI
-              call, so a gate that filtered on pod_namespace would be emptied
-              by the very failure this alert exists to catch. It asks only
-              whether the exporter is alive at all. Every abuse alert in this file is built on that series,
+              interface to a vm_id has stopped matching. The gate filters on
+              pod_namespace only, never on pod_name: the failure this alert
+              watches for is the pod_name join against tenant:vm_info
+              breaking, and the recording rules apply this same namespace
+              filter to this same metric BEFORE that join, so the gate
+              survives it. Without the filter the term would be true on any
+              cluster with any pod at all, which makes it a constant rather
+              than a gate. Every abuse alert in this file is built on that series,
               so while it is absent they are all unable to fire, and their
               quiet is indistinguishable from an absence of abuse. Compare
               count(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"})
@@ -221,3 +223,27 @@ spec:
               armed unconditionally on purpose: every other rule in this file
               needs the inventory to resolve a VM, so when it empties they all
               go quiet together, and something has to stay loud.
+
+        - alert: TenantVmRunningInventoryMissing
+          expr: |
+            absent(tenant:vm_running)
+            and on () (count(tenant:vm_info) > 0)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "The running-VM inventory is empty while VMs are still listed"
+            description: >-
+              tenant:vm_running has produced no series for 15 minutes although
+              tenant:vm_info still lists VMs. That pair can only diverge if the
+              status label stopped taking the value "Running" —
+              kube-state-metrics builds it from status.printableStatus, so a
+              KubeVirt upgrade renaming that field, or an edit to the
+              customResourceState config, empties it. TenantAbuseCoveragePartial
+              uses this series as its denominator and goes quiet rather than
+              firing when it is absent, and TenantVmInventoryMissing does not
+              notice because tenant:vm_info is unaffected. This alert is the one
+              that does.
