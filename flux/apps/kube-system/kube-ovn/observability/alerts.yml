@@ -337,6 +337,42 @@ spec:
           description: "{{ $value }} inconsistent port bindings between OVS and OVN-SB on node {{ $labels.node_name }}"
 
 
+  - name: kube-ovn-datapath
+    interval: 30s
+    rules:
+      - alert: HighDatapathFlowLookupMissRate
+        expr: rate(kube_ovn_dp_flows_lookup_missed[5m]) / rate(kube_ovn_dp_flows_lookup_hit[5m]) > 0.5
+        for: 10m
+        labels:
+          team: devops
+          severity: warning
+          component: ovs-datapath
+        annotations:
+          summary: "High datapath flow lookup miss rate"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.hostname }} has high flow lookup miss rate: {{ $value | humanizePercentage }}"
+
+      - alert: DatapathFlowsLost
+        expr: rate(kube_ovn_dp_flows_lookup_lost[5m]) > 1
+        for: 5m
+        labels:
+          team: devops
+          severity: warning
+          component: ovs-datapath
+        annotations:
+          summary: "Datapath flows being lost"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.hostname }} is losing {{ $value }} flows per second"
+
+      - alert: LowDatapathMaskHitRatio
+        expr: kube_ovn_dp_masks_hit_ratio < 1
+        for: 10m
+        labels:
+          team: devops
+          severity: info
+          component: ovs-datapath
+        annotations:
+          summary: "Low datapath mask hit ratio"
+          description: "Datapath {{ $labels.datapath }} on {{ $labels.hostname }} has low mask hit ratio: {{ $value }}"
+
   - name: kube-ovn-performance
     interval: 30s
     rules:
