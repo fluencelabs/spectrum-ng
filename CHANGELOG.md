@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.2](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.1...v0.3.2) (2026-09-11)
+
+
+### Features
+
+* **kube-ovn:** per-VM abuse signals, and repair of alerts that could never fire ([#251](https://github.com/fluencelabs/spectrum-ng/issues/251)) ([06b9a9d](https://github.com/fluencelabs/spectrum-ng/commit/06b9a9dda3141aedad53211c7c192ad8f36ac61e))
+
+
+### Bug Fixes
+
+* **crd-operator:** split WARN from ERROR in crd log alerts and raise the WARN threshold ([#253](https://github.com/fluencelabs/spectrum-ng/issues/253)) ([df5ef32](https://github.com/fluencelabs/spectrum-ng/commit/df5ef321633f6dd50ddb8da0956c597d946bf672))
+* **kube-ovn:** give kube-ovn-monitor hostPID too ([#261](https://github.com/fluencelabs/spectrum-ng/issues/261)) ([dca6b5d](https://github.com/fluencelabs/spectrum-ng/commit/dca6b5de8bcc268b0be604cb2049871284e5d193))
+* **kube-ovn:** give ovn-central hostPID so its pidfile means something ([#263](https://github.com/fluencelabs/spectrum-ng/issues/263)) ([aba615c](https://github.com/fluencelabs/spectrum-ng/commit/aba615c3e07eaeda00994e748fa698b196639bf9))
+* **kube-ovn:** give the pinger hostPID so its health checks can see the daemons ([#258](https://github.com/fluencelabs/spectrum-ng/issues/258)) ([93aef01](https://github.com/fluencelabs/spectrum-ng/commit/93aef013b8baa3669198799d8c8725670de28a5a))
+* **kube-ovn:** remove TenantVmCannotResolveDns — it alerts on documented behaviour ([#254](https://github.com/fluencelabs/spectrum-ng/issues/254)) ([3107b1f](https://github.com/fluencelabs/spectrum-ng/commit/3107b1f5b42c4732ed581bbe4eddd36ec3d3dd51))
+* **kube-ovn:** restore the datapath alerts — the metrics were never gone ([#260](https://github.com/fluencelabs/spectrum-ng/issues/260)) ([16532e1](https://github.com/fluencelabs/spectrum-ng/commit/16532e185cdde1fbd3613230954f19bb408e6501))
+* **kubevirt:** disable serial console logging cluster-wide ([#257](https://github.com/fluencelabs/spectrum-ng/issues/257)) ([107b1a7](https://github.com/fluencelabs/spectrum-ng/commit/107b1a7b0602cae4754d53ccb974e74d7c7e6ea4))
+* **netbird:** expire finished token-rotate jobs instead of keeping corpses ([#264](https://github.com/fluencelabs/spectrum-ng/issues/264)) ([513ea85](https://github.com/fluencelabs/spectrum-ng/commit/513ea85db0ed7ed0916ea1ccd839300e9cf39a08))
+* **observability:** scrape kube-state-metrics once, with honest labels ([#262](https://github.com/fluencelabs/spectrum-ng/issues/262)) ([26f823d](https://github.com/fluencelabs/spectrum-ng/commit/26f823de9468cf56040a64e3987c4d6d5a85ee8a))
+* **observability:** stop collecting tenant VM guest consoles ([#255](https://github.com/fluencelabs/spectrum-ng/issues/255)) ([7d4ec29](https://github.com/fluencelabs/spectrum-ng/commit/7d4ec295eb8869ce56c8754812c5839fff148219))
+
 ## [0.3.1](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.0...v0.3.1) (2026-09-11)
 
 
