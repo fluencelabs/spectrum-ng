@@ -95,3 +95,10 @@ spec:
               - op: add
                 path: /spec/template/spec/hostPID
                 value: true
+          - target:
+              kind: Deployment
+              name: ovn-central
+            patch: |
+              - op: add
+                path: /spec/template/spec/hostPID
+                value: true
