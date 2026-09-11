@@ -73,6 +73,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      ttlSecondsAfterFinished: 604800
       # No in-Job retry. A retry starts a NEW pod that re-reads the secret, and after a
       # failed rollout the secret already holds the fresh PAT — so attempt 2 sees a token
       # minted minutes ago, prints "nothing to do" and exits 0. The Job goes Complete,
