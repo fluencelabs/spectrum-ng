@@ -1,0 +1,249 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-abuse
+spec:
+  groups:
+    - name: tenant-vm-traffic
+      interval: 1m
+      rules:
+        - record: tenant:vm_info
+          expr: |
+            topk by (pod_name, pod_namespace) (1,
+              max by (pod_name, pod_namespace, vm_id, workspace_id) (
+                label_replace(
+                  label_replace(
+                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*"},
+                    "pod_name", "$1", "name", "(.*)"),
+                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+              )
+            )
+
+        - record: tenant:vm_running
+          expr: |
+            topk by (pod_name, pod_namespace) (1,
+              max by (pod_name, pod_namespace, vm_id, workspace_id) (
+                label_replace(
+                  label_replace(
+                    kube_customresource_kubevirt_vm_annotation_info{exported_namespace=~"workspace-.*", status="Running"},
+                    "pod_name", "$1", "name", "(.*)"),
+                  "pod_namespace", "$1", "exported_namespace", "(.*)")
+              )
+            )
+
+        - record: tenant:vm_egress_bits:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
+              rate(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            tenant:vm_info
+
+        - record: tenant:vm_ingress_bits:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
+              rate(kube_ovn_interface_tx_bytes{pod_namespace=~"workspace-.*"}[5m]) * 8
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            tenant:vm_info
+
+        - record: tenant:vm_egress_packets:rate5m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id) (
+              rate(kube_ovn_interface_rx_packets{pod_namespace=~"workspace-.*"}[5m])
+            )
+            * on (pod_name, pod_namespace) group_left (vm_id, workspace_id)
+            tenant:vm_info
+
+        - record: tenant:vm_egress_avg_packet_bytes
+          expr: |
+            tenant:vm_egress_bits:rate5m / 8
+            / (tenant:vm_egress_packets:rate5m > 0)
+
+    - name: tenant-vm-abuse
+      interval: 1m
+      rules:
+        - alert: TenantVmEgressBitrateHigh
+          expr: tenant:vm_egress_bits:rate5m > 100e6
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: bitrate
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is pushing {{ $value | humanize }}bit/s outbound"
+            suspected_cause: >-
+              Participation in an outbound DDoS, content seeding, or a
+              legitimate upload. This signal is volumetric and does not
+              distinguish intent on its own — read it together with
+              signal=flood and signal=asymmetry on the same VM.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has held {{ $value | humanize }}bit/s outbound for over 15
+              minutes.
+              WHAT TO DO: resolve the owner from vm_id (admin-app, search by
+              resource); if abuse is confirmed, throttle the VM's port with
+              kube-ovn's egress rate-limit annotation on its launcher pod
+              (confirm the exact key against the kube-ovn version in this
+              cluster before relying on it) before escalating to removing
+              egress altogether.
+              LIMIT OF THIS STAGE: where the traffic is going is not visible
+              here — interface counters do not know the destination.
+
+        - alert: TenantVmSmallPacketFlood
+          expr: |
+            tenant:vm_egress_packets:rate5m > 5000
+            and tenant:vm_egress_avg_packet_bytes < 150
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: tenant-abuse
+            signal: flood
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is emitting small packets in bulk — likely a scan or SYN flood"
+            suspected_cause: >-
+              Port or subnet scanning, a SYN flood, or participation in an
+              amplification attack. An average outbound packet under 150 bytes
+              at high pps is a shape useful transfer does not produce.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              is sending {{ $value | humanize }} packets/s averaging under 150
+              bytes.
+              THIS IS THE WORST SIGNAL OF STAGE ONE — it strikes other people's
+              networks and leads to upstream abuse complaints and our public
+              block landing on blocklists. WHAT TO DO: confirm the owner from
+              vm_id and throttle the port immediately, without waiting for a
+              full diagnosis.
+
+        - alert: TenantVmEgressAsymmetry
+          expr: |
+            tenant:vm_egress_bits:rate5m > 10e6
+            and
+            tenant:vm_egress_bits:rate5m
+              > 20 * (tenant:vm_ingress_bits:rate5m or tenant:vm_egress_bits:rate5m * 0)
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: asymmetry
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is sending 20x more than it receives"
+            suspected_cause: >-
+              Bulk mailing (spam), an outbound flood, or content seeding. A
+              client workload normally receives more than it sends; a sustained
+              inversion at meaningful volume means the VM is acting as a source
+              rather than a consumer.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has sent {{ $value | humanize }}bit/s for over 30 minutes against
+              an inbound stream 20x smaller.
+              WHAT TO DO: if signal=flood is firing alongside this, it is a
+              scan — work that one. If not, mailing is more likely; telling
+              spam from legitimate seeding is IMPOSSIBLE from counters alone
+              and needs a destination port, which is stage two.
+
+        - alert: TenantAbuseSignalsMissing
+          expr: |
+            absent(tenant:vm_egress_bits:rate5m)
+            and on () (count(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"}) > 0)
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "Tenant abuse signals have gone dark while tenant VMs exist"
+            description: >-
+              tenant:vm_egress_bits:rate5m has produced no series for 30
+              minutes although tenant VMs still have live interface counters,
+              so this is not an empty cluster: the join that resolves an
+              interface to a vm_id has stopped matching. The gate filters on
+              pod_namespace only, never on pod_name: the failure this alert
+              watches for is the pod_name join against tenant:vm_info
+              breaking, and the recording rules apply this same namespace
+              filter to this same metric BEFORE that join, so the gate
+              survives it. Without the filter the term would be true on any
+              cluster with any pod at all, which makes it a constant rather
+              than a gate. Every abuse alert in this file is built on that series,
+              so while it is absent they are all unable to fire, and their
+              quiet is indistinguishable from an absence of abuse. Compare
+              count(kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"})
+              with count(tenant:vm_info) to see which side went away.
+
+        - alert: TenantAbuseCoveragePartial
+          expr: |
+            (count(tenant:vm_egress_bits:rate5m) or vector(0))
+            < count(tenant:vm_running)
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "Abuse signals cover only part of the running tenant VMs"
+            description: >-
+              {{ $value }} VMs carry abuse signals while more than that are
+              RUNNING, so some VMs are silently unpoliced. The denominator
+              counts only running VMs: kube-state-metrics keeps an inventory
+              series for a stopped VM, which has no interface and therefore no
+              signals, so counting the whole inventory would leave this alert
+              stuck firing for as long as any tenant leaves a machine shut
+              down — and a watchdog that is always red gets silenced, which is
+              how it stops covering the case it exists for. The denominator is the
+              VM inventory rather than the same interface counters that feed
+              the numerator: anchoring it to what SHOULD exist also catches a
+              per-node metrics outage, which would otherwise remove that
+              node's VMs from both sides at once and look like full coverage.
+              Any shortfall counts, not a fraction of one — a single
+              unpoliced VM is the whole point.
+
+        - alert: TenantVmInventoryMissing
+          expr: absent(tenant:vm_info)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "The tenant VM inventory has gone empty"
+            description: >-
+              tenant:vm_info has produced no series for 15 minutes. Either no
+              tenant VM exists anywhere, or the metadata source went away —
+              kube-state-metrics not scraped, its customResourceState config
+              changed, or the annotations it reads renamed. This alert is
+              armed unconditionally on purpose: every other rule in this file
+              needs the inventory to resolve a VM, so when it empties they all
+              go quiet together, and something has to stay loud.
+
+        - alert: TenantVmRunningInventoryMissing
+          expr: |
+            absent(tenant:vm_running)
+            and on () (count(tenant:vm_info) > 0)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+            signal: liveness
+          annotations:
+            summary: "The running-VM inventory is empty while VMs are still listed"
+            description: >-
+              tenant:vm_running has produced no series for 15 minutes although
+              tenant:vm_info still lists VMs. That pair can only diverge if the
+              status label stopped taking the value "Running" —
+              kube-state-metrics builds it from status.printableStatus, so a
+              KubeVirt upgrade renaming that field, or an edit to the
+              customResourceState config, empties it. TenantAbuseCoveragePartial
+              uses this series as its denominator and goes quiet rather than
+              firing when it is absent, and TenantVmInventoryMissing does not
+              notice because tenant:vm_info is unaffected. This alert is the one
+              that does.

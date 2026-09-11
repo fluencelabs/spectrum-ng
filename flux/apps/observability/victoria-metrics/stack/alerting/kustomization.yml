@@ -4,3 +4,4 @@ resources:
   - vmalert.yml
   - vmalert-logs.yml
   - deadmanswitch.yml
+  - pipeline-health.yml

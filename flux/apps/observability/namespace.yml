@@ -4,3 +4,4 @@ metadata:
   name: observability
   labels:
     pod-security.kubernetes.io/enforce: privileged
+    monitoring: enabled

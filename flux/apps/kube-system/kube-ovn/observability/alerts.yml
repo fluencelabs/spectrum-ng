@@ -7,7 +7,7 @@ spec:
   - name: kubeovn.resources
     rules:
       - alert: LargeOVNLogFile
-        expr: kube_ovn_log_file_size > 1073741824
+        expr: kube_ovn_log_file_size_bytes{component=~"ovn-northd|ovsdb-server-northbound|ovsdb-server-southbound"} > 1073741824
         for: 30m
         labels:
           team: devops
@@ -18,7 +18,7 @@ spec:
           description: "OVN log file {{ $labels.filename }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
 
       - alert: LargeOVSLogFile
-        expr: log_file_size > 1073741824
+        expr: kube_ovn_log_file_size_bytes{component=~"ovs-vswitchd|ovsdb-server"} > 1073741824
         for: 30m
         labels:
           team: devops
@@ -29,7 +29,7 @@ spec:
           description: "OVS log file {{ $labels.filename }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
 
       - alert: LargeOVNDatabaseFile
-        expr: kube_ovn_db_file_size > 10737418240
+        expr: kube_ovn_db_file_size_bytes > 10737418240
         for: 30m
         labels:
           team: devops
@@ -37,7 +37,7 @@ spec:
           component: ovn-db
         annotations:
           summary: "Large OVN database file"
-          description: "OVN database {{ $labels.database }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
+          description: "OVN database {{ $labels.db_name }} on {{ $labels.instance }} is {{ $value | humanize1024 }}B"
 
       - alert: ClusterPublicIPsPressure
         expr: |
@@ -95,7 +95,7 @@ spec:
           component: ovn-db
         annotations:
           summary: "OVN database is unhealthy"
-          description: "OVN {{ $labels.database }} database is unhealthy on {{ $labels.instance }}"
+          description: "OVN {{ $labels.db_name }} database is unhealthy on {{ $labels.instance }}"
 
       # Metric comes from kube-state-metrics customResourceState
       # (flux/apps/observability/kube-state-metrics), not from kube-ovn itself —
@@ -129,7 +129,7 @@ spec:
           description: "OVN chassis {{ $labels.chassis }} is down"
 
       - alert: OVSUnhealthy
-        expr: ovs_status == 0
+        expr: kube_ovn_ovs_status == 0
         for: 2m
         labels:
           team: devops
@@ -175,19 +175,9 @@ spec:
           summary: "High OVN request failure rate"
           description: "OVN is experiencing {{ $value }} failed requests per second on {{ $labels.instance }}"
 
-      - alert: HighOVSRequestFailureRate
-        expr: rate(failed_req_count[5m]) > 0.1
-        for: 5m
-        labels:
-          team: devops
-          severity: warning
-          component: ovs
-        annotations:
-          summary: "High OVS request failure rate"
-          description: "OVS is experiencing {{ $value }} failed requests per second on {{ $labels.instance }}"
 
       - alert: HighInterfaceRxErrors
-        expr: rate(interface_rx_errors[5m]) > 10
+        expr: topk by (instance) (3, rate(kube_ovn_interface_rx_errors[5m])) > 10
         for: 5m
         labels:
           team: devops
@@ -195,10 +185,10 @@ spec:
           component: ovs-interface
         annotations:
           summary: "High receive errors on interface"
-          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} has {{ $value }} RX errors per second"
+          description: "Interface {{ $labels.interfaceName }} on {{ $labels.instance }} has {{ $value }} RX errors per second"
 
       - alert: HighInterfaceTxErrors
-        expr: rate(interface_tx_errors[5m]) > 10
+        expr: topk by (instance) (3, rate(kube_ovn_interface_tx_errors[5m])) > 10
         for: 5m
         labels:
           team: devops
@@ -206,10 +196,10 @@ spec:
           component: ovs-interface
         annotations:
           summary: "High transmit errors on interface"
-          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} has {{ $value }} TX errors per second"
+          description: "Interface {{ $labels.interfaceName }} on {{ $labels.instance }} has {{ $value }} TX errors per second"
 
       - alert: HighInterfaceDroppedPackets
-        expr: rate(interface_rx_dropped[5m]) > 50 or rate(interface_tx_dropped[5m]) > 50
+        expr: topk by (instance) (3, rate(kube_ovn_interface_rx_dropped[5m])) > 50 or topk by (instance) (3, rate(kube_ovn_interface_tx_dropped[5m])) > 50
         for: 5m
         labels:
           team: devops
@@ -217,7 +207,7 @@ spec:
           component: ovs-interface
         annotations:
           summary: "High packet drop rate on interface"
-          description: "Interface {{ $labels.interface }} on {{ $labels.instance }} is dropping {{ $value }} packets per second"
+          description: "Interface {{ $labels.interfaceName }} on {{ $labels.instance }} is dropping {{ $value }} packets per second"
 
   - name: kubeovn.network-quality
     rules:
@@ -346,41 +336,6 @@ spec:
           summary: "Inconsistent port bindings detected"
           description: "{{ $value }} inconsistent port bindings between OVS and OVN-SB on node {{ $labels.node_name }}"
 
-  - name: kube-ovn-datapath
-    interval: 30s
-    rules:
-      - alert: HighDatapathFlowLookupMissRate
-        expr: rate(dp_flows_lookup_missed[5m]) / rate(dp_flows_lookup_hit[5m]) > 0.5
-        for: 10m
-        labels:
-          team: devops
-          severity: warning
-          component: ovs-datapath
-        annotations:
-          summary: "High datapath flow lookup miss rate"
-          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} has high flow lookup miss rate: {{ $value | humanizePercentage }}"
-
-      - alert: DatapathFlowsLost
-        expr: rate(dp_flows_lookup_lost[5m]) > 1
-        for: 5m
-        labels:
-          team: devops
-          severity: warning
-          component: ovs-datapath
-        annotations:
-          summary: "Datapath flows being lost"
-          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} is losing {{ $value }} flows per second"
-
-      - alert: LowDatapathMaskHitRatio
-        expr: dp_masks_hit_ratio < 1
-        for: 10m
-        labels:
-          team: devops
-          severity: info
-          component: ovs-datapath
-        annotations:
-          summary: "Low datapath mask hit ratio"
-          description: "Datapath {{ $labels.datapath }} on {{ $labels.instance }} has low mask hit ratio: {{ $value }}"
 
   - name: kube-ovn-performance
     interval: 30s
@@ -396,16 +351,16 @@ spec:
           summary: "High CNI operation latency"
           description: "P99 CNI operation latency on {{ $labels.instance }} is {{ $value }}s"
 
-      - alert: HighCNIAddressWaitTime
-        expr: rate(cni_wait_address_seconds_total[5m]) > 2
+      - alert: HighCNIConnectivityWaitTime
+        expr: rate(cni_wait_connectivity_seconds_total[5m]) > 2
         for: 5m
         labels:
           team: devops
           severity: warning
           component: cni
         annotations:
-          summary: "High CNI address wait time"
-          description: "CNI is waiting {{ $value }}s per operation for address assignment on {{ $labels.instance }}"
+          summary: "High CNI connectivity wait time"
+          description: "CNI connectivity probing on {{ $labels.instance }} is accumulating {{ $value }} probe-seconds per second. This counter advances on the healthy path too (it adds the probe count after connectivity succeeds), so it tracks pod-creation churn as much as slowness — the idle baseline here is ~0.2/s."
 
       - alert: HighOVSClientLatency
         expr: histogram_quantile(0.99, rate(ovs_client_request_latency_milliseconds_bucket[5m])) > 1000

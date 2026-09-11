@@ -1,0 +1,156 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: alerting-pipeline-health
+spec:
+  groups:
+    - name: alerting-pipeline
+      interval: 1m
+      rules:
+        - alert: AlertNotificationsFailing
+          expr: sum by (integration) (rate(alertmanager_notifications_failed_total[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: alerting
+          annotations:
+            summary: "Alertmanager cannot deliver notifications ({{ $labels.integration }})"
+            description: >-
+              Integration {{ $labels.integration }} is returning delivery
+              errors ({{ $value | humanize }}/s). WHAT THIS MEANS: detection
+              keeps working while NOTHING reaches a human — every other alert
+              is useless for as long as this lasts, and their silence is
+              indistinguishable from health. Check the receiver on the far
+              side (the Grafana OnCall webhook) and the network path to it.
+
+        - alert: AlertDeliveryStopped
+          expr: (sum(increase(alertmanager_notifications_total[12h])) or vector(0)) == 0
+          for: 30m
+          labels:
+            team: devops
+            severity: critical
+            component: alerting
+          annotations:
+            summary: "No notification has left alertmanager in twelve hours"
+            description: >-
+              The deadmanswitch fires continuously, so a healthy path re-sends
+              it once per repeat_interval and this window must comfortably
+              exceed that interval. repeat_interval lives in the
+              alertmanager-config secret, not in this repo, and is 4h today —
+              twelve hours leaves room for it to be widened without silently
+              turning this rule into a false alarm. Either alertmanager stopped
+              sending or alerts stopped reaching it; both blind us equally, and
+              nothing else distinguishes this from an all-clear.
+
+        - alert: VmalertCannotReachAlertmanager
+          expr: sum by (addr) (rate(vmalert_alerts_send_errors_total[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: alerting
+          annotations:
+            summary: "vmalert cannot hand alerts to alertmanager ({{ $labels.addr }})"
+            description: >-
+              Rules evaluate and fire, but never reach the sender
+              ({{ $value | humanize }} errors/s). From the outside this looks
+              like complete silence.
+
+        - alert: VmalertRuleExecutionErrors
+          expr: rate(vmalert_execution_errors_total[10m]) > 0
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: alerting
+          annotations:
+            summary: "vmalert cannot execute rules"
+            description: >-
+              {{ $value | humanize }} execution errors per second. Check
+              lastError per rule in vmalert's /api/v1/rules: either the
+              datasource is unreachable, or a rule's query no longer parses.
+              A rule that errors never fires, while still looking green.
+
+        - alert: VmalertRemoteWriteErrors
+          expr: rate(vmalert_remotewrite_errors_total[10m]) > 0
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: alerting
+          annotations:
+            summary: "vmalert cannot write recording rule results"
+            description: >-
+              {{ $value | humanize }} write errors per second. Recording rules
+              (including the abuse detector's tenant:vm_* series) stop landing
+              in the database, and alerts built on them silently lose data.
+
+        - alert: MetricIngestionFailing
+          expr: sum by (url) (rate(vmagent_remotewrite_requests_total{status_code!="2XX"}[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: alerting
+          annotations:
+            summary: "vmagent cannot write scraped metrics to storage"
+            description: >-
+              {{ $value | humanize }} non-2XX remote-write requests per second.
+              Detection dies before evaluation: rules keep running against data
+              that stops arriving, so they go green rather than firing. Every
+              other rule in this group watches the DELIVERY half of the path
+              and would stay quiet through this.
+
+        - alert: MetricSamplesDropped
+          expr: sum by (url) (rate(vmagent_remotewrite_packets_dropped_total[10m])) > 0
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+            component: alerting
+          annotations:
+            summary: "vmagent is dropping samples on the way to storage"
+            description: >-
+              {{ $value | humanize }} packets dropped per second. Data loss is
+              partial and silent — alerts built on the missing series simply
+              never trip.
+
+        - alert: ScrapesFailing
+          expr: |
+            sum(rate(vm_promscrape_scrapes_failed_total[10m]))
+            / sum(rate(vm_promscrape_scrapes_total[10m])) > 0.05
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: scraping
+          annotations:
+            summary: "vmagent is failing to scrape targets"
+            description: >-
+              {{ $value | humanizePercentage }} of scrapes are failing. A
+              target that stops being scraped produces no series, and a rule
+              over an absent series does not fire — it returns nothing, which
+              reads as health. Expressed as a ratio rather than a raw rate so a
+              handful of chronically unreachable targets does not keep this
+              firing; it carries its own component so silencing it cannot also
+              mute the delivery criticals in this group.
+
+        - alert: MetricCollectionDown
+          expr: absent(vm_promscrape_scrapes_total)
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+            component: scraping
+          annotations:
+            summary: "vmagent is not collecting anything"
+            description: >-
+              vm_promscrape_scrapes_total has produced no series for 10
+              minutes, which means vmagent is not scraping — crashlooping,
+              evicted, or no longer scraping itself. Every other rule in this
+              group is a rate() over a counter vmagent publishes about itself,
+              so when vmagent dies they all evaluate over an absent series,
+              return nothing, and go green. This one is armed on absence
+              instead, because that is the only shape that survives the
+              collector disappearing.
