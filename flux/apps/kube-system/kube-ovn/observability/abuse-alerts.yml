@@ -205,24 +205,6 @@ spec:
               Any shortfall counts, not a fraction of one — a single
               unpoliced VM is the whole point.
 
-        - alert: TenantVmInventoryMissing
-          expr: absent(tenant:vm_info)
-          for: 15m
-          labels:
-            team: devops
-            severity: warning
-            component: tenant-abuse
-            signal: liveness
-          annotations:
-            summary: "The tenant VM inventory has gone empty"
-            description: >-
-              tenant:vm_info has produced no series for 15 minutes. Either no
-              tenant VM exists anywhere, or the metadata source went away —
-              kube-state-metrics not scraped, its customResourceState config
-              changed, or the annotations it reads renamed. This alert is
-              armed unconditionally on purpose: every other rule in this file
-              needs the inventory to resolve a VM, so when it empties they all
-              go quiet together, and something has to stay loud.
 
         - alert: TenantVmRunningInventoryMissing
           expr: |
@@ -244,6 +226,5 @@ spec:
               KubeVirt upgrade renaming that field, or an edit to the
               customResourceState config, empties it. TenantAbuseCoveragePartial
               uses this series as its denominator and goes quiet rather than
-              firing when it is absent, and TenantVmInventoryMissing does not
-              notice because tenant:vm_info is unaffected. This alert is the one
-              that does.
+              firing when it is absent, and nothing else notices because
+              tenant:vm_info is unaffected. This alert is the one that does.
