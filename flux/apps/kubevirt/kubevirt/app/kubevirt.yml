@@ -6,6 +6,8 @@ metadata:
     alpha.kubevirt.io/EmulatorThreadCompleteToEvenParity: ""
 spec:
   configuration:
+    virtualMachineOptions:
+      disableSerialConsoleLog: {}
     network:
       binding:
         managedtap:
