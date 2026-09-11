@@ -1,0 +1,24 @@
+# The LINSTOR controller serves its Prometheus metrics on the API port (3370):
+# linstor_resource_state (per node/resource; healthy 0.0/1.0, unhealthy < 0) and
+# linstor_error_reports_count. These are the most direct signal for a resource
+# that fails to assemble on a node — the 2026-08-18 fra-flix-01 disk-import
+# freeze read linstor_resource_state -1.0 for 18h with nothing else alerting.
+#
+# Nothing scraped port 3370 before this. A headless Service exposes it behind a
+# ServiceMonitor on the same Alloy-discovered path used for the satellite; see
+# controller-service-monitor.yml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: linstor-controller-metrics
+  labels:
+    app: linstor-controller
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/component: linstor-controller
+    app.kubernetes.io/name: piraeus-datastore
+  ports:
+    - name: prometheus
+      port: 3370
+      targetPort: api

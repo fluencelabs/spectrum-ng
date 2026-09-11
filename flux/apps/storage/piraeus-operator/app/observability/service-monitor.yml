@@ -1,13 +1,17 @@
 # Scrapes DRBD connection, quorum and device state from the drbd-reactor
-# sidecar. Requires the `monitoring: enabled` label on the storage namespace —
-# see namespace.yml — because the vmagent restricts service scrapes to
-# namespaces carrying it.
+# sidecar. The `scrape: "true"` label is REQUIRED: Grafana Alloy's ServiceMonitor
+# discovery (prometheus.operator.servicemonitors "services") selects only
+# ServiceMonitors carrying it — without the label this object is inert and no
+# drbd_* metrics are collected. (Stage historically had data only via a stale
+# PodMonitor left over from an earlier attempt; that path does not exist on the
+# mainnet clusters, where drbd_* was silently uncollected.)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: linstor-satellite
   labels:
     app: linstor-satellite
+    scrape: "true"
 spec:
   endpoints:
     - port: prometheus
