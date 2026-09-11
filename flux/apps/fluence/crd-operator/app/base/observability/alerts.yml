@@ -11,17 +11,19 @@ spec:
       interval: "30s"
       rules:
         - alert: CrdControllerErrorLogs
-          # The whole LogsQL must live here. Splitting it into `params.query` +
-          # `expr: '* | ...'` does NOT work: vmalert sends `expr` to the
-          # datasource and never applies the params filter, so `*` matched every
-          # log line in the cluster and this alert reported total log volume
-          # rather than crd errors. It had been firing continuously since
-          # 2026-08-18 for that reason.
-          expr: '_time:30s AND container:controller AND namespace:fluence AND level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
+          expr: '_time:2m AND container:controller AND namespace:fluence AND level:ERROR | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-controller {{ $labels.level }} logs detected"
-            description: "crd-controller has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+            description: "crd-controller has {{ $value }} {{ $labels.level }} log entries in the last 2m"
+          labels:
+            severity: warning
+        - alert: CrdControllerWarnLogs
+          expr: '_time:10m AND container:controller AND namespace:fluence AND level:WARN | stats by (level) count(*) as hits | filter hits:>500'
+          for: 15m
+          annotations:
+            summary: "crd-controller sustained {{ $labels.level }} log rate"
+            description: "crd-controller has {{ $value }} {{ $labels.level }} log entries in the last 10m, sustained for 15m"
           labels:
             severity: warning
     - name: crd-api-logs
@@ -29,17 +31,19 @@ spec:
       interval: "30s"
       rules:
         - alert: CrdApiErrorLogs
-          # The whole LogsQL must live here. Splitting it into `params.query` +
-          # `expr: '* | ...'` does NOT work: vmalert sends `expr` to the
-          # datasource and never applies the params filter, so `*` matched every
-          # log line in the cluster and this alert reported total log volume
-          # rather than crd errors. It had been firing continuously since
-          # 2026-08-18 for that reason.
-          expr: '_time:30s AND container:api AND namespace:fluence AND level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
+          expr: '_time:2m AND container:api AND namespace:fluence AND level:ERROR | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-api {{ $labels.level }} logs detected"
-            description: "crd-api has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+            description: "crd-api has {{ $value }} {{ $labels.level }} log entries in the last 2m"
+          labels:
+            severity: warning
+        - alert: CrdApiWarnLogs
+          expr: '_time:10m AND container:api AND namespace:fluence AND level:WARN | stats by (level) count(*) as hits | filter hits:>500'
+          for: 15m
+          annotations:
+            summary: "crd-api sustained {{ $labels.level }} log rate"
+            description: "crd-api has {{ $value }} {{ $labels.level }} log entries in the last 10m, sustained for 15m"
           labels:
             severity: warning
     - name: crd-admission-logs
@@ -47,24 +51,22 @@ spec:
       interval: "30s"
       rules:
         - alert: CrdAdmissionErrorLogs
-          # The whole LogsQL must live here. Splitting it into `params.query` +
-          # `expr: '* | ...'` does NOT work: vmalert sends `expr` to the
-          # datasource and never applies the params filter, so `*` matched every
-          # log line in the cluster and this alert reported total log volume
-          # rather than crd errors. It had been firing continuously since
-          # 2026-08-18 for that reason.
-          expr: '_time:30s AND container:admission-controller AND namespace:fluence AND level:(ERROR OR WARN) | stats by (level) count(*) as hits | filter hits:>0'
+          expr: '_time:2m AND container:admission-controller AND namespace:fluence AND level:ERROR | stats by (level) count(*) as hits | filter hits:>0'
           for: 0s
           annotations:
             summary: "crd-admission {{ $labels.level }} logs detected"
-            description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 30s"
+            description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 2m"
+          labels:
+            severity: warning
+        - alert: CrdAdmissionWarnLogs
+          expr: '_time:10m AND container:admission-controller AND namespace:fluence AND level:WARN | stats by (level) count(*) as hits | filter hits:>500'
+          for: 15m
+          annotations:
+            summary: "crd-admission sustained {{ $labels.level }} log rate"
+            description: "crd-admission has {{ $value }} {{ $labels.level }} log entries in the last 10m, sustained for 15m"
           labels:
             severity: warning
 ---
-# Kept as a separate VMRule, WITHOUT the rule-type: vlogs label: these are
-# PromQL rules over kube-state-metrics, not LogsQL. Carrying them inside the
-# vlogs-labelled object sent the whole set to the logs vmalert, where every
-# one of them answered 400.
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
