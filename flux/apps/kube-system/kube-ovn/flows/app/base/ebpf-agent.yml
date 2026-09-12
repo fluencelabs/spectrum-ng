@@ -1,0 +1,95 @@
+# The second probe under comparison: an eBPF TC hook on the host side of every
+# pod veth, exporting IPFIX to the node-local goflow2 (port 4740). No
+# Kubernetes enrichment here — that is flowlogs-pipeline's job and it is
+# deliberately not deployed; attribution is by IP, same as for the OVS probe.
+#
+# INTERFACES is limited to kube-ovn's pod veths (`<hash>_h`): the same packet is
+# also visible on br-int, the geneve device and the uplink, and hooking those
+# would count it up to four times. No SAMPLING on stage — it has a handful of
+# pods; set it before this goes anywhere with tenants.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netobserv-ebpf-agent
+  labels:
+    app.kubernetes.io/name: netobserv-ebpf-agent
+    app.kubernetes.io/part-of: kube-ovn-flows
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netobserv-ebpf-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: netobserv-ebpf-agent
+        app.kubernetes.io/part-of: kube-ovn-flows
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: agent
+          image: quay.io/netobserv/netobserv-ebpf-agent:v1.12.0-community
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add: ["BPF", "PERFMON", "NET_ADMIN"]
+          env:
+            - name: EXPORT
+              value: ipfix+udp
+            - name: TARGET_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: TARGET_PORT
+              value: "4740"
+            - name: INTERFACES
+              value: "/_h$/"
+            - name: CACHE_ACTIVE_TIMEOUT
+              value: 30s
+            - name: CACHE_MAX_FLOWS
+              value: "65536"
+            - name: METRICS_ENABLE
+              value: "true"
+            - name: METRICS_SERVER_PORT
+              value: "4793"
+            - name: LOG_LEVEL
+              value: info
+          ports:
+            - name: metrics
+              containerPort: 4793
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netobserv-ebpf-agent
+  labels:
+    app.kubernetes.io/name: netobserv-ebpf-agent
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: netobserv-ebpf-agent
+  ports:
+    - name: metrics
+      port: 4793
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: netobserv-ebpf-agent
+spec:
+  endpoints:
+    - port: metrics
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netobserv-ebpf-agent

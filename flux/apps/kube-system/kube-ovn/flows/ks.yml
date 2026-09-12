@@ -1,0 +1,29 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kube-ovn-flows
+  namespace: flux-system
+spec:
+  # Stage-only while the flow pipeline is being proven (NKS #1827 / #1830):
+  # every other overlay renders nothing.
+  path: ./flux/apps/kube-system/kube-ovn/flows/app/overlays/${NETWORK}
+  prune: true
+  targetNamespace: kube-system
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
+  dependsOn:
+    - name: kube-ovn
+    - name: prometheus-crds

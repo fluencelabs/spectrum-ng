@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-ovn-flows
+data:
+  enabled: "false"
+  reason: "flow probes are being proven on stage first (NKS #1827, #1830)"

@@ -1,0 +1,117 @@
+# One IPFIX collector per node, node-local: OVS exports to 127.0.0.1 and the
+# eBPF agent to the node IP, so flow records never cross the fabric. Each
+# source gets its own container and port so that the Alloy `container` label
+# says which probe a record came from — the two are being compared, not merged.
+#
+# Records are written to stdout as one JSON object per line; alloy-logs ships
+# them to VictoriaLogs like any other pod log. goflow2's own log lines share the
+# stream and are told apart by the `type` field the records carry.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: goflow2
+  labels:
+    app.kubernetes.io/name: goflow2
+    app.kubernetes.io/part-of: kube-ovn-flows
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: goflow2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: goflow2
+        app.kubernetes.io/part-of: kube-ovn-flows
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+      containers:
+        - name: ovs
+          image: docker.io/netsampler/goflow2:v2.2.6
+          args:
+            - -listen=netflow://:4739
+            - -format=json
+            - -transport=file
+            - -addr=:4791
+          ports:
+            - name: ipfix-ovs
+              containerPort: 4739
+              protocol: UDP
+            - name: metrics-ovs
+              containerPort: 4791
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        - name: ebpf
+          image: docker.io/netsampler/goflow2:v2.2.6
+          args:
+            - -listen=netflow://:4740
+            - -format=json
+            - -transport=file
+            - -addr=:4792
+          ports:
+            - name: ipfix-ebpf
+              containerPort: 4740
+              protocol: UDP
+            - name: metrics-ebpf
+              containerPort: 4792
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: goflow2
+  labels:
+    app.kubernetes.io/name: goflow2
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: goflow2
+  ports:
+    - name: metrics-ovs
+      port: 4791
+    - name: metrics-ebpf
+      port: 4792
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: goflow2
+spec:
+  endpoints:
+    - port: metrics-ovs
+      relabelings:
+        - targetLabel: probe
+          replacement: ovs
+    - port: metrics-ebpf
+      relabelings:
+        - targetLabel: probe
+          replacement: ebpf
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: goflow2
