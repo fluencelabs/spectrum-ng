@@ -77,7 +77,8 @@ spec:
               Participation in an outbound DDoS, content seeding, or a
               legitimate upload. This signal is volumetric and does not
               distinguish intent on its own — read it together with
-              signal=flood and signal=asymmetry on the same VM.
+              signal=flood on the same VM, and with the flow signals
+              (fanout, reflector, in_peers) where stage two is deployed.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
               (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
@@ -119,35 +120,27 @@ spec:
               vm_id and throttle the port immediately, without waiting for a
               full diagnosis.
 
-        - alert: TenantVmEgressAsymmetry
-          expr: |
-            tenant:vm_egress_bits:rate5m > 10e6
-            and
-            tenant:vm_egress_bits:rate5m
-              > 20 * (tenant:vm_ingress_bits:rate5m or tenant:vm_egress_bits:rate5m * 0)
-          for: 30m
+        - alert: TenantVmIngressBitrateHigh
+          expr: tenant:vm_ingress_bits:rate5m > 200e6
+          for: 10m
           labels:
             team: devops
             severity: info
             component: tenant-abuse
-            signal: asymmetry
+            signal: ingress
           annotations:
-            summary: "VM {{ $labels.vm_id }} is sending 20x more than it receives"
+            summary: "VM {{ $labels.vm_id }} is receiving {{ $value | humanize }}bit/s"
             suspected_cause: >-
-              Bulk mailing (spam), an outbound flood, or content seeding. A
-              client workload normally receives more than it sends; a sustained
-              inversion at meaningful volume means the VM is acting as a source
-              rather than a consumer.
+              A large download, or the VM's public address is the target of a
+              flood. Stage one has watched egress only; inbound volume had no
+              signal at all.
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
               (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
-              has sent {{ $value | humanize }}bit/s for over 30 minutes against
-              an inbound stream 20x smaller.
-              WHAT TO DO: if signal=flood is firing alongside this, it is a
-              scan — work that one. On its own this is info, not a page:
-              counters cannot tell spam from a node serving peers (the first
-              real firing was a bitcoin node on 8333), and the destination
-              port and direction that would settle it are stage two.
+              has taken in over 200 Mbit/s for 10 minutes. Where the flow probes
+              are deployed, `tenant:vm_flows_in_peers:1m` tells the two apart:
+              many distinct sources on one port is an attack, one or two is a
+              download.
 
         - alert: TenantAbuseSignalsMissing
           expr: |
