@@ -16,7 +16,7 @@ spec:
         # moving; a probe that never started has no series at all — absent()
         # keeps the selector's labels, so both alerts name the probe.
         - alert: FlowProbeSilent
-          expr: sum by (probe, instance) (rate(flow_traffic_packets_total[10m])) == 0
+          expr: sum by (probe, instance) (rate(goflow2_flow_traffic_packets_total[10m])) == 0
           for: 15m
           labels:
             team: devops
@@ -35,8 +35,8 @@ spec:
 
         - alert: FlowProbeMissing
           expr: |
-            absent(flow_traffic_packets_total{probe="ovs"})
-            or absent(flow_traffic_packets_total{probe="ebpf"})
+            absent(goflow2_flow_traffic_packets_total{probe="ovs"})
+            or absent(goflow2_flow_traffic_packets_total{probe="ebpf"})
           for: 15m
           labels:
             team: devops
