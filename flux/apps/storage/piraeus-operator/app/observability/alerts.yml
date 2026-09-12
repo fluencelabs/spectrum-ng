@@ -28,6 +28,28 @@ spec:
             summary: "DRBD connection {{ $labels.name }} -> {{ $labels.conn_name }} is not connected"
             description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 10 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
 
+        - alert: DrbdLeakedLoopNotDetachable
+          expr: |
+            loop_janitor_detach_failures > 0
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "{{ $value }} leaked loop device(s) on {{ $labels.node }} cannot be detached"
+            description: "loop-janitor found loop devices with a deleted backing path on {{ $labels.node }} that losetup -d refuses to detach. Something not modelled by the janitor still holds them; each keeps a DRBD device open and will turn into a peerless quorum:no orphan when its PVC is deleted. Inspect with losetup -l -O NAME,BACK-INO,BACK-FILE on the satellite."
+
+        - alert: DrbdLoopJanitorStale
+          expr: |
+            time() - loop_janitor_last_sweep_timestamp_seconds > 1800
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "loop-janitor on {{ $labels.node }} has not completed a sweep in 30m"
+            description: "The janitor serves metrics but its sweep loop is not finishing (losetup hanging, or an exception every pass — see the pod log). Leaked loops are accumulating unobserved on {{ $labels.node }}."
+
         - alert: DrbdForceIoFailures
           expr: |
             drbd_resource_forceiofailures == 1

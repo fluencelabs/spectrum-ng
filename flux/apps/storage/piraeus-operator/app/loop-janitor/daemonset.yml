@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: loop-janitor
+  labels:
+    app: loop-janitor
+spec:
+  selector:
+    matchLabels:
+      app: loop-janitor
+  template:
+    metadata:
+      labels:
+        app: loop-janitor
+    spec:
+      # /proc/1/mountinfo is the host mount table; without hostPID the check
+      # "is this loop mounted anywhere" would look at the container's own view.
+      hostPID: true
+      tolerations:
+        - operator: Exists
+      priorityClassName: system-node-critical
+      containers:
+        - name: janitor
+          # Same image the satellites run: util-linux losetup with -J/-O and
+          # python3, already present on every storage node.
+          image: quay.io/piraeusdatastore/piraeus-server:v1.34.2
+          command: ["python3", "/janitor/janitor.py"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: INTERVAL_SECONDS
+              value: "300"
+            - name: METRICS_PORT
+              value: "9943"
+          ports:
+            - name: prometheus
+              containerPort: 9943
+          securityContext:
+            # losetup -d is an ioctl on the loop device node; /sys and /dev
+            # come from the host.
+            privileged: true
+          volumeMounts:
+            - name: script
+              mountPath: /janitor
+              readOnly: true
+            - name: dev
+              mountPath: /dev
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+      volumes:
+        - name: script
+          configMap:
+            name: loop-janitor
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys

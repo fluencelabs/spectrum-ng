@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: loop-janitor
+  labels:
+    app: loop-janitor
+    scrape: "true"
+spec:
+  endpoints:
+    - port: prometheus
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app: loop-janitor
