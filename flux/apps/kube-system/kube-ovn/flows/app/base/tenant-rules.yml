@@ -1,0 +1,168 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-flows-fold
+  labels:
+    rule-type: vlogs
+spec:
+  groups:
+    - name: kube-ovn-flows-fold
+      type: vlogs
+      interval: 1m
+      rules:
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(80,443) | format "web" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+
+        - record: flows:iface_out_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
+        - record: flows:iface_out_ports:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
+        - record: flows:iface_in_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:1 AND dst_port:<10000 | stats by (interface_name, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-flows-tenant
+spec:
+  groups:
+    - name: tenant-vm-flows
+      interval: 1m
+      rules:
+        - record: tenant:vm_iface
+          expr: |
+            topk by (interfaceName) (1,
+              (kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"} * 0 + 1)
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
+        - record: tenant:vm_flows_out_packets:1m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id, dport_class) (
+              label_replace(flows:iface_out_packets:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
+            ) * 64
+        - record: tenant:vm_flows_out_peers:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id) (
+              label_replace(flows:iface_out_peers:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
+            )
+        - record: tenant:vm_flows_out_ports:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id) (
+              label_replace(flows:iface_out_ports:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
+            )
+        - record: tenant:vm_flows_in_peers:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id, dst_port) (
+              label_replace(flows:iface_in_peers:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
+            )
+
+    - name: tenant-vm-flow-abuse
+      interval: 1m
+      rules:
+        - alert: TenantFlowAttributionDark
+          expr: |
+            (count(flows:iface_out_peers:1m) > 0)
+            and on () (count(tenant:vm_running) > 0)
+            and on () ((count(tenant:vm_flows_out_peers:1m) or vector(0)) == 0)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+          annotations:
+            summary: "Flow records arrive and tenant VMs run, but no flow is attributed to any VM"
+            description: >-
+              flows:iface_out_peers:1m has series and tenant:vm_running is non-zero,
+              yet tenant:vm_flows_out_peers:1m has been empty for 15 minutes:
+              the interface -> VM join is broken. Check `tenant:vm_iface` — it
+              needs kube_ovn_interface_rx_bytes{interfaceName, pod_name} from
+              kube-ovn-pinger and tenant:vm_info from the stage-one rules — and
+              that eBPF records in VictoriaLogs carry `interface_name`.
+
+        - alert: TenantVmSmtpEgress
+          expr: tenant:vm_flows_out_packets:1m{dport_class="smtp"} > 500
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: smtp
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is sending mail directly"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has pushed {{ $value | humanize }} packets/min to 25/465/587 for
+              10 minutes. Outbound SMTP is expected to be closed by vodopad
+              policy for the user group this VM belongs to (NKS #1845); if it is
+              firing, either the VM is outside that group or the policy is not
+              holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
+
+        - alert: TenantVmScanFanOut
+          expr: max_over_time(tenant:vm_flows_out_peers:1m[10m]) > 100
+          for: 1m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: fanout
+          annotations:
+            summary: "VM {{ $labels.vm_id }} opened connections to {{ $value }} distinct hosts in a minute"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              sent SYNs to {{ $value }} distinct destinations within one minute
+              in the last 10. A client workload does not do this; a horizontal
+              scanner does. If signal=flood is firing too, it is a fast scan.
+              Which ports: `_time:5m pod:goflow2* container:syn | unpack_json |
+              filter src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)`
+              in VictoriaLogs.
+
+        - alert: TenantVmVerticalScan
+          expr: max_over_time(tenant:vm_flows_out_ports:1m[10m]) > 100
+          for: 1m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: portscan
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is probing {{ $value }} ports on one host a minute"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              sent SYNs to {{ $value }} distinct ports on a single host within a
+              minute — a port scan of that host. Target:
+              `_time:5m pod:goflow2* container:syn | unpack_json | filter
+              src_addr:<VM_IP> | stats by (dst_addr) count_uniq(dst_port)`.
+
+        - alert: TenantVmReflector
+          expr: tenant:vm_flows_out_packets:1m{dport_class="reflector"} > 5000
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: reflector
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is answering from an amplifying UDP port in bulk"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              sends {{ $value | humanize }} packets/min FROM UDP 53/123/1900/11211/
+              389/19/161. An open resolver, NTP or SSDP responder being used as
+              a reflector answers exactly like this; a VM legitimately running
+              DNS for its own clients does not reach this rate. Victims:
+              `tenant:vm_flows_out_peers:1m`.
