@@ -128,7 +128,7 @@ spec:
           for: 30m
           labels:
             team: devops
-            severity: warning
+            severity: info
             component: tenant-abuse
             signal: asymmetry
           annotations:
@@ -144,9 +144,10 @@ spec:
               has sent {{ $value | humanize }}bit/s for over 30 minutes against
               an inbound stream 20x smaller.
               WHAT TO DO: if signal=flood is firing alongside this, it is a
-              scan — work that one. If not, mailing is more likely; telling
-              spam from legitimate seeding is IMPOSSIBLE from counters alone
-              and needs a destination port, which is stage two.
+              scan — work that one. On its own this is info, not a page:
+              counters cannot tell spam from a node serving peers (the first
+              real firing was a bitcoin node on 8333), and the destination
+              port and direction that would settle it are stage two.
 
         - alert: TenantAbuseSignalsMissing
           expr: |
