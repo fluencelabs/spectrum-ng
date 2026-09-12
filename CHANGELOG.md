@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.5](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.4...v0.3.5) (2026-09-12)
+
+
+### Features
+
+* **kube-ovn:** flow probes on stage — eBPF on VM veths into goflow2, port-aware abuse signals ([#270](https://github.com/fluencelabs/spectrum-ng/issues/270)) ([7910fb6](https://github.com/fluencelabs/spectrum-ng/commit/7910fb63ad55ba9e48f5896c619d1c5eb075cd7a))
+
+
+### Bug Fixes
+
+* **kube-ovn:** TenantVmEgressAsymmetry is info, not warning — alone it cannot tell spam from seeding ([37b72a6](https://github.com/fluencelabs/spectrum-ng/commit/37b72a6a8b02aefd7742bcd50cec9def159cac72))
+* **kube-ovn:** TenantVmEgressAsymmetry is info, not warning ([#271](https://github.com/fluencelabs/spectrum-ng/issues/271)) ([37b72a6](https://github.com/fluencelabs/spectrum-ng/commit/37b72a6a8b02aefd7742bcd50cec9def159cac72))
+
 ## [0.3.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.3...v0.3.4) (2026-09-12)
 
 
