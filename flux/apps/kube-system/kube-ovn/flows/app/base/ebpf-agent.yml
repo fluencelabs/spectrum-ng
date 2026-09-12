@@ -84,6 +84,9 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: netobserv-ebpf-agent
+  labels:
+    # alloy-metrics only picks up ServiceMonitors carrying this label.
+    scrape: "true"
 spec:
   endpoints:
     - port: metrics
