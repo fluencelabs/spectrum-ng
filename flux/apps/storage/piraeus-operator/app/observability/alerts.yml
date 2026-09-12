@@ -1,14 +1,3 @@
-# Alerts on DRBD replication state, fed by the drbd-reactor sidecar scraped via
-# service-monitor.yml, plus the LINSTOR controller and stuck-VolumeAttachment
-# signals below.
-#
-# Motivated by the mainnet incident on 2026-08-18: the satellites were
-# recreated and picked up different addresses from the storage NAD pool, while
-# LINSTOR kept handing out the old ones in drbd.conf. Every connection that had
-# to re-handshake after that landed in Connecting forever. Two volumes lost
-# quorum, DRBD suspended their I/O, and the pods holding them could neither be
-# killed nor replaced. LINSTOR's own exporter showed nothing wrong (nodes
-# Online, volumes UpToDate) — only the DRBD-level metrics carry this state.
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
@@ -17,9 +6,6 @@ spec:
   groups:
     - name: drbd.replication.alerts
       rules:
-        # The end state: no quorum means DRBD has suspended I/O on the device.
-        # Anything holding it is frozen — the pod cannot be killed, and a
-        # replacement cannot open the device read-write.
         - alert: DrbdQuorumLost
           expr: |
             drbd_device_quorum == 0
@@ -31,9 +17,6 @@ spec:
             summary: "DRBD volume {{ $labels.name }} has lost quorum on {{ $labels.instance }}"
             description: "DRBD device {{ $labels.name }} on {{ $labels.instance }} has had no quorum for more than 5 minutes. I/O on this volume is suspended: pods using it will hang in Terminating or fail to mount."
 
-        # Fires before quorum is lost, while replicas are still healthy — this
-        # is the window in which the 2026-08-18 incident could have been caught
-        # without user-visible impact.
         - alert: DrbdConnectionNotConnected
           expr: |
             drbd_connection_state{drbd_connection_state="Connected"} == 0
@@ -45,8 +28,6 @@ spec:
             summary: "DRBD connection {{ $labels.name }} -> {{ $labels.conn_name }} is not connected"
             description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 10 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
 
-        # Set while DRBD is deliberately failing I/O; harmless for seconds
-        # during a role change, a stuck volume if it persists.
         - alert: DrbdForceIoFailures
           expr: |
             drbd_resource_forceiofailures == 1
@@ -60,9 +41,6 @@ spec:
 
     - name: kubernetes.stuck.objects
       rules:
-        # A pod that cannot finish terminating is the symptom shared by every
-        # storage-level freeze: on 2026-08-18 one had been stuck for 18 days and
-        # a VM launcher for 6, with nothing reporting it.
         - alert: PodStuckTerminating
           expr: |
             (time() - kube_pod_deletion_timestamp) > 900
@@ -74,12 +52,6 @@ spec:
             summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is stuck terminating"
             description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been terminating for {{ $value | humanizeDuration }}. Usually a volume whose I/O is frozen, or a finalizer whose owning controller is gone."
 
-        # Cause-agnostic and the cheapest signal of the whole set: a
-        # VolumeAttachment that stays unattached is a CSI attach that never
-        # completed, whatever the underlying storage. On 2026-08-18 the stuck
-        # disk import sat 18h with attached=false and only a generic
-        # KubePodNotReady ever fired — this would have caught it in 15 minutes,
-        # independent of LINSTOR/DRBD.
         - alert: StuckVolumeAttachment
           expr: |
             kube_volumeattachment_status_attached == 0
@@ -91,15 +63,8 @@ spec:
             summary: "VolumeAttachment {{ $labels.volumeattachment }} has not attached"
             description: "VolumeAttachment {{ $labels.volumeattachment }} (node {{ $labels.node }}) has been reporting attached=false for more than 15 minutes. The CSI attach never completed: any pod waiting on this volume is stuck in ContainerCreating."
 
-    # LINSTOR controller signals (port 3370), scraped via
-    # controller-service-monitor.yml. These are the most direct signal for a
-    # resource that cannot assemble on a node — the class of failure behind the
-    # 2026-08-18 fra-flix-01 disk-import freeze.
     - name: linstor.controller.alerts
       rules:
-        # linstor_resource_state is a per-(node,resource) gauge: healthy is
-        # 0.0/1.0, and a negative value means the resource is in a bad state on
-        # that node. The stuck node in the incident read -1.0 for 18h.
         - alert: LinstorResourceUnhealthy
           expr: |
             linstor_resource_state < 0
@@ -111,10 +76,6 @@ spec:
             summary: "LINSTOR resource {{ $labels.name }} is unhealthy on {{ $labels.node }}"
             description: "LINSTOR reports resource {{ $labels.name }} in a bad state (linstor_resource_state={{ $value }}) on node {{ $labels.node }} for more than 10 minutes. The resource cannot assemble there: any pod scheduled to this node that needs the volume will hang in ContainerCreating."
 
-        # linstor_error_reports_count climbs as the controller writes error
-        # reports; during the incident's create-md storm it ran into the
-        # thousands. A sustained inflow of new reports is a storm, not the odd
-        # transient error.
         - alert: LinstorErrorReportStorm
           expr: |
             increase(linstor_error_reports_count[15m]) > 10

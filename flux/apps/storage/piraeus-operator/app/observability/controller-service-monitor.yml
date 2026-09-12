@@ -1,6 +1,3 @@
-# Scrapes the LINSTOR controller metrics endpoint (port 3370). The
-# `scrape: "true"` label is REQUIRED for Grafana Alloy's ServiceMonitor
-# discovery to select it — see service-monitor.yml for the mechanism.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

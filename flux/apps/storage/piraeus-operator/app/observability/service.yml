@@ -1,8 +1,3 @@
-# The satellites are a DaemonSet with no Service of their own. Metrics are
-# collected by Grafana Alloy (alloy-metrics), whose ServiceMonitor discovery
-# (prometheus.operator.servicemonitors "services") only selects ServiceMonitors
-# carrying `scrape: "true"` — see service-monitor.yml. This headless Service
-# puts the drbd-reactor sidecar behind a ServiceMonitor-scrapable endpoint.
 apiVersion: v1
 kind: Service
 metadata:
