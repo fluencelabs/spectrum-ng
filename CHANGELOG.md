@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.4](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.3...v0.3.4) (2026-09-12)
+
+
+### Features
+
+* **storage:** storage-observability detectors + fix drbd scrape wiring ([#267](https://github.com/fluencelabs/spectrum-ng/issues/267)) ([3a4aa64](https://github.com/fluencelabs/spectrum-ng/commit/3a4aa6408241ebe29923aae45e6dff7c45296467))
+
+
+### Bug Fixes
+
+* **cdi:** stop cdis CRD flapping between flux and cdi-operator ([#269](https://github.com/fluencelabs/spectrum-ng/issues/269)) ([00f9fec](https://github.com/fluencelabs/spectrum-ng/commit/00f9fec12ae7cfaaa470cab2e75d80ef89e424cb))
+
 ## [0.3.3](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.2...v0.3.3) (2026-09-11)
 
 
