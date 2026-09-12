@@ -125,8 +125,8 @@ spec:
               holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
 
         - alert: TenantVmScanFanOut
-          expr: tenant:vm_flows_out_peers:1m > 100
-          for: 5m
+          expr: max_over_time(tenant:vm_flows_out_peers:1m[10m]) > 100
+          for: 1m
           labels:
             team: devops
             severity: info
@@ -137,16 +137,16 @@ spec:
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
               (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
-              sent SYNs to {{ $value }} distinct destinations in one minute, for
-              5 minutes running. A client workload does not do this; a horizontal
+              sent SYNs to {{ $value }} distinct destinations within one minute
+              in the last 10. A client workload does not do this; a horizontal
               scanner does. If signal=flood is firing too, it is a fast scan.
               Which ports: `_time:5m pod:goflow2* container:ebpf | unpack_json |
               filter src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)`
               in VictoriaLogs.
 
         - alert: TenantVmVerticalScan
-          expr: tenant:vm_flows_out_ports:1m > 100
-          for: 5m
+          expr: max_over_time(tenant:vm_flows_out_ports:1m[10m]) > 100
+          for: 1m
           labels:
             team: devops
             severity: info
