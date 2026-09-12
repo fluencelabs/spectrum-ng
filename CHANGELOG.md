@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.5...v0.3.6) (2026-09-12)
+
+
+### Bug Fixes
+
+* **kube-ovn:** drop TenantVmEgressAsymmetry, add TenantVmIngressBitrateHigh ([#274](https://github.com/fluencelabs/spectrum-ng/issues/274)) ([8cd5d6f](https://github.com/fluencelabs/spectrum-ng/commit/8cd5d6fe031c0fabfff71f9ecc75f802848e187c))
+
 ## [0.3.5](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.4...v0.3.5) (2026-09-12)
 
 
