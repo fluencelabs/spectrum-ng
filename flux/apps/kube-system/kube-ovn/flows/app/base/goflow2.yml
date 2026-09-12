@@ -1,11 +1,3 @@
-# One IPFIX collector per node, node-local: OVS exports to 127.0.0.1 and the
-# eBPF agent to the node IP, so flow records never cross the fabric. Each
-# source gets its own container and port so that the Alloy `container` label
-# says which probe a record came from — the two are being compared, not merged.
-#
-# Records are written to stdout as one JSON object per line; alloy-logs ships
-# them to VictoriaLogs like any other pod log. goflow2's own log lines share the
-# stream and are told apart by the `type` field the records carry.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -35,7 +27,7 @@ spec:
         - name: ovs
           image: docker.io/netsampler/goflow2:v2.2.6
           args:
-            - -listen=netflow://:4739
+            - -listen=netflow://127.0.0.1:4739
             - -format=json
             - -transport=file
             - -addr=:4791
@@ -58,7 +50,7 @@ spec:
         - name: ebpf
           image: docker.io/netsampler/goflow2:v2.2.6
           args:
-            - -listen=netflow://:4740
+            - -listen=netflow://127.0.0.1:4740
             - -format=json
             - -transport=file
             - -addr=:4792
@@ -100,7 +92,6 @@ kind: ServiceMonitor
 metadata:
   name: goflow2
   labels:
-    # alloy-metrics only picks up ServiceMonitors carrying this label.
     scrape: "true"
 spec:
   endpoints:

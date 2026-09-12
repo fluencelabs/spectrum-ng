@@ -4,8 +4,6 @@ metadata:
   name: kube-ovn-flows
   namespace: flux-system
 spec:
-  # Stage-only while the flow pipeline is being proven (NKS #1827 / #1830):
-  # every other overlay renders nothing.
   path: ./flux/apps/kube-system/kube-ovn/flows/app/overlays/${NETWORK}
   prune: true
   targetNamespace: kube-system

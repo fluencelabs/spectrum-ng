@@ -1,5 +1,3 @@
-# Flow probes are stage-only until NKS #1830 is answered. The marker keeps the
-# Flux Kustomization from building to nothing on this network.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

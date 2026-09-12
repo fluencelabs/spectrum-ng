@@ -1,16 +1,3 @@
-# Turns on per-bridge IPFIX export on br-int and keeps it on.
-#
-# The kube-ovn chart has no knob for this, and ovn-controller owns br-int, so
-# the setting is applied out-of-band through the OVSDB socket and re-asserted
-# every 30s. Every re-apply is logged: a non-zero re-apply count after the
-# first is the answer to NKS #1830 ("does the IPFIX row survive kube-ovn?").
-#
-# Input-only sampling: every packet enters br-int through exactly one port, so
-# sampling at input sees each packet once. The VM is attributed by IP (src for
-# outbound, dst for inbound), not by ofport, so output sampling adds nothing but
-# duplicates. Tunnel 7-tuples are off for the same reason. Templates go out
-# every 60s instead of the default 600s so a restarted goflow2 is not blind
-# for ten minutes.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -24,6 +11,7 @@ data:
     SAMPLING=${SAMPLING:-64}
     ACTIVE_TIMEOUT=${ACTIVE_TIMEOUT:-30}
     MAX_FLOWS=${MAX_FLOWS:-65536}
+    want="[\"$TARGET\"] $SAMPLING $ACTIVE_TIMEOUT $MAX_FLOWS {enable-input-sampling=\"true\", enable-output-sampling=\"false\", enable-tunnel-sampling=\"false\"}"
     applied=0
     while true; do
       if ! ovs-vsctl --timeout=5 br-exists "$BRIDGE"; then
@@ -31,23 +19,25 @@ data:
         sleep 30; continue
       fi
       row=$(ovs-vsctl --timeout=5 get Bridge "$BRIDGE" ipfix 2>/dev/null)
-      want="[\"$TARGET\"]"
       have=""
-      if [ "$row" != "[]" ] && [ -n "$row" ]; then
-        have=$(ovs-vsctl --timeout=5 get IPFIX "$row" targets 2>/dev/null)
+      if [ -n "$row" ] && [ "$row" != "[]" ]; then
+        have=$(ovs-vsctl --timeout=5 get IPFIX "$row" targets sampling cache_active_timeout cache_max_flows other_config 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
       fi
       if [ "$have" != "$want" ]; then
-        ovs-vsctl --timeout=5 -- --id=@i create IPFIX \
-          targets="\"$TARGET\"" sampling="$SAMPLING" \
-          obs_domain_id=1 obs_point_id=1 \
-          cache_active_timeout="$ACTIVE_TIMEOUT" cache_max_flows="$MAX_FLOWS" \
-          template_interval=60 \
-          other_config:enable-tunnel-sampling=false \
-          other_config:enable-input-sampling=true \
-          other_config:enable-output-sampling=false \
-          -- set Bridge "$BRIDGE" ipfix=@i
-        applied=$((applied+1))
-        echo "$(date -Is) ipfix applied on $BRIDGE -> $TARGET sampling=1/$SAMPLING (apply #$applied, previous targets: ${have:-none})"
+        if ovs-vsctl --timeout=5 -- --id=@i create IPFIX \
+            targets="\"$TARGET\"" sampling="$SAMPLING" \
+            obs_domain_id=1 obs_point_id=1 \
+            cache_active_timeout="$ACTIVE_TIMEOUT" cache_max_flows="$MAX_FLOWS" \
+            template_interval=60 \
+            other_config:enable-tunnel-sampling=false \
+            other_config:enable-input-sampling=true \
+            other_config:enable-output-sampling=false \
+            -- set Bridge "$BRIDGE" ipfix=@i >/dev/null; then
+          applied=$((applied+1))
+          echo "$(date -Is) ipfix applied on $BRIDGE -> $TARGET sampling=1/$SAMPLING (apply #$applied, previous: ${have:-none})"
+        else
+          echo "$(date -Is) ipfix apply on $BRIDGE FAILED"
+        fi
       fi
       sleep 30
     done
@@ -74,11 +64,9 @@ spec:
         - operator: Exists
       containers:
         - name: ensure
-          # Same image as ovs-ovn: ovs-vsctl matching the running vswitchd.
           image: docker.io/kubeovn/kube-ovn:v1.16.3
           command: ["/bin/bash", "/config/ensure.sh"]
           securityContext:
-            # db.sock is nobody:nogroup 0750 — the uid ovs-ovn itself runs as.
             runAsUser: 65534
             runAsGroup: 65534
             allowPrivilegeEscalation: false

@@ -1,17 +1,3 @@
-# Stage two of the tenant-abuse detector: flow records folded into per-VM
-# metrics once a minute, so the raw records only have to live long enough to
-# be folded (VictoriaLogs keeps them a day) while the metrics live as long as
-# every other metric.
-#
-# Two halves. The vlogs half aggregates by IP — LogsQL cannot join to
-# Kubernetes — and the metrics half attributes the IP to a VM through
-# kube_pod_info{pod_ip} (the virt-launcher pod carries the VM's address on
-# kube-ovn) and tenant:vm_info. `container` is kept through as `probe` so the
-# OVS and eBPF probes can be compared series by series.
-#
-# Packet counts are what the probe reports: OVS already multiplies by its
-# sampling rate, the eBPF agent does not, so absolute thresholds are set on the
-# OVS series.
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
@@ -24,40 +10,25 @@ spec:
       type: vlogs
       interval: 1m
       rules:
-        # Outbound packets per (source IP, destination-port class). One rule
-        # per class because LogsQL has no case expression; `format` stamps the
-        # class as a constant field so it lands as a label.
         - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
         - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
         - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
         - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(80,443) | format "web" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
-        # A reflector answers FROM the amplifying port: UDP with a well-known
-        # source port and many destinations. The `amplifier` class above is
-        # the VM asking; this is the VM being used.
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(80,443) | format "web" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
         - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
 
-        # Fan-out: distinct destinations per source per minute. A scan is a
-        # source talking to hundreds of destinations it never talked to before.
         - record: flows:out_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
 
-        # Vertical scan: distinct destination ports per (source, destination)
-        # pair. Kept only above 20 ports so the series count stays bounded.
         - record: flows:out_ports:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
 
-        # Fan-in on a served port: distinct sources per (destination, port).
-        # This is what a node serving peers looks like — many sources on one
-        # port — and what tells seeding from mailing. Ports are capped below
-        # 10000 so replies to the VM's own outbound connections (ephemeral
-        # destination ports) do not explode the series count.
         - record: flows:in_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:<10000 | stats by (container, dst_addr, dst_port) count_uniq(src_addr) as peers | filter peers:>=5'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:<10000 | stats by (container, dst_addr, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
@@ -68,59 +39,65 @@ spec:
     - name: tenant-vm-flows
       interval: 1m
       rules:
-        # IP -> VM. kube_pod_info{pod_ip} names the virt-launcher pod; the
-        # existing tenant:vm_info (abuse-alerts.yml) turns that into vm_id
-        # and workspace_id, exactly as the stage-one rules do.
+        - record: tenant:vm_ip
+          expr: |
+            topk by (pod_ip) (1,
+              label_replace(label_replace(
+                kube_pod_info{namespace=~"workspace-.*", pod_ip!=""}
+                * on (namespace, pod) group_left (owner_name)
+                kube_pod_owner{namespace=~"workspace-.*", owner_kind="VirtualMachineInstance"},
+                "pod_name", "$1", "owner_name", "(.*)"),
+                "pod_namespace", "$1", "namespace", "(.*)")
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
+
         - record: tenant:vm_flows_out_packets:1m
           expr: |
             sum by (pod_name, pod_namespace, vm_id, workspace_id, probe, dport_class) (
-              label_replace(label_replace(label_replace(
-                label_replace(flows:out_packets:1m, "pod_ip", "$1", "src_addr", "(.*)")
-                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
-                "pod_name", "$1", "pod", "(.*)"),
-                "pod_namespace", "$1", "namespace", "(.*)"),
-                "probe", "$1", "container", "(.*)")
-              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+              label_replace(label_replace(flows:out_packets:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
+              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
             )
         - record: tenant:vm_flows_out_peers:1m
           expr: |
             max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
-              label_replace(label_replace(label_replace(
-                label_replace(flows:out_peers:1m, "pod_ip", "$1", "src_addr", "(.*)")
-                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
-                "pod_name", "$1", "pod", "(.*)"),
-                "pod_namespace", "$1", "namespace", "(.*)"),
-                "probe", "$1", "container", "(.*)")
-              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+              label_replace(label_replace(flows:out_peers:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
+              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
             )
         - record: tenant:vm_flows_out_ports:1m
           expr: |
             max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
-              label_replace(label_replace(label_replace(
-                label_replace(flows:out_ports:1m, "pod_ip", "$1", "src_addr", "(.*)")
-                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
-                "pod_name", "$1", "pod", "(.*)"),
-                "pod_namespace", "$1", "namespace", "(.*)"),
-                "probe", "$1", "container", "(.*)")
-              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+              label_replace(label_replace(flows:out_ports:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
+              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
             )
         - record: tenant:vm_flows_in_peers:1m
           expr: |
             max by (pod_name, pod_namespace, vm_id, workspace_id, probe, dst_port) (
-              label_replace(label_replace(label_replace(
-                label_replace(flows:in_peers:1m, "pod_ip", "$1", "dst_addr", "(.*)")
-                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
-                "pod_name", "$1", "pod", "(.*)"),
-                "pod_namespace", "$1", "namespace", "(.*)"),
-                "probe", "$1", "container", "(.*)")
-              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+              label_replace(label_replace(flows:in_peers:1m, "pod_ip", "$1", "dst_addr", "(.*)"), "probe", "$1", "container", "(.*)")
+              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
             )
 
     - name: tenant-vm-flow-abuse
       interval: 1m
       rules:
-        # Info until the thresholds have been seen against real tenants: these
-        # are the first port-aware signals and their numbers are guesses.
+        - alert: TenantFlowAttributionDark
+          expr: |
+            (count(flows:out_packets:1m) > 0)
+            and on () (count(tenant:vm_running) > 0)
+            and on () ((count(tenant:vm_flows_out_packets:1m) or vector(0)) == 0)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: tenant-abuse
+          annotations:
+            summary: "Flow records arrive and tenant VMs run, but no flow is attributed to any VM"
+            description: >-
+              flows:out_packets:1m has series and tenant:vm_running is non-zero,
+              yet tenant:vm_flows_out_packets:1m has been empty for 15 minutes:
+              the IP -> VM join is broken. Check `tenant:vm_ip` first — it needs
+              kube_pod_info{pod_ip} and kube_pod_owner{owner_kind="VirtualMachineInstance"}
+              from kube-state-metrics and tenant:vm_info from the stage-one rules.
+
         - alert: TenantVmSmtpEgress
           expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="smtp"} > 500
           for: 10m
@@ -140,8 +117,6 @@ spec:
               firing, either the VM is outside that group or the policy is not
               holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
 
-        # Scan signals ride on the eBPF probe: it keeps every SYN unsampled,
-        # so these counts are exact connection attempts, not 1/64 of them.
         - alert: TenantVmScanFanOut
           expr: tenant:vm_flows_out_peers:1m{probe="ebpf"} > 100
           for: 5m
@@ -199,7 +174,6 @@ spec:
               DNS for its own clients does not reach this rate. Victims:
               `tenant:vm_flows_out_peers:1m`.
 
-        # Inbound volume has had no alert at all: stage one watches egress only.
         - alert: TenantVmIngressBitrateHigh
           expr: tenant:vm_ingress_bits:rate5m > 200e6
           for: 10m
