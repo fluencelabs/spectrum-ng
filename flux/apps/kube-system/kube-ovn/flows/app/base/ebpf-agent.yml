@@ -5,8 +5,9 @@
 #
 # INTERFACES is limited to kube-ovn's pod veths (`<hash>_h`): the same packet is
 # also visible on br-int, the geneve device and the uplink, and hooking those
-# would count it up to four times. No SAMPLING on stage — it has a handful of
-# pods; set it before this goes anywhere with tenants.
+# would count it up to four times. SAMPLING matches the OVS probe (1/64): the
+# first hour unsampled on a tenantless stage wrote 127 MB/h of records, 6.6x
+# every other log in the cluster combined.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -46,6 +47,8 @@ spec:
               value: "4740"
             - name: INTERFACES
               value: "/_h$/"
+            - name: SAMPLING
+              value: "64"
             - name: CACHE_ACTIVE_TIMEOUT
               value: 30s
             - name: CACHE_MAX_FLOWS
