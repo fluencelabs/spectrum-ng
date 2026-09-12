@@ -66,19 +66,17 @@ spec:
         runAsUser: 65534
         runAsGroup: 65534
       containers:
-        - name: ovs
+        - name: syn
           image: docker.io/netsampler/goflow2:v2.2.6
           args:
-            - -listen=netflow://127.0.0.1:4739
+            - -listen=netflow://127.0.0.1:4740
             - -format=json
             - -transport=file
-            - -addr=:4791
+            - -addr=:4792
+            - -mapping=/etc/goflow2/mapping.yml
           ports:
-            - name: ipfix-ovs
-              containerPort: 4739
-              protocol: UDP
-            - name: metrics-ovs
-              containerPort: 4791
+            - name: metrics-syn
+              containerPort: 4792
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -92,20 +90,17 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
-        - name: ebpf
+        - name: all
           image: docker.io/netsampler/goflow2:v2.2.6
           args:
-            - -listen=netflow://127.0.0.1:4740
+            - -listen=netflow://127.0.0.1:4741
             - -format=json
             - -transport=file
-            - -addr=:4792
+            - -addr=:4791
             - -mapping=/etc/goflow2/mapping.yml
           ports:
-            - name: ipfix-ebpf
-              containerPort: 4740
-              protocol: UDP
-            - name: metrics-ebpf
-              containerPort: 4792
+            - name: metrics-all
+              containerPort: 4791
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -135,9 +130,9 @@ spec:
   selector:
     app.kubernetes.io/name: goflow2
   ports:
-    - name: metrics-ovs
+    - name: metrics-all
       port: 4791
-    - name: metrics-ebpf
+    - name: metrics-syn
       port: 4792
 ---
 apiVersion: monitoring.coreos.com/v1
@@ -148,14 +143,14 @@ metadata:
     scrape: "true"
 spec:
   endpoints:
-    - port: metrics-ovs
+    - port: metrics-all
       relabelings:
         - targetLabel: probe
-          replacement: ovs
-    - port: metrics-ebpf
+          replacement: all
+    - port: metrics-syn
       relabelings:
         - targetLabel: probe
-          replacement: ebpf
+          replacement: syn
   namespaceSelector:
     matchNames:
       - kube-system

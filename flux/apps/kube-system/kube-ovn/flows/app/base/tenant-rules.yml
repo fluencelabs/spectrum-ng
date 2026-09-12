@@ -10,25 +10,23 @@ spec:
       type: vlogs
       interval: 1m
       rules:
-        - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
-        - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
-        - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
-        - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(80,443) | format "web" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
-        - record: flows:out_packets:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND dst_port:in(80,443) | format "web" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
+        - record: flows:iface_out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:all | unpack_json | filter type:IPFIX AND flow_direction:0 AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (interface_name, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
 
-        - record: flows:out_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ovs | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
         - record: flows:iface_out_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
         - record: flows:iface_out_ports:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
         - record: flows:iface_in_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:1 AND dst_port:<10000 | stats by (interface_name, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:syn | unpack_json | filter type:IPFIX AND flow_direction:1 AND dst_port:<10000 | stats by (interface_name, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
@@ -45,24 +43,12 @@ spec:
               (kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"} * 0 + 1)
               * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
             )
-        - record: tenant:vm_ip
-          expr: |
-            topk by (pod_ip) (1,
-              label_replace(label_replace(
-                kube_pod_info{namespace=~"workspace-.*", pod_ip!=""}
-                * on (namespace, pod) group_left (owner_name)
-                kube_pod_owner{namespace=~"workspace-.*", owner_kind="VirtualMachineInstance"},
-                "pod_name", "$1", "owner_name", "(.*)"),
-                "pod_namespace", "$1", "namespace", "(.*)")
-              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
-            )
-
         - record: tenant:vm_flows_out_packets:1m
           expr: |
-            sum by (pod_name, pod_namespace, vm_id, workspace_id, probe, dport_class) (
-              label_replace(label_replace(flows:out_packets:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
-              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
-            )
+            sum by (pod_name, pod_namespace, vm_id, workspace_id, dport_class) (
+              label_replace(flows:iface_out_packets:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
+            ) * 64
         - record: tenant:vm_flows_out_peers:1m
           expr: |
             max by (pod_name, pod_namespace, vm_id, workspace_id) (
@@ -106,7 +92,7 @@ spec:
               that eBPF records in VictoriaLogs carry `interface_name`.
 
         - alert: TenantVmSmtpEgress
-          expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="smtp"} > 500
+          expr: tenant:vm_flows_out_packets:1m{dport_class="smtp"} > 500
           for: 10m
           labels:
             team: devops
@@ -140,7 +126,7 @@ spec:
               sent SYNs to {{ $value }} distinct destinations within one minute
               in the last 10. A client workload does not do this; a horizontal
               scanner does. If signal=flood is firing too, it is a fast scan.
-              Which ports: `_time:5m pod:goflow2* container:ebpf | unpack_json |
+              Which ports: `_time:5m pod:goflow2* container:syn | unpack_json |
               filter src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)`
               in VictoriaLogs.
 
@@ -159,11 +145,11 @@ spec:
               (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
               sent SYNs to {{ $value }} distinct ports on a single host within a
               minute — a port scan of that host. Target:
-              `_time:5m pod:goflow2* container:ebpf | unpack_json | filter
+              `_time:5m pod:goflow2* container:syn | unpack_json | filter
               src_addr:<VM_IP> | stats by (dst_addr) count_uniq(dst_port)`.
 
         - alert: TenantVmReflector
-          expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="reflector"} > 5000
+          expr: tenant:vm_flows_out_packets:1m{dport_class="reflector"} > 5000
           for: 10m
           labels:
             team: devops
@@ -180,21 +166,3 @@ spec:
               a reflector answers exactly like this; a VM legitimately running
               DNS for its own clients does not reach this rate. Victims:
               `tenant:vm_flows_out_peers:1m`.
-
-        - alert: TenantVmIngressBitrateHigh
-          expr: tenant:vm_ingress_bits:rate5m > 200e6
-          for: 10m
-          labels:
-            team: devops
-            severity: info
-            component: tenant-abuse
-            signal: ingress
-          annotations:
-            summary: "VM {{ $labels.vm_id }} is receiving {{ $value | humanize }}bit/s"
-            description: >-
-              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
-              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
-              has taken in over 200 Mbit/s for 10 minutes. Either a large download
-              or the VM's public address is the target of a flood; sources:
-              `tenant:vm_flows_in_peers:1m` — many distinct sources on one port
-              is an attack, one or two is a download.

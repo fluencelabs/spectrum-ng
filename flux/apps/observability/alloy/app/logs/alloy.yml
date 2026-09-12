@@ -83,7 +83,7 @@ spec:
 
         loki.process "flow_records" {
           stage.match {
-            selector = "{namespace=\"kube-system\", container=~\"ovs|ebpf\"}"
+            selector = "{namespace=\"kube-system\", container=~\"syn|all\"}"
             stage.limit {
               rate  = 500
               burst = 2000
