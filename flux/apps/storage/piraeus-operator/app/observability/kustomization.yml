@@ -3,4 +3,6 @@ kind: Kustomization
 resources:
   - service.yml
   - service-monitor.yml
+  - controller-service.yml
+  - controller-service-monitor.yml
   - alerts.yml
