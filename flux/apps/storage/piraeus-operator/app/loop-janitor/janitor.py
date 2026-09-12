@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Detach loop devices kubelet leaked on block PVs and export what it found.
+"""Report — and, if asked, detach — loop devices kubelet leaked on block PVs.
+
+Default is observe only (DRY_RUN=1 on the DaemonSet): leaked loops show up
+as loop_janitor_stale_loops and the DrbdLeakedLoopDevices alert; a human
+detaches them. DRY_RUN=0 makes the sweep losetup -d them itself.
 
 kubelet losetup's every block volume it maps (a keep-open "fd lock" on
 .../volumeDevices/<pv>/dev/<podUID>) and looks the loop up by that path on

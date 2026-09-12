@@ -28,6 +28,17 @@ spec:
             summary: "DRBD connection {{ $labels.name }} -> {{ $labels.conn_name }} is not connected"
             description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 10 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
 
+        - alert: DrbdLeakedLoopDevices
+          expr: |
+            loop_janitor_stale_loops > 0
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "{{ $value }} leaked loop device(s) on {{ $labels.node }} hold DRBD devices open"
+            description: "kubelet left loop devices on {{ $labels.node }} whose backing path is gone but which still back a /dev/drbd* node. Each keeps that DRBD device open: when its PVC is deleted LINSTOR cannot bring the device down, peers drop their replicas, and the survivor becomes a peerless quorum:no orphan that also squats its minor and wedges later deletions. Detach them from the satellite pod: losetup -l -O NAME,BACK-INO,BACK-FILE, match BACK-INO against stat -c %i /dev/drbd*, losetup -d — or set DRY_RUN=0 on the loop-janitor DaemonSet to let it do this."
+
         - alert: DrbdLeakedLoopNotDetachable
           expr: |
             loop_janitor_detach_failures > 0

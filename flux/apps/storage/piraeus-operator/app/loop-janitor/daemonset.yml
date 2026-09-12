@@ -32,6 +32,11 @@ spec:
                   fieldPath: spec.nodeName
             - name: INTERVAL_SECONDS
               value: "300"
+            # Observe only: report leaked loops as metrics, do not detach.
+            # Flip to "0" to let the janitor losetup -d them itself; the
+            # criterion is the one applied by hand on 2026-09-12.
+            - name: DRY_RUN
+              value: "1"
             - name: METRICS_PORT
               value: "9943"
           ports:
