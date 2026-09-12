@@ -1,3 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: goflow2-mapping
+data:
+  mapping.yml: |
+    formatter:
+      fields:
+        - type
+        - time_received_ns
+        - time_flow_start_ns
+        - time_flow_end_ns
+        - sampler_address
+        - bytes
+        - packets
+        - etype
+        - proto
+        - src_addr
+        - dst_addr
+        - src_port
+        - dst_port
+        - tcp_flags
+        - in_if
+        - out_if
+        - interface_name
+        - flow_direction
+      protobuf:
+        - name: interface_name
+          index: 1000
+          type: string
+        - name: flow_direction
+          index: 1001
+          type: varint
+      render:
+        interface_name: string
+    ipfix:
+      mapping:
+        - field: 82
+          destination: interface_name
+        - field: 61
+          destination: flow_direction
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -41,6 +83,9 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: mapping
+              mountPath: /etc/goflow2
           resources:
             requests:
               cpu: 20m
@@ -54,6 +99,7 @@ spec:
             - -format=json
             - -transport=file
             - -addr=:4792
+            - -mapping=/etc/goflow2/mapping.yml
           ports:
             - name: ipfix-ebpf
               containerPort: 4740
@@ -64,12 +110,19 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: mapping
+              mountPath: /etc/goflow2
           resources:
             requests:
               cpu: 20m
               memory: 64Mi
             limits:
               memory: 256Mi
+      volumes:
+        - name: mapping
+          configMap:
+            name: goflow2-mapping
 ---
 apiVersion: v1
 kind: Service

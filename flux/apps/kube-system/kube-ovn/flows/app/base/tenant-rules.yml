@@ -22,13 +22,13 @@ spec:
           expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets | sort by (packets desc) | limit 200'
 
         - record: flows:out_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
-
-        - record: flows:out_ports:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
-
-        - record: flows:in_peers:1m
-          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:<10000 | stats by (container, dst_addr, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ovs | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
+        - record: flows:iface_out_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name) count_uniq(dst_addr) as peers | sort by (peers desc) | limit 200'
+        - record: flows:iface_out_ports:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:0 | stats by (interface_name, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20 | sort by (ports desc) | limit 200'
+        - record: flows:iface_in_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* AND container:ebpf | unpack_json | filter type:IPFIX AND flow_direction:1 AND dst_port:<10000 | stats by (interface_name, dst_port) count_uniq(src_addr) as peers | filter peers:>=5 | sort by (peers desc) | limit 200'
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
@@ -39,6 +39,12 @@ spec:
     - name: tenant-vm-flows
       interval: 1m
       rules:
+        - record: tenant:vm_iface
+          expr: |
+            topk by (interfaceName) (1,
+              (kube_ovn_interface_rx_bytes{pod_namespace=~"workspace-.*"} * 0 + 1)
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
         - record: tenant:vm_ip
           expr: |
             topk by (pod_ip) (1,
@@ -59,21 +65,21 @@ spec:
             )
         - record: tenant:vm_flows_out_peers:1m
           expr: |
-            max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
-              label_replace(label_replace(flows:out_peers:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
-              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
+            max by (pod_name, pod_namespace, vm_id, workspace_id) (
+              label_replace(flows:iface_out_peers:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
             )
         - record: tenant:vm_flows_out_ports:1m
           expr: |
-            max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
-              label_replace(label_replace(flows:out_ports:1m, "pod_ip", "$1", "src_addr", "(.*)"), "probe", "$1", "container", "(.*)")
-              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
+            max by (pod_name, pod_namespace, vm_id, workspace_id) (
+              label_replace(flows:iface_out_ports:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
             )
         - record: tenant:vm_flows_in_peers:1m
           expr: |
-            max by (pod_name, pod_namespace, vm_id, workspace_id, probe, dst_port) (
-              label_replace(label_replace(flows:in_peers:1m, "pod_ip", "$1", "dst_addr", "(.*)"), "probe", "$1", "container", "(.*)")
-              * on (pod_ip) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_ip
+            max by (pod_name, pod_namespace, vm_id, workspace_id, dst_port) (
+              label_replace(flows:iface_in_peers:1m, "interfaceName", "$1", "interface_name", "(.*)")
+              * on (interfaceName) group_left (pod_name, pod_namespace, vm_id, workspace_id) tenant:vm_iface
             )
 
     - name: tenant-vm-flow-abuse
@@ -81,9 +87,9 @@ spec:
       rules:
         - alert: TenantFlowAttributionDark
           expr: |
-            (count(flows:out_packets:1m) > 0)
+            (count(flows:iface_out_peers:1m) > 0)
             and on () (count(tenant:vm_running) > 0)
-            and on () ((count(tenant:vm_flows_out_packets:1m) or vector(0)) == 0)
+            and on () ((count(tenant:vm_flows_out_peers:1m) or vector(0)) == 0)
           for: 15m
           labels:
             team: devops
@@ -92,11 +98,12 @@ spec:
           annotations:
             summary: "Flow records arrive and tenant VMs run, but no flow is attributed to any VM"
             description: >-
-              flows:out_packets:1m has series and tenant:vm_running is non-zero,
-              yet tenant:vm_flows_out_packets:1m has been empty for 15 minutes:
-              the IP -> VM join is broken. Check `tenant:vm_ip` first — it needs
-              kube_pod_info{pod_ip} and kube_pod_owner{owner_kind="VirtualMachineInstance"}
-              from kube-state-metrics and tenant:vm_info from the stage-one rules.
+              flows:iface_out_peers:1m has series and tenant:vm_running is non-zero,
+              yet tenant:vm_flows_out_peers:1m has been empty for 15 minutes:
+              the interface -> VM join is broken. Check `tenant:vm_iface` — it
+              needs kube_ovn_interface_rx_bytes{interfaceName, pod_name} from
+              kube-ovn-pinger and tenant:vm_info from the stage-one rules — and
+              that eBPF records in VictoriaLogs carry `interface_name`.
 
         - alert: TenantVmSmtpEgress
           expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="smtp"} > 500
@@ -118,7 +125,7 @@ spec:
               holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
 
         - alert: TenantVmScanFanOut
-          expr: tenant:vm_flows_out_peers:1m{probe="ebpf"} > 100
+          expr: tenant:vm_flows_out_peers:1m > 100
           for: 5m
           labels:
             team: devops
@@ -138,7 +145,7 @@ spec:
               in VictoriaLogs.
 
         - alert: TenantVmVerticalScan
-          expr: tenant:vm_flows_out_ports:1m{probe="ebpf"} > 100
+          expr: tenant:vm_flows_out_ports:1m > 100
           for: 5m
           labels:
             team: devops
