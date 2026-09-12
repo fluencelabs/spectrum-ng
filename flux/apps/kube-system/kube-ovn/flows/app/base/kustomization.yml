@@ -5,3 +5,4 @@ resources:
   - goflow2.yml
   - ebpf-agent.yml
   - rules.yml
+  - tenant-rules.yml

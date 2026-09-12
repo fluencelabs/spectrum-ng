@@ -1,0 +1,140 @@
+# Stage two of the tenant-abuse detector: flow records folded into per-VM
+# metrics once a minute, so the raw records only have to live long enough to
+# be folded (VictoriaLogs keeps them a day) while the metrics live as long as
+# every other metric.
+#
+# Two halves. The vlogs half aggregates by IP — LogsQL cannot join to
+# Kubernetes — and the metrics half attributes the IP to a VM through
+# kube_pod_info{pod_ip} (the virt-launcher pod carries the VM's address on
+# kube-ovn) and tenant:vm_info. `container` is kept through as `probe` so the
+# OVS and eBPF probes can be compared series by series.
+#
+# Packet counts are what the probe reports: OVS already multiplies by its
+# sampling rate, the eBPF agent does not, so absolute thresholds are set on the
+# OVS series.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-flows-fold
+  labels:
+    rule-type: vlogs
+spec:
+  groups:
+    - name: kube-ovn-flows-fold
+      type: vlogs
+      interval: 1m
+      rules:
+        # Outbound packets per (source IP, destination-port class). One rule
+        # per class because LogsQL has no case expression; `format` stamps the
+        # class as a constant field so it lands as a label.
+        - record: flows:out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(25,465,587) | format "smtp" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+        - record: flows:out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(22,3389) | format "remote_admin" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+        - record: flows:out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+        - record: flows:out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(80,443) | format "web" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+
+        # Fan-out: distinct destinations per source per minute. A scan is a
+        # source talking to hundreds of destinations it never talked to before.
+        - record: flows:out_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers'
+
+        # Fan-in on a served port: distinct sources per (destination, port).
+        # This is what a node serving peers looks like — many sources on one
+        # port — and what tells seeding from mailing. Ports are capped below
+        # 10000 so replies to the VM's own outbound connections (ephemeral
+        # destination ports) do not explode the series count.
+        - record: flows:in_peers:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:<10000 | stats by (container, dst_addr, dst_port) count_uniq(src_addr) as peers | filter peers:>=5'
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-flows-tenant
+spec:
+  groups:
+    - name: tenant-vm-flows
+      interval: 1m
+      rules:
+        # IP -> VM. kube_pod_info{pod_ip} names the virt-launcher pod; the
+        # existing tenant:vm_info (abuse-alerts.yml) turns that into vm_id
+        # and workspace_id, exactly as the stage-one rules do.
+        - record: tenant:vm_flows_out_packets:1m
+          expr: |
+            sum by (pod_name, pod_namespace, vm_id, workspace_id, probe, dport_class) (
+              label_replace(label_replace(label_replace(
+                label_replace(flows:out_packets:1m, "pod_ip", "$1", "src_addr", "(.*)")
+                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
+                "pod_name", "$1", "pod", "(.*)"),
+                "pod_namespace", "$1", "namespace", "(.*)"),
+                "probe", "$1", "container", "(.*)")
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
+        - record: tenant:vm_flows_out_peers:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
+              label_replace(label_replace(label_replace(
+                label_replace(flows:out_peers:1m, "pod_ip", "$1", "src_addr", "(.*)")
+                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
+                "pod_name", "$1", "pod", "(.*)"),
+                "pod_namespace", "$1", "namespace", "(.*)"),
+                "probe", "$1", "container", "(.*)")
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
+        - record: tenant:vm_flows_in_peers:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id, probe, dst_port) (
+              label_replace(label_replace(label_replace(
+                label_replace(flows:in_peers:1m, "pod_ip", "$1", "dst_addr", "(.*)")
+                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
+                "pod_name", "$1", "pod", "(.*)"),
+                "pod_namespace", "$1", "namespace", "(.*)"),
+                "probe", "$1", "container", "(.*)")
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
+
+    - name: tenant-vm-flow-abuse
+      interval: 1m
+      rules:
+        # Info until the thresholds have been seen against real tenants: these
+        # are the first port-aware signals and their numbers are guesses.
+        - alert: TenantVmSmtpEgress
+          expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="smtp"} > 500
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: smtp
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is sending mail directly"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has pushed {{ $value | humanize }} packets/min to 25/465/587 for
+              10 minutes. Outbound SMTP is expected to be closed by vodopad
+              policy for the user group this VM belongs to (NKS #1845); if it is
+              firing, either the VM is outside that group or the policy is not
+              holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
+
+        - alert: TenantVmScanFanOut
+          expr: tenant:vm_flows_out_peers:1m{probe="ovs"} > 200
+          for: 5m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: fanout
+          annotations:
+            summary: "VM {{ $labels.vm_id }} talks to {{ $value }} distinct hosts a minute"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              reached {{ $value }} distinct destinations in one minute, sampled
+              1/64 — the real number is higher. A client workload does not do
+              this; a scanner does. If signal=flood is firing too, it is a
+              scan. Which ports: `_time:5m pod:goflow2* | unpack_json | filter
+              src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)` in
+              VictoriaLogs.
