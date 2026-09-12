@@ -120,6 +120,28 @@ spec:
               vm_id and throttle the port immediately, without waiting for a
               full diagnosis.
 
+        - alert: TenantVmIngressBitrateHigh
+          expr: tenant:vm_ingress_bits:rate5m > 200e6
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: ingress
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is receiving {{ $value | humanize }}bit/s"
+            suspected_cause: >-
+              A large download, or the VM's public address is the target of a
+              flood. Stage one has watched egress only; inbound volume had no
+              signal at all.
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has taken in over 200 Mbit/s for 10 minutes. Where the flow probes
+              are deployed, `tenant:vm_flows_in_peers:1m` tells the two apart:
+              many distinct sources on one port is an attack, one or two is a
+              download.
+
         - alert: TenantAbuseSignalsMissing
           expr: |
             absent(tenant:vm_egress_bits:rate5m)
