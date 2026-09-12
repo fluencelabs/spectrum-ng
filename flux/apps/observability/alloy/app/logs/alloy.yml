@@ -78,6 +78,28 @@ spec:
 
         loki.source.kubernetes "pod_logs" {
           targets    = discovery.relabel.pod_logs.output
+          forward_to = [loki.process.flow_records.receiver]
+        }
+
+        // CEILING ON FLOW RECORDS
+        // goflow2 (kube-system, flux/apps/kube-system/kube-ovn/flows) writes
+        // one JSON line per flow record. In steady state that is a few lines a
+        // second per node; under a fast scan the eBPF probe keeps every SYN
+        // unsampled and would produce one line per probed host — 100k/s and
+        // more — right when VictoriaLogs' disk cap would start evicting every
+        // other log in the cluster to make room. 500 lines/s per node is 100x
+        // steady state and ~1.3 GB/day on disk at worst; a fast scan is caught
+        // by the volumetric stage-one alerts anyway, its dropped records are not
+        // needed. Nothing else matches the selector on clusters without probes.
+        loki.process "flow_records" {
+          stage.match {
+            selector = "{namespace=\"kube-system\", container=~\"ovs|ebpf\"}"
+            stage.limit {
+              rate  = 500
+              burst = 2000
+              drop  = true
+            }
+          }
           forward_to = [loki.process.crd_operator.receiver]
         }
 

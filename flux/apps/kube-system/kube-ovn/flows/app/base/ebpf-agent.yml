@@ -1,13 +1,17 @@
-# The second probe under comparison: an eBPF TC hook on the host side of every
-# pod veth, exporting IPFIX to the node-local goflow2 (port 4740). No
-# Kubernetes enrichment here — that is flowlogs-pipeline's job and it is
-# deliberately not deployed; attribution is by IP, same as for the OVS probe.
+# The second probe: an eBPF TC hook on the host side of every pod veth,
+# exporting IPFIX to the node-local goflow2 (port 4740). No Kubernetes
+# enrichment here — attribution is by IP, same as for the OVS probe.
+#
+# Division of labour with the OVS probe: OVS samples everything at 1/64 and
+# carries volume; this probe keeps ONLY TCP SYN packets, unsampled. A scan is
+# made of SYNs and nothing else, and 1/64 sampling hides any scan slower than
+# a few hundred packets a second — so SYNs are kept whole. Their volume is
+# small (one packet per connection attempt), so this costs little. The global
+# SAMPLING stays as the fallback for anything the filter lets through.
 #
 # INTERFACES is limited to kube-ovn's pod veths (`<hash>_h`): the same packet is
 # also visible on br-int, the geneve device and the uplink, and hooking those
-# would count it up to four times. SAMPLING matches the OVS probe (1/64): the
-# first hour unsampled on a tenantless stage wrote 127 MB/h of records, 6.6x
-# every other log in the cluster combined.
+# would count it up to four times.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -49,6 +53,8 @@ spec:
               value: "/_h$/"
             - name: SAMPLING
               value: "64"
+            - name: FLOW_FILTER_RULES
+              value: '[{"ip_cidr":"0.0.0.0/0","protocol":"TCP","tcp_flags":"SYN","action":"Accept","sample":1}]'
             - name: CACHE_ACTIVE_TIMEOUT
               value: 30s
             - name: CACHE_MAX_FLOWS

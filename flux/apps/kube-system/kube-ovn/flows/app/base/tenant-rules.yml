@@ -35,11 +35,21 @@ spec:
           expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND dst_port:in(53,123,1900,11211,389) | format "amplifier" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
         - record: flows:out_packets:1m
           expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND dst_port:in(80,443) | format "web" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
+        # A reflector answers FROM the amplifying port: UDP with a well-known
+        # source port and many destinations. The `amplifier` class above is
+        # the VM asking; this is the VM being used.
+        - record: flows:out_packets:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX AND proto:UDP AND src_port:in(53,123,1900,11211,389,19,161) | format "reflector" as dport_class | stats by (container, src_addr, dport_class) sum(packets) as packets'
 
         # Fan-out: distinct destinations per source per minute. A scan is a
         # source talking to hundreds of destinations it never talked to before.
         - record: flows:out_peers:1m
           expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr) count_uniq(dst_addr) as peers'
+
+        # Vertical scan: distinct destination ports per (source, destination)
+        # pair. Kept only above 20 ports so the series count stays bounded.
+        - record: flows:out_ports:1m
+          expr: '_time:1m AND namespace:kube-system AND pod:goflow2* | unpack_json | filter type:IPFIX | stats by (container, src_addr, dst_addr) count_uniq(dst_port) as ports | filter ports:>=20'
 
         # Fan-in on a served port: distinct sources per (destination, port).
         # This is what a node serving peers looks like — many sources on one
@@ -83,6 +93,17 @@ spec:
                 "probe", "$1", "container", "(.*)")
               * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
             )
+        - record: tenant:vm_flows_out_ports:1m
+          expr: |
+            max by (pod_name, pod_namespace, vm_id, workspace_id, probe) (
+              label_replace(label_replace(label_replace(
+                label_replace(flows:out_ports:1m, "pod_ip", "$1", "src_addr", "(.*)")
+                * on (pod_ip) group_left (pod, namespace) kube_pod_info{namespace=~"workspace-.*"},
+                "pod_name", "$1", "pod", "(.*)"),
+                "pod_namespace", "$1", "namespace", "(.*)"),
+                "probe", "$1", "container", "(.*)")
+              * on (pod_name, pod_namespace) group_left (vm_id, workspace_id) tenant:vm_info
+            )
         - record: tenant:vm_flows_in_peers:1m
           expr: |
             max by (pod_name, pod_namespace, vm_id, workspace_id, probe, dst_port) (
@@ -119,8 +140,10 @@ spec:
               firing, either the VM is outside that group or the policy is not
               holding. Peers this minute: `tenant:vm_flows_out_peers:1m`.
 
+        # Scan signals ride on the eBPF probe: it keeps every SYN unsampled,
+        # so these counts are exact connection attempts, not 1/64 of them.
         - alert: TenantVmScanFanOut
-          expr: tenant:vm_flows_out_peers:1m{probe="ovs"} > 200
+          expr: tenant:vm_flows_out_peers:1m{probe="ebpf"} > 100
           for: 5m
           labels:
             team: devops
@@ -128,13 +151,69 @@ spec:
             component: tenant-abuse
             signal: fanout
           annotations:
-            summary: "VM {{ $labels.vm_id }} talks to {{ $value }} distinct hosts a minute"
+            summary: "VM {{ $labels.vm_id }} opened connections to {{ $value }} distinct hosts in a minute"
             description: >-
               vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
               (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
-              reached {{ $value }} distinct destinations in one minute, sampled
-              1/64 — the real number is higher. A client workload does not do
-              this; a scanner does. If signal=flood is firing too, it is a
-              scan. Which ports: `_time:5m pod:goflow2* | unpack_json | filter
-              src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)` in
-              VictoriaLogs.
+              sent SYNs to {{ $value }} distinct destinations in one minute, for
+              5 minutes running. A client workload does not do this; a horizontal
+              scanner does. If signal=flood is firing too, it is a fast scan.
+              Which ports: `_time:5m pod:goflow2* container:ebpf | unpack_json |
+              filter src_addr:<VM_IP> | stats by (dst_port) count_uniq(dst_addr)`
+              in VictoriaLogs.
+
+        - alert: TenantVmVerticalScan
+          expr: tenant:vm_flows_out_ports:1m{probe="ebpf"} > 100
+          for: 5m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: portscan
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is probing {{ $value }} ports on one host a minute"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              sent SYNs to {{ $value }} distinct ports on a single host within a
+              minute — a port scan of that host. Target:
+              `_time:5m pod:goflow2* container:ebpf | unpack_json | filter
+              src_addr:<VM_IP> | stats by (dst_addr) count_uniq(dst_port)`.
+
+        - alert: TenantVmReflector
+          expr: tenant:vm_flows_out_packets:1m{probe="ovs", dport_class="reflector"} > 5000
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: reflector
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is answering from an amplifying UDP port in bulk"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              sends {{ $value | humanize }} packets/min FROM UDP 53/123/1900/11211/
+              389/19/161. An open resolver, NTP or SSDP responder being used as
+              a reflector answers exactly like this; a VM legitimately running
+              DNS for its own clients does not reach this rate. Victims:
+              `tenant:vm_flows_out_peers:1m`.
+
+        # Inbound volume has had no alert at all: stage one watches egress only.
+        - alert: TenantVmIngressBitrateHigh
+          expr: tenant:vm_ingress_bits:rate5m > 200e6
+          for: 10m
+          labels:
+            team: devops
+            severity: info
+            component: tenant-abuse
+            signal: ingress
+          annotations:
+            summary: "VM {{ $labels.vm_id }} is receiving {{ $value | humanize }}bit/s"
+            description: >-
+              vm_id={{ $labels.vm_id }} workspace_id={{ $labels.workspace_id }}
+              (kubevirt {{ $labels.pod_name }} in {{ $labels.pod_namespace }})
+              has taken in over 200 Mbit/s for 10 minutes. Either a large download
+              or the VM's public address is the target of a flood; sources:
+              `tenant:vm_flows_in_peers:1m` — many distinct sources on one port
+              is an attack, one or two is a download.
