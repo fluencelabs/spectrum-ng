@@ -134,14 +134,18 @@ spec:
                   # Check the HTTP status before parsing. With curl -sf a rejected token
                   # fails the pipe, jq reads nothing, and an empty USER_ID reads as
                   # "service user not found" — which sent a real incident down the wrong
-                  # path. A dead PAT and a missing user need different answers, so they
-                  # get different messages.
+                  # path. A dead PAT, a missing user and an unreachable API need different
+                  # answers, so they get different messages. HTTP 000 is curl's "no
+                  # connection at all" (DNS, egress): the token was never even presented,
+                  # so it says nothing about the PAT.
                   CODE=$(curl -s -o /tmp/users.json -w '%{http_code}' \
                     -H "Authorization: Token $T" "$API/users?service_user=true")
-                  if [ "$CODE" != "200" ]; then
-                    echo "netbird API answered HTTP $CODE listing service users — the PAT is invalid, revoked or expired, not missing a user"
-                    exit 1
-                  fi
+                  case "$CODE" in
+                    200) ;;
+                    000) echo "netbird API unreachable (curl got no HTTP response from $API) — a network/DNS problem on this cluster, not a PAT problem; retry once egress is back"; exit 1 ;;
+                    401|403) echo "netbird API answered HTTP $CODE listing service users — the PAT is invalid, revoked or expired, not missing a user"; exit 1 ;;
+                    *) echo "netbird API answered HTTP $CODE listing service users — unexpected; check the API before blaming the PAT"; exit 1 ;;
+                  esac
 
                   USER_ID=$(jq -r --arg n "$SERVICE_USER" '[.[]|select(.is_service_user==true and .name==$n)]|(.[0].id // empty)' /tmp/users.json)
                   [ -n "$USER_ID" ] || { echo "PAT is accepted, but service user $SERVICE_USER does not exist on this NetBird tenant"; exit 1; }
