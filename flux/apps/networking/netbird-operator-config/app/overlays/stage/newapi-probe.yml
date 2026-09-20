@@ -1,0 +1,60 @@
+# EXPERIMENT, stage only (2026-08-23) — publishing a service through the NON-deprecated NetBird API
+# (netbird.io/v1alpha1 NetworkRouter + NetworkResource) alongside the existing NB* setup, to see what
+# the new model actually produces before deciding whether to migrate.
+#
+# Deliberately additive: nothing here touches the live `router` NBRoutingPeer or the four NBResources
+# that currently serve k8s./grafana.<cluster>.stage.spectrum. Both stacks run side by side.
+#
+# The DNS zone is `<CLUSTER_ID>.nbtest.spectrum`, NOT `<CLUSTER_ID>.stage.spectrum`. The NetBird
+# instance is shared by every environment, and a zone named after a live suffix could shadow
+# resolution of the names people use to reach stage today; a disjoint label cannot. Per-cluster,
+# because that is the shape a real migration would need: the record name is built as
+# `<svc>.<namespace>.<zone>` with no override, so the cluster id has to live in the zone or in the
+# namespace.
+#
+# Created out of band (the operator only references zones, never creates them):
+#   POST /api/dns/zones {name, domain, distribution_groups}
+# `domain` is a separate field from `name`, and at least one distribution group is REQUIRED — the
+# zone is only served to peers in those groups. Distributed to spectrum-${NETWORK} and to this
+# cluster's own group.
+#
+# Things this probe is meant to answer:
+#  - what the created DNS record is actually named (the controller hardcodes
+#    `<svc>.<namespace>.<zone>`, with no override),
+#  - whether an A record pointing at a ClusterIP is reachable from a mesh peer,
+#  - whether the resource comes up Ready without a policy (the new API has no policy CRD at all).
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkRouter
+metadata:
+  name: newapi-probe
+  namespace: networking
+spec:
+  # Must already exist in NetBird — the operator only references zones, it never creates them.
+  dnsZoneRef:
+    name: 7b0c4ed4-4a1c-4ebb-85a4-28ca3e473684.nbtest.spectrum
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: newapi-probe
+  namespace: networking
+spec:
+  # namespace is required on this ref, unlike the NB* API's local-only references.
+  networkRouterRef:
+    name: newapi-probe
+    namespace: networking
+  # serviceRef is namespace-LOCAL: the CRD has no `namespace` field (verified — a cross-namespace
+  # ref fails the dry-run with `.spec.serviceRef.namespace: field not declared in schema`). So a
+  # NetworkResource must live beside the Service it publishes, and since the record name is
+  # `<svc>.<namespace>.<zone>`, that namespace ends up inside the published name. Our current
+  # publishing CRs all sit in `networking`; a real migration would scatter them into
+  # kube-oidc-proxy/observability and rename everything accordingly.
+  #
+  # The probe therefore targets a ClusterIP Service that already exists in THIS namespace. The `k8s`
+  # Service here is ExternalName and cannot be used at all: the controller reads svc.Spec.ClusterIP
+  # for both the resource address and the A record content.
+  serviceRef:
+    name: netbird-operator-metrics
+  groups:
+    - name: spectrum-${NETWORK}

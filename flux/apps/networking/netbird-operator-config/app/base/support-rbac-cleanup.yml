@@ -1,0 +1,97 @@
+# Removes the orphaned `netbird-support-readonly` ClusterRole/ClusterRoleBinding.
+#
+# What it was: a binding of the bare Group `support` to a role granting get/list/watch on `""/*`,
+# apps/*, batch/*, networking.k8s.io/*, kubevirt.io/* and cloudless.dev/*. The core group with `*`
+# includes SECRETS, so it is cluster-wide secret read.
+#
+# Why it is dead but not harmless: every identity arriving through kube-oidc-proxy is prefixed
+# (`--oidc-groups-prefix=oidc:`), so a token's `support` group shows up as `oidc:support` and never
+# matches this subject — today it grants nothing. But it is one unprefixed path away from being live:
+# a client certificate with O=support, or any OIDC wired straight into the apiserver, would get
+# cluster-wide read of every secret. Found on stage 2026-08-23 while checking what rights `support`
+# actually has (answer: none — only oidc:devops -> cluster-admin and oidc:dev -> view exist).
+#
+# Why a Job and not just deleting the manifest: it WAS deleted from the manifests (commit 9e81f77,
+# added in 27b0fdf) and survived anyway, because this Kustomization runs `prune: false` — as do all
+# the netbird ones, deliberately: pruning could take out the NBRoutingPeer, and recreating that peer
+# changes the networkID and breaks every NBResource bound to it. So the object has to be removed
+# explicitly.
+#
+# Lives in base, not an overlay: the orphan predates the env split and is likely present on testnet
+# and mainnet too. It is a no-op wherever the objects are already gone.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: netbird-support-rbac-cleanup
+  namespace: networking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netbird-support-rbac-cleanup
+rules:
+  # Scoped to exactly the two objects being removed: `delete` on named resources only, so this
+  # cannot be repurposed to remove any other RBAC.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    resourceNames: ["netbird-support-readonly"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-support-rbac-cleanup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netbird-support-rbac-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: netbird-support-rbac-cleanup
+    namespace: networking
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netbird-support-rbac-cleanup
+  namespace: networking
+  annotations:
+    # A Job pod template is immutable; let Flux recreate it on spec changes.
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      serviceAccountName: netbird-support-rbac-cleanup
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cleanup
+          image: alpine/k8s:1.36.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - sh
+            - -c
+            # --ignore-not-found keeps this a clean no-op once the objects are gone, so the Job stays
+            # green on every cluster and on every re-run.
+            - |
+              set -eu
+              kubectl delete clusterrolebinding netbird-support-readonly --ignore-not-found
+              kubectl delete clusterrole netbird-support-readonly --ignore-not-found
+              echo "netbird-support-readonly removed (or already absent)"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
