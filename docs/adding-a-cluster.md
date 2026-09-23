@@ -79,6 +79,7 @@ substitutions.
 | `alertmanager-config` | `observability` | `alertmanager.yaml` | VMAlertmanager | observability present |
 | `fluence-mesh-intermediate` | `observability` | `ca.crt` + `tls.crt` + `tls.key` | cert-manager `fluence-intermediate` Issuer → issues `grafana-spectrum-tls`; Grafana also mounts its `ca.crt` | observability present (Grafana mesh TLS/OIDC) |
 | `lightmare-ssh-creds` | `fluence` | `identity` + `known_hosts` | crd-operator chart `GitRepository lightmare` | **stage only** — testnet/mainnet pull the chart from OCI and need no SSH secret |
+| `regcred` (testnet) / `fluence-regcred` (mainnet) | `fluence` | `.dockerconfigjson` for `containers.cloudless.dev` (user `node-puller`) | crd-operator chart `OCIRepository crd-operator` (`secretRef`), and image pulls where the nodes carry no registry creds | **testnet/mainnet** — the chart moved from Docker Hub to the private zot in 2026-09; without this secret the next chart bump silently never arrives (Flux keeps the old chart and reports nothing but a stale revision). The name differs per network because both secrets were hand-applied before the OCIRepository needed them; `kubectl -n fluence get secret -o custom-columns=NAME:.metadata.name,TYPE:.type` shows which one a cluster has |
 
 > `netbird-api-token` is a hand-seeded admin PAT for the per-cluster NetBird service user
 > `spectrum-<NETWORK>` (e.g. `spectrum-testnet`). The service user, plus the shared
