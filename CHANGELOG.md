@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.7](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.6...v0.3.7) (2026-09-23)
+
+
+### Bug Fixes
+
+* **netbird-token-rotate:** tell an unreachable API apart from a dead PAT ([#280](https://github.com/fluencelabs/spectrum-ng/issues/280)) ([b6269c6](https://github.com/fluencelabs/spectrum-ng/commit/b6269c64615ec340b76977f1aa2dac2ca3570568))
+
 ## [0.3.6](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.5...v0.3.6) (2026-09-12)
 
 
