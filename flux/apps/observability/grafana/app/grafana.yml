@@ -38,11 +38,6 @@ spec:
       protocol: "https"
       cert_file: "/etc/grafana-tls/tls.crt"
       cert_key: "/etc/grafana-tls/tls.key"
-      # Re-read cert_file/cert_key from disk on a timer. cert-manager rotates grafana-spectrum-tls
-      # every ~75d and kubelet refreshes the mounted Secret, but Grafana only loaded the files at
-      # startup: on 2026-09-27 mainnet pods 110d old were still serving a leaf that expired
-      # 2026-09-06. A rollout restart is not an option (grafana-operator reverts it), so let Grafana
-      # pick the new files up itself. See NKS #2174.
       certs_watch_interval: "1m"
       root_url: "https://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
     log:
