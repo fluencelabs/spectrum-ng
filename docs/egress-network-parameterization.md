@@ -123,3 +123,35 @@ changes.
 
 `ovn-nbctl lr-route-list <hub>` catches the same trap independently: the default
 route's next hop must lie in a CIDR where the router actually has an interface.
+
+## Broadcast ARP for SNAT EIPs — `bcast_arp_nd_req_flood`
+
+kube-ovn 1.16.8 (OVN 25.03.4) carries a vendor northd patch
+(`northd-bcast-arp-nd-req-flood-default-false.patch`, kube-ovn PR #7516) that
+adds a priority-90 flow to `ls_in_l2_lkup`:
+`(eth.bcast && arp.op == 1) || nd_ns_mcast -> next`. Broadcast ARP requests then
+go to `_MC_unknown`, which on an underlay switch is the localnet port only, and
+the upstream priority-80 flows that hand ARP for router NAT addresses to the
+router port never match. The upstream gateway's `who-has <hub public EIP>` goes
+unanswered; egress keeps working until the gateway's ARP entry for the EIP
+expires, then every tenant loses egress at once.
+
+The patch has an off switch, `NB_Global options:bcast_arp_nd_req_flood=true`
+(named `bcast_arp_req_flood` up to 1.16.7). The chart has no value for NB_Global
+options, so the `ovn-nb-bcast-arp-flood` CronJob in the kube-ovn app sets both
+names to `true` every five minutes, and writes only when a value differs. It
+reaches the leader through the `ovn-nb` Service over plain TCP, which holds as
+long as `networking.enableSsl` stays off.
+
+Rolling kube-ovn back does not help: the 1.16.7 patch installs the same flow
+under the older option name.
+
+Verify:
+
+```
+kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl get NB_Global . options:bcast_arp_nd_req_flood
+kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-sbctl lflow-list <public-underlay-switch> | grep 'ls_in_l2_lkup.*priority=90.*arp.op == 1'
+```
+
+The first prints `"true"`. The second prints nothing: a priority-90 broadcast
+ARP `next` flow on the public underlay switch means the option is not in effect.
