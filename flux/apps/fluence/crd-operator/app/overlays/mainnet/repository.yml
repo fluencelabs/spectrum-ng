@@ -11,4 +11,4 @@ spec:
   secretRef:
     name: fluence-regcred
   ref:
-    tag: 0.3.0
+    tag: 0.3.1
