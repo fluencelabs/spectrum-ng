@@ -17,16 +17,50 @@ spec:
             summary: "DRBD volume {{ $labels.name }} has lost quorum on {{ $labels.instance }}"
             description: "DRBD device {{ $labels.name }} on {{ $labels.instance }} has had no quorum for more than 5 minutes. I/O on this volume is suspended: pods using it will hang in Terminating or fail to mount."
 
+        - alert: DrbdResourceIoSuspended
+          expr: |
+            drbd_resource_suspended == 1
+          for: 2m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "DRBD resource {{ $labels.name }} has suspended I/O on {{ $labels.pod }}"
+            description: "DRBD has frozen all I/O on resource {{ $labels.name }} (satellite {{ $labels.pod }}) for more than 2 minutes: every VM whose disk is on it hangs on read and write, and kubelet cannot detach it. The usual cause is lost quorum with on-no-quorum=suspend-io (DrbdQuorumLost fires alongside); fencing or a manual `drbdadm suspend-io` also do this. Check `drbdsetup status {{ $labels.name }} --verbose` on that node: if the peers are gone, restore the replication link first, and only if the data on this node is known-good force it out with `drbdadm --force primary` / `drbdadm resume-io`."
+
         - alert: DrbdConnectionNotConnected
           expr: |
             drbd_connection_state{drbd_connection_state="Connected"} == 0
-          for: 10m
+          for: 5m
           labels:
             team: devops
             severity: warning
           annotations:
             summary: "DRBD connection {{ $labels.name }} -> {{ $labels.conn_name }} is not connected"
-            description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 10 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
+            description: "DRBD replication link for volume {{ $labels.name }} towards peer {{ $labels.conn_name }} has been down for more than 5 minutes. Check that the storage addresses recorded in LINSTOR (linstor node interface list) still match the satellites' actual NIC addresses."
+
+        - alert: DrbdNodeReplicationDown
+          expr: |
+            (
+              count by (instance, pod) (
+                count by (name, instance, pod) (
+                  drbd_connection_state{drbd_connection_state="Connected"} == 0
+                )
+              )
+              /
+              count by (instance, pod) (
+                count by (name, instance, pod) (
+                  drbd_connection_state{drbd_connection_state="Connected"}
+                )
+              )
+            ) > 0.5
+          for: 5m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Most DRBD resources on {{ $labels.pod }} have lost their replication link"
+            description: "{{ $value | humanizePercentage }} of the replicated DRBD resources on satellite {{ $labels.pod }} ({{ $labels.instance }}) have at least one peer connection not in Connected for more than 5 minutes. This is a node-level fault, not a single volume: the storage NIC, the storage VLAN, or a peer satellite is down, and every affected volume is running unreplicated (or, if it also lost quorum, frozen — see DrbdResourceIoSuspended). Check `drbdsetup status` on the node and `linstor node list` / `linstor node interface list` for the peer."
 
         - alert: DrbdForceIoFailures
           expr: |

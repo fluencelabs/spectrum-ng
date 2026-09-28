@@ -161,6 +161,51 @@ spec:
           summary: "OVN controller is down"
           description: "OVN controller is down on node {{ $labels.node_name }}"
 
+      - alert: KubeOvnControllerUnavailable
+        expr: kube_deployment_status_replicas_available{namespace="kube-system", deployment="kube-ovn-controller"} == 0
+        for: 2m
+        labels:
+          team: devops
+          severity: critical
+          component: controller
+        annotations:
+          summary: "No kube-ovn-controller replica is Ready"
+          description: "The kube-ovn-controller Deployment has had zero available replicas for more than 2 minutes. IPAM and every subnet/VPC/EIP reconcile are dead: no new pod or VM gets an address, nothing already running is affected yet. Check `kubectl -n kube-system get pods -l app=kube-ovn-controller` and the pod logs; the usual causes are a crash loop (KubeOvnControllerCrashLooping) or ovn-central being unreachable (OVNComponentUnhealthy)."
+
+      - alert: KubeOvnControllerCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total{namespace="kube-system", container="kube-ovn-controller"}[15m]) > 2
+        for: 5m
+        labels:
+          team: devops
+          severity: critical
+          component: controller
+        annotations:
+          summary: "kube-ovn-controller {{ $labels.pod }} is crash-looping"
+          description: "Container kube-ovn-controller in {{ $labels.pod }} restarted {{ $value | printf \"%.0f\" }} times in the last 15 minutes. While it restarts, IPAM and subnet/VPC reconciliation stall for the whole cluster; if every replica does this the Deployment goes unavailable (KubeOvnControllerUnavailable). Read `kubectl -n kube-system logs {{ $labels.pod }} --previous` for the panic."
+
+      # An ovs-ovn restart can leave a provider-network bridge with an empty
+      # OpenFlow table (kubeovn/kube-ovn#7544): no NORMAL flow, every VLAN frame
+      # dropped, while the bridge exists and ProviderNetwork stays Ready. Nothing
+      # exports per-bridge flow counts, so this alerts on the trigger and the
+      # bridge check itself stays manual.
+      - alert: OvsOvnRestarted
+        expr: |
+          max by (node, pod) (
+            (
+              (time() - kube_pod_start_time{namespace="kube-system", pod=~"ovs-ovn-.*"}) < 1800
+              or
+              increase(kube_pod_container_status_restarts_total{namespace="kube-system", container="openvswitch"}[30m]) > 0
+            )
+            * on (pod) group_left (node) kube_pod_info{namespace="kube-system", pod=~"ovs-ovn-.*"}
+          )
+        labels:
+          team: devops
+          severity: warning
+          component: ovs
+        annotations:
+          summary: "ovs-ovn restarted on {{ $labels.node }} — verify the provider bridge flow table"
+          description: "The ovs-ovn pod {{ $labels.pod }} on node {{ $labels.node }} started or restarted within the last 30 minutes. After an ovs-ovn restart the provider-network bridge can come up with an empty OpenFlow table (kubeovn/kube-ovn#7544): underlay traffic through that node is black-holed while every health metric stays green. Run `kubectl -n kube-system exec {{ $labels.pod }} -c openvswitch -- ovs-ofctl dump-flows <provider bridge>` and confirm a `priority=0 actions=NORMAL` flow exists; if the table is empty, add it with `ovs-ofctl add-flow <provider bridge> \"priority=0,actions=NORMAL\"`."
+
   - name: kubeovn.errors
     interval: 30s
     rules:
