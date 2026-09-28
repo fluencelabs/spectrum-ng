@@ -1,0 +1,68 @@
+# Pins each LINSTOR satellite's storage-network address to its node.
+#
+# Piraeus merges every LinstorSatelliteConfiguration whose nodeSelector matches
+# the node, so each object below adds exactly one annotation to one node's
+# satellite pod: the kube-ovn fixed-IP request for the linstor NAD
+# (`<nad>.<namespace>.ovn.kubernetes.io/ip_address`, provider-scoped like the
+# ip_pool key it replaces). Everything else about the pod still comes from
+# talos-override in satellite.yml.
+#
+# Both mainnet clusters share this overlay, so the node names and addresses are
+# NOT literals: slot n reads STORAGE_SATELLITE_NODE_n / STORAGE_SATELLITE_IP_n
+# from that cluster's spectrum-manual-vars. Three slots because each mainnet
+# cluster runs three satellites today; a fourth node needs a fourth slot here
+# and a fourth pair of keys on the cluster.
+#
+# Set today (read off the pods on 2026-09-28, and equal to what each node's
+# `storage` NetInterface holds in LINSTOR):
+#   fra-flix-01                          poz-bey-c01
+#   1  fra-flix2-01    10.118.147.12     1  poz-bey-c01-19  10.118.147.12
+#   2  fra-flix3-02    10.118.147.13     2  poz-bey-c01-20  10.118.147.11
+#   3  fra-flix3-03    10.118.147.11     3  poz-bey-c01-21  10.118.147.13
+#
+# ⚠️ The address here and the one in `linstor node interface create <node>
+# storage <ip>` are two copies of one fact, and nothing verifies them. Change
+# both together, and never move an address between nodes without updating the
+# NetInterface — DRBD dials the literal IP LINSTOR holds.
+#
+# ⚠️ An unset slot substitutes to an empty hostname, which matches no node, and
+# that satellite then gets a dynamic address from the subnet: the very failure
+# this file exists to prevent. Add the keys to spectrum-manual-vars BEFORE this
+# reconciles, and re-check with:
+#   kubectl -n storage get pods -l app.kubernetes.io/component=linstor-satellite \
+#     -o custom-columns='NODE:.spec.nodeName,IP:.metadata.annotations.linstor\.storage\.ovn\.kubernetes\.io/ip_address'
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-ip-1
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${STORAGE_SATELLITE_NODE_1}"
+  podTemplate:
+    metadata:
+      annotations:
+        linstor.storage.ovn.kubernetes.io/ip_address: "${STORAGE_SATELLITE_IP_1}"
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-ip-2
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${STORAGE_SATELLITE_NODE_2}"
+  podTemplate:
+    metadata:
+      annotations:
+        linstor.storage.ovn.kubernetes.io/ip_address: "${STORAGE_SATELLITE_IP_2}"
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-ip-3
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${STORAGE_SATELLITE_NODE_3}"
+  podTemplate:
+    metadata:
+      annotations:
+        linstor.storage.ovn.kubernetes.io/ip_address: "${STORAGE_SATELLITE_IP_3}"

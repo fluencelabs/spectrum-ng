@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC` |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_NAD`, `STORAGE_PREF_NIC`, `STORAGE_SATELLITE_NODE_n` / `STORAGE_SATELLITE_IP_n` per storage node |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -58,7 +58,8 @@ tokens in the manifests are filled from them at apply time.
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
-| `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, from the storage subnet's CIDR. A **set**, not a mapping — the nth entry is not the nth node, read the address off the pod. Pinned for the node's life: LINSTOR stores the literal IP, so a reallocated one leaves a dead `NetInterface` and replication fails silently; see §3 |
+| `STORAGE_SATELLITE_NODE_n` | `spectrum-manual-vars` | `nodeSelector` (`kubernetes.io/hostname`) of `LinstorSatelliteConfiguration/storage-ip-n` | node name of the nth satellite node, `n` = 1… up to the number of slots in the overlay's `satellite-nodes.yml` (3 on mainnet, 2 on testnet, 1 on stage). A node with no slot gets a **dynamic** storage address; see §3 |
+| `STORAGE_SATELLITE_IP_n` | `spectrum-manual-vars` | `ip_address` annotation on that node's satellite (kube-ovn fixed IP on the linstor NAD) | the storage-network address of `STORAGE_SATELLITE_NODE_n`, from the storage subnet's CIDR. Pinned for the node's life and **must equal** the IP of that node's `STORAGE_PREF_NIC` `NetInterface` in LINSTOR: DRBD dials the literal IP LINSTOR holds, nothing verifies the two; see §3. Replaces `STORAGE_SATELLITE_IPS` (`ip_pool`), which was a set and got re-dealt across nodes on satellite recreation |
 | `STORAGE_NAD` | `spectrum-manual-vars` | `k8s.v1.cni.cncf.io/networks` on the LINSTOR satellite | `<namespace>/<name>` of the hand-applied NAD, e.g. `storage/linstor` — the whole reference, not just the name. The `Subnet`'s `provider` encodes the same pair as `<nad>.<namespace>.ovn` |
 | `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` property on the LINSTOR satellite | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`. Must equal the name used in the manual `linstor node interface create`; nothing verifies the two, see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
@@ -111,12 +112,28 @@ substitutions.
 ### Dedicated storage network (per node, manual)
 
 On a cluster that has a storage network, the satellite is attached to the `linstor`
-NAD and gets a pinned address from `STORAGE_SATELLITE_IPS`. Pointing DRBD
-replication at it takes one command **per node**, which has no declarative form in
-Piraeus:
+NAD (`satellite.yml`) and each node's satellite gets a **fixed** address on it
+(`satellite-nodes.yml`: one `LinstorSatelliteConfiguration/storage-ip-n` per node,
+scoped with `nodeSelector: {kubernetes.io/hostname: ${STORAGE_SATELLITE_NODE_n}}` and
+carrying the kube-ovn annotation
+`linstor.storage.ovn.kubernetes.io/ip_address: ${STORAGE_SATELLITE_IP_n}`). Piraeus
+merges every configuration whose selector matches the node, so the shared
+`talos-override` still supplies everything else. The overlay has a fixed number of
+slots — 3 on mainnet, 2 on testnet, 1 on stage — and adding a satellite node means
+adding a slot to the overlay **and** a pair of keys on the cluster:
 
 ```bash
-linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-STORAGE_SATELLITE_IPS>
+kubectl -n flux-system patch cm spectrum-manual-vars --type merge -p \
+  '{"data":{"STORAGE_SATELLITE_NODE_<n>":"<node>","STORAGE_SATELLITE_IP_<n>":"<ip>"}}'
+```
+
+Pointing DRBD replication at that address takes one more command **per node**, which
+has no declarative form in Piraeus:
+
+```bash
+linstor node interface create <node> <STORAGE_PREF_NIC> <STORAGE_SATELLITE_IP_n>
+# or, if the interface already exists with a stale address:
+linstor node interface modify <node> <STORAGE_PREF_NIC> --ip <STORAGE_SATELLITE_IP_n>
 ```
 
 `PrefNic` is declared in the overlay (`satellite.yml` → `spec.properties`) and does not
@@ -132,6 +149,18 @@ controller's database, not in the satellite pod.
 > interface is created by hand. A mismatch fails nothing — the pod starts, and DRBD
 > quietly replicates over the pod network instead. Check it whenever a node joins.
 
+> ⚠️ Likewise `STORAGE_SATELLITE_IP_n` and the IP on that `NetInterface` are two copies
+> of one fact. The `NetInterface` is a literal — DRBD dials whatever LINSTOR holds — so
+> the two must be equal on every node, and an address must never move between nodes
+> without the `NetInterface` moving with it. Until 2026-09-28 the address came from an
+> `ip_pool` annotation (`STORAGE_SATELLITE_IPS`), which kube-ovn treats as a set: a
+> satellite recreation on mainnet dealt the same three addresses to different nodes,
+> the `NetInterface`s kept the old literals, and DRBD peers pointed at the wrong hosts.
+> That is why the address is now keyed by node name. Changing the annotation recreates
+> the satellite pod, so roll this out one cluster at a time and verify `drbdsetup status`
+> (and `linstor node interface list <node>` against the pod's `ip_address` annotation)
+> afterwards.
+
 Two things this does **not** do: the satellite's control connection to the controller
 stays on the pod network (`CurStltConnName` remains `default-ipv4` — only replication
 moves), and the VLAN must actually be trunked to the node's port by the site. Verify
@@ -142,16 +171,19 @@ linstor node interface list <node>     # default-ipv4 AND the STORAGE_PREF_NIC n
 linstor node list-properties <node>    # PrefNic = that same name
 ```
 
-All three storage values in `satellite.yml` — `STORAGE_NAD`, `STORAGE_SATELLITE_IPS`
-and `STORAGE_PREF_NIC` — come from `spectrum-manual-vars`, set by hand at bootstrap
-alongside the objects they name. Keeping them as variables means one place per cluster
-describes its storage network, rather than splitting that description between a
-ConfigMap and three overlays.
+All storage values in `satellite.yml` and `satellite-nodes.yml` — `STORAGE_NAD`,
+`STORAGE_PREF_NIC` and the `STORAGE_SATELLITE_NODE_n` / `STORAGE_SATELLITE_IP_n` pairs —
+come from `spectrum-manual-vars`, set by hand at bootstrap alongside the objects they
+name. Keeping them as variables means one place per cluster describes its storage
+network, rather than splitting that description between a ConfigMap and three overlays
+— and it is what lets both mainnet clusters share one overlay with different node names.
 
 None of them has a default, deliberately. An unset variable substitutes to an empty string, and
-the CRD accepts an empty `PrefNic` or `ip_pool` — which points DRBD back at the pod
-network without failing anything. A cluster with no storage network must therefore leave `satellite.yml`
-out of its overlay, which is why the file is overlay-scoped rather than shared. Note
+the CRD accepts an empty `PrefNic` or NAD reference — which points DRBD back at the pod
+network without failing anything. An unset `STORAGE_SATELLITE_NODE_n` is an empty
+hostname selector that matches no node, so that satellite gets a dynamic address from
+the subnet and its `NetInterface` goes stale on the next restart. A cluster with no storage network must therefore leave `satellite.yml`
+and `satellite-nodes.yml` out of its overlay, which is why the files are overlay-scoped rather than shared. Note
 also that `${VAR:?message}` does **not** help: in flux's substitution it yields the
 message text as the value and still succeeds, so there is no "required variable" that
 fails a build.
@@ -159,7 +191,7 @@ fails a build.
 > ⚠️ **Known open risk: nothing checks that the overlay and the cluster agree.** Leaving
 > `satellite.yml` out is a *convention*, not a mechanism — all three overlays include it
 > today with the same unconditional `patches:` entry. A cluster whose overlay carries the
-> file but which has no storage network gets an empty `ip_pool`; a cluster with the
+> file but which has no storage network gets an empty NAD reference; a cluster with the
 > network whose overlay omits the file gets no network annotation at all. Neither fails a
 > build, kills a pod, or logs an error; in both cases DRBD replicates over the pod
 > network — through Geneve and out the 1G management port. The only check that catches it
@@ -388,6 +420,18 @@ rendered the `linstor` `Subnet`. `spectrum-vars` holds `NETWORK` only.
 > exists on stage today. The other two must be added to `spectrum-manual-vars` on **every**
 > cluster running a satellite *before* this repo is reconciled, matching the hand-applied
 > objects — on stage `STORAGE_NAD=storage/linstor` and `STORAGE_PREF_NIC=storage`.
+>
+> Since 2026-09-28 the same applies to `satellite-nodes.yml`: `STORAGE_SATELLITE_IPS` is
+> read by nothing any more, and each cluster needs `STORAGE_SATELLITE_NODE_n` /
+> `STORAGE_SATELLITE_IP_n` for every satellite node *before* the change reconciles,
+> otherwise the satellites restart with dynamic storage addresses. Values as read off the
+> pods that day (mainnet clusters share the overlay, so each sets its own): fra-flix-01 —
+> `fra-flix2-01=10.118.147.12`, `fra-flix3-02=10.118.147.13`, `fra-flix3-03=10.118.147.11`;
+> poz-bey-c01 — `poz-bey-c01-19=10.118.147.12`, `poz-bey-c01-20=10.118.147.11`,
+> `poz-bey-c01-21=10.118.147.13`; testnet — `kabat-02=10.118.148.11`,
+> `kabat-03=10.118.148.12`; stage — `kabat-05=10.118.147.51`. Each must equal the IP of
+> that node's `storage` `NetInterface` (on testnet that day the `NetInterface`s still held
+> `10.118.147.52/.53` — fix with `linstor node interface modify`).
 >
 > `piraeus-operator/ks.yml` marks `spectrum-manual-vars` `optional: false`, so a cluster
 > with no such ConfigMap fails the build loudly. That does **not** cover a ConfigMap that

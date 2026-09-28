@@ -1,0 +1,57 @@
+# Pins each LINSTOR satellite's storage-network address to its node.
+#
+# Piraeus merges every LinstorSatelliteConfiguration whose nodeSelector matches
+# the node, so each object below adds exactly one annotation to one node's
+# satellite pod: the kube-ovn fixed-IP request for the linstor NAD
+# (`<nad>.<namespace>.ovn.kubernetes.io/ip_address`, provider-scoped like the
+# ip_pool key it replaces). Everything else about the pod still comes from
+# talos-override in satellite.yml.
+#
+# The node names and addresses are NOT literals: slot n reads
+# STORAGE_SATELLITE_NODE_n / STORAGE_SATELLITE_IP_n from spectrum-manual-vars,
+# the same place the rest of the storage network is described. Two slots because
+# testnet runs two satellites today; a third node needs a third slot here and a
+# third pair of keys on the cluster.
+#
+# Set today (read off the pods on 2026-09-28):
+#   1  kabat-02  10.118.148.11
+#   2  kabat-03  10.118.148.12
+# ⚠️ On the same day LINSTOR's `storage` NetInterfaces still held 10.118.147.52
+# and .53 — a subnet the cluster no longer uses. They have to be moved to the
+# addresses above (`linstor node interface modify <node> storage --ip <ip>`)
+# for replication to ride the storage network at all.
+#
+# ⚠️ The address here and the one on the `storage` NetInterface are two copies
+# of one fact, and nothing verifies them. Change both together, and never move
+# an address between nodes without updating the NetInterface — DRBD dials the
+# literal IP LINSTOR holds.
+#
+# ⚠️ An unset slot substitutes to an empty hostname, which matches no node, and
+# that satellite then gets a dynamic address from the subnet: the very failure
+# this file exists to prevent. Add the keys to spectrum-manual-vars BEFORE this
+# reconciles, and re-check with:
+#   kubectl -n storage get pods -l app.kubernetes.io/component=linstor-satellite \
+#     -o custom-columns='NODE:.spec.nodeName,IP:.metadata.annotations.linstor\.storage\.ovn\.kubernetes\.io/ip_address'
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-ip-1
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${STORAGE_SATELLITE_NODE_1}"
+  podTemplate:
+    metadata:
+      annotations:
+        linstor.storage.ovn.kubernetes.io/ip_address: "${STORAGE_SATELLITE_IP_1}"
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-ip-2
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${STORAGE_SATELLITE_NODE_2}"
+  podTemplate:
+    metadata:
+      annotations:
+        linstor.storage.ovn.kubernetes.io/ip_address: "${STORAGE_SATELLITE_IP_2}"

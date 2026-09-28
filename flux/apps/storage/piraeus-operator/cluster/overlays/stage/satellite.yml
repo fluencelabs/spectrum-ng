@@ -5,18 +5,19 @@
 # one day and then withdrew (beam PR #394 reverts the whole set), so nothing
 # outside this cluster creates, reconciles or supplies any part of it — the
 # ProviderNetwork, the Vlan, the linstor Subnet and its NAD are all applied by a
-# human, and so are the three values below.
+# human, and so are the values below.
 #
-# All three come from spectrum-manual-vars, set at bootstrap alongside the
-# objects they name: STORAGE_NAD (the `<namespace>/<name>` of the NAD, e.g.
-# `storage/linstor`), STORAGE_SATELLITE_IPS, and STORAGE_PREF_NIC (the LINSTOR
-# NetInterface name). They are variables rather than literals so that one place
-# per cluster describes its storage network, instead of the description being
-# split between a ConfigMap and three overlays.
+# Both come from spectrum-manual-vars, set at bootstrap alongside the objects
+# they name: STORAGE_NAD (the `<namespace>/<name>` of the NAD, e.g.
+# `storage/linstor`) and STORAGE_PREF_NIC (the LINSTOR NetInterface name). They
+# are variables rather than literals so that one place per cluster describes its
+# storage network, instead of the description being split between a ConfigMap
+# and three overlays. The per-node address on that network is set the same way,
+# but in satellite-nodes.yml — see there.
 #
-# None gets a default, on purpose: an empty PrefNic or ip_pool is accepted by the
-# CRD and breaks replication silently, so a cluster without a storage network
-# must not include this file in its overlay.
+# None gets a default, on purpose: an empty PrefNic or NAD reference is accepted
+# by the CRD and breaks replication silently, so a cluster without a storage
+# network must not include this file in its overlay.
 #
 # ⚠️ That last sentence is a CONVENTION, not a mechanism. Every overlay includes
 # this file with the same unconditional `patches: - path: satellite.yml`, and
@@ -28,7 +29,7 @@
 #
 # One step stays manual, per node, and has no declarative form in Piraeus —
 # registering the interface itself:
-#   linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-the-pool>
+#   linstor node interface create <node> <STORAGE_PREF_NIC> <STORAGE_SATELLITE_IP_n>
 #
 # ⚠️ PrefNic below and that hand-registered interface are two ends of one name,
 # and nothing verifies them: PrefNic comes from STORAGE_PREF_NIC, the interface
@@ -43,11 +44,16 @@
 # Upstream documents only container-network and hostNetwork
 # (docs/how-to/drbd-host-networking.md), so this path is ours to maintain.
 #
-# ip_pool pins the address: a LINSTOR netinterface holds a literal IP, and a
-# dynamically reallocated one would go stale on every satellite restart — the
-# same restart that showed the primary IP moving from 10.16.9.255 to 10.16.10.1.
-# The pool needs one entry per node running a satellite; extend it as nodes are
-# added, which is why this lives in the overlay and not in the shared base.
+# The satellite's address on the storage network is deliberately NOT set here.
+# A LINSTOR netinterface holds a literal IP, so the address has to survive
+# satellite restarts — the same restart that showed the primary IP moving from
+# 10.16.9.255 to 10.16.10.1. This file used to request it through an ip_pool
+# annotation, which is a set, not a mapping: with more than one node kube-ovn is
+# free to deal the same addresses out in a different order on every recreation,
+# and on 2026-09-28 it did exactly that on mainnet, leaving DRBD peers pointed
+# at the wrong hosts. satellite-nodes.yml now pins one address per node, keyed
+# by kubernetes.io/hostname; one entry per node running a satellite, extended
+# as nodes are added, which is why it lives in the overlay and not in the base.
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
 metadata:
@@ -57,7 +63,6 @@ spec:
     metadata:
       annotations:
         k8s.v1.cni.cncf.io/networks: "${STORAGE_NAD}"
-        linstor.storage.ovn.kubernetes.io/ip_pool: "${STORAGE_SATELLITE_IPS}"
   # Points DRBD replication at the interface registered above. The satellite's
   # own control connection to the controller stays on the pod network
   # (CurStltConnName remains default-ipv4) — only replication moves.
