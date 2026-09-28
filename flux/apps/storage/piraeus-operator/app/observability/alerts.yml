@@ -20,13 +20,14 @@ spec:
         - alert: DrbdResourceIoSuspended
           expr: |
             drbd_resource_suspended == 1
+              unless on (name, pod) drbd_device_quorum == 0
           for: 2m
           labels:
             team: devops
             severity: critical
           annotations:
             summary: "DRBD resource {{ $labels.name }} has suspended I/O on {{ $labels.pod }}"
-            description: "DRBD has frozen all I/O on resource {{ $labels.name }} (satellite {{ $labels.pod }}) for more than 2 minutes: every VM whose disk is on it hangs on read and write, and kubelet cannot detach it. The usual cause is lost quorum with on-no-quorum=suspend-io (DrbdQuorumLost fires alongside); fencing or a manual `drbdadm suspend-io` also do this. Check `drbdsetup status {{ $labels.name }} --verbose` on that node: if the peers are gone, restore the replication link first, and only if the data on this node is known-good force it out with `drbdadm --force primary` / `drbdadm resume-io`."
+            description: "DRBD has frozen all I/O on resource {{ $labels.name }} (satellite {{ $labels.pod }}) for more than 2 minutes: every VM whose disk is on it hangs on read and write, and kubelet cannot detach it. Quorum loss is covered by DrbdQuorumLost and excluded here; what remains is fencing or a manual `drbdadm suspend-io`. Check `drbdsetup status {{ $labels.name }} --verbose` on that node: if the peers are gone, restore the replication link first, and only if the data on this node is known-good force it out with `drbdadm --force primary` / `drbdadm resume-io`."
 
         - alert: DrbdConnectionNotConnected
           expr: |
@@ -42,25 +43,25 @@ spec:
         - alert: DrbdNodeReplicationDown
           expr: |
             (
-              count by (instance, pod) (
-                count by (name, instance, pod) (
-                  drbd_connection_state{drbd_connection_state="Connected"} == 0
-                )
+              count by (pod, conn_name) (
+                drbd_connection_state{drbd_connection_state="Connected"} == 0
               )
               /
-              count by (instance, pod) (
-                count by (name, instance, pod) (
-                  drbd_connection_state{drbd_connection_state="Connected"}
-                )
+              count by (pod, conn_name) (
+                drbd_connection_state{drbd_connection_state="Connected"}
               )
             ) > 0.5
+              and on (pod, conn_name)
+            count by (pod, conn_name) (
+              drbd_connection_state{drbd_connection_state="Connected"}
+            ) >= 3
           for: 5m
           labels:
             team: devops
             severity: critical
           annotations:
-            summary: "Most DRBD resources on {{ $labels.pod }} have lost their replication link"
-            description: "{{ $value | humanizePercentage }} of the replicated DRBD resources on satellite {{ $labels.pod }} ({{ $labels.instance }}) have at least one peer connection not in Connected for more than 5 minutes. This is a node-level fault, not a single volume: the storage NIC, the storage VLAN, or a peer satellite is down, and every affected volume is running unreplicated (or, if it also lost quorum, frozen — see DrbdResourceIoSuspended). Check `drbdsetup status` on the node and `linstor node list` / `linstor node interface list` for the peer."
+            summary: "Satellite {{ $labels.pod }} has lost replication to peer {{ $labels.conn_name }}"
+            description: "{{ $value | humanizePercentage }} of the DRBD resources that satellite {{ $labels.pod }} replicates with peer {{ $labels.conn_name }} have been out of Connected for more than 5 minutes. This is a link-level fault, not a single volume: the peer's storage address changed (a satellite pod was recreated and the LINSTOR NetInterface still holds the old IP), the storage VLAN is down, or the peer satellite is gone. Several satellites naming the same peer point at that peer. Every affected volume runs unreplicated, or frozen if it also lost quorum (DrbdQuorumLost). Compare `linstor node interface list {{ $labels.conn_name }}` with the address on that satellite pod, then `drbdadm adjust all` on the satellites."
 
         - alert: DrbdForceIoFailures
           expr: |
