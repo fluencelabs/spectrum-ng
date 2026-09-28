@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.7](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.6...v0.3.7) (2026-09-28)
+
+
+### Bug Fixes
+
+* **crd-operator:** pull the chart from containers.cloudless.dev and bump to the 2026-09-28 release ([#244](https://github.com/fluencelabs/spectrum-ng/issues/244)) ([8208db6](https://github.com/fluencelabs/spectrum-ng/commit/8208db6e3a6a8af3fbd16c5121d3ace81f911445))
+* **grafana:** reload TLS cert on cert-manager rotation ([#289](https://github.com/fluencelabs/spectrum-ng/issues/289)) ([b6f84d7](https://github.com/fluencelabs/spectrum-ng/commit/b6f84d75a655f9e3da92bc3ad62639c965bddee6))
+* **netbird-token-rotate:** tell an unreachable API apart from a dead PAT ([#280](https://github.com/fluencelabs/spectrum-ng/issues/280)) ([b6269c6](https://github.com/fluencelabs/spectrum-ng/commit/b6269c64615ec340b76977f1aa2dac2ca3570568))
+
 ## [0.3.6](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.5...v0.3.6) (2026-09-12)
 
 
