@@ -146,7 +146,7 @@ long as `networking.enableSsl` stays off.
 Rolling kube-ovn back does not help: the 1.16.7 patch installs the same flow
 under the older option name.
 
-Verify:
+Verify on the NB and SB leaders (`-l ovn-nb-leader=true`, `-l ovn-sb-leader=true`):
 
 ```
 kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl get NB_Global . options:bcast_arp_nd_req_flood
@@ -155,3 +155,18 @@ kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-sbctl lflow-
 
 The first prints `"true"`. The second prints nothing: a priority-90 broadcast
 ARP `next` flow on the public underlay switch means the option is not in effect.
+
+A green Job only proves that the option names it knows are set. The name has
+already changed once, between 1.16.7 and 1.16.8. On every kube-ovn bump, check
+`dist/images/patches/` in the new tag for the option the northd patch reads and
+run the `lflow-list` check above; if the name moved, update the CronJob.
+
+The trade-off: the vendor default exists to keep broadcast ARP/ND from being
+flooded to every port of large underlay switches, where the flood can exceed
+OVS's 4096-resubmit limit. Our underlay switches hold a localnet port, router
+ports and a handful of LSPs, far below that limit.
+
+Upstream issue: kubeovn/kube-ovn#7545. Once a release installs the skip-flood
+flow below the router-owned-IP flows, the CronJob can go. The kube-ovn Flux
+Kustomization runs with `prune: false`, so deleting the file does not remove the
+CronJob; delete it from each cluster by hand.
