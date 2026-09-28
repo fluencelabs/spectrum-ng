@@ -156,6 +156,11 @@ kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-sbctl lflow-
 The first prints `"true"`. The second prints nothing: a priority-90 broadcast
 ARP `next` flow on the public underlay switch means the option is not in effect.
 
+`OvnNbBcastArpFloodJobNotSucceeding` fires when the CronJob has not completed
+successfully for 30 minutes, including when it has never succeeded. Per-Job
+`KubeJobFailed` cannot catch a CronJob that always fails: every run is a new
+Job, and failed Jobs are cleaned up after 10 minutes, before its `for: 15m`.
+
 A green Job only proves that the option names it knows are set. The name has
 already changed once, between 1.16.7 and 1.16.8. On every kube-ovn bump, check
 `dist/images/patches/` in the new tag for the option the northd patch reads and
