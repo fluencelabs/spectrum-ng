@@ -41,6 +41,10 @@ spec:
         - name: linstor-satellite
           securityContext:
             privileged: true
+          volumeMounts:
+            - name: lvm-conf
+              mountPath: /etc/lvm/lvm.conf
+              subPath: lvm.conf
           env:
             - name: NODE_NAME
               valueFrom:
@@ -51,6 +55,9 @@ spec:
       volumes:
       - name: shared-data
         emptyDir: {}
+      - name: lvm-conf
+        configMap:
+          name: linstor-satellite-lvm-conf
       - name: run-systemd-system
         $patch: delete
       - name: run-drbd-shutdown-guard
