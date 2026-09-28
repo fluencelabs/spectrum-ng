@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.8](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.7...v0.3.8) (2026-09-28)
+
+
+### Bug Fixes
+
+* **storage:** keep LVM on the satellites away from kubelet loop devices ([#291](https://github.com/fluencelabs/spectrum-ng/issues/291)) ([f0c4925](https://github.com/fluencelabs/spectrum-ng/commit/f0c49257dba8dd6b63ced488ac32598ed3999de1))
+
 ## [0.3.7](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.6...v0.3.7) (2026-09-28)
 
 
