@@ -19,7 +19,7 @@ spec:
   datasources:
     - inputName: "DS_PROMETHEUS"
       datasourceName: "VictoriaMetrics"
-  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/cni-grafana.json"
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.16/dist/monitoring/cni-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -34,7 +34,7 @@ spec:
   datasources:
     - inputName: "DS_PROMETHEUS"
       datasourceName: "VictoriaMetrics"
-  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/controller-grafana.json"
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.16/dist/monitoring/controller-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -49,7 +49,7 @@ spec:
   datasources:
     - inputName: "DS_PROMETHEUS"
       datasourceName: "VictoriaMetrics"
-  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovn-grafana.json"
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.16/dist/monitoring/ovn-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -64,7 +64,7 @@ spec:
   datasources:
     - inputName: "DS_PROMETHEUS"
       datasourceName: "VictoriaMetrics"
-  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/pinger-grafana.json"
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.16/dist/monitoring/pinger-grafana.json"
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -79,4 +79,4 @@ spec:
   datasources:
     - inputName: "DS_PROMETHEUS"
       datasourceName: "VictoriaMetrics"
-  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.14/dist/monitoring/ovs-grafana.json"
+  url: "https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/heads/release-1.16/dist/monitoring/ovs-grafana.json"

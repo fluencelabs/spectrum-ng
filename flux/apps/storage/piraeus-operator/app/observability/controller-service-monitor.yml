@@ -1,9 +1,9 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: linstor-satellite
+  name: linstor-controller
   labels:
-    app: linstor-satellite
+    app: linstor-controller
     scrape: "true"
 spec:
   endpoints:
@@ -13,4 +13,4 @@ spec:
       - storage
   selector:
     matchLabels:
-      app: linstor-satellite
+      app: linstor-controller

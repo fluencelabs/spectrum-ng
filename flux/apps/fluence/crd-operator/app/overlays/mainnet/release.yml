@@ -12,7 +12,7 @@ spec:
     controller:
       image:
         repository: "containers.cloudless.dev/release/crd-controller"
-        tag: "0.9.0"
+        tag: "0.9.1"
       persistence:
         storageClassName: lvm-thin-r2
 

@@ -29,6 +29,12 @@ spec:
           targets = discovery.kubernetes.pod.targets
 
           rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            regex = "guest-console-log"
+            action = "drop"
+          }
+
+          rule {
             source_labels = ["__meta_kubernetes_namespace"]
             target_label = "namespace"
           }
@@ -72,6 +78,19 @@ spec:
 
         loki.source.kubernetes "pod_logs" {
           targets    = discovery.relabel.pod_logs.output
+          forward_to = [loki.process.flow_records.receiver]
+        }
+
+        loki.process "flow_records" {
+          stage.match {
+            selector = "{namespace=\"kube-system\", container=~\"syn|all\"}"
+            stage.limit {
+              rate  = 500
+              burst = 2000
+              drop  = true
+              by_label_name = "container"
+            }
+          }
           forward_to = [loki.process.crd_operator.receiver]
         }
 

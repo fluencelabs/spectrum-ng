@@ -69,22 +69,6 @@ spec:
           forward_to = [prometheus.relabel.relable.receiver]
         }
 
-        // kube-state-metrics
-        import.git "ksm" {
-          repository = "https://github.com/grafana/alloy-modules.git"
-          revision = "v0.2.11"
-          path = "modules/kubernetes/kube-state-metrics/metrics.alloy"
-          pull_frequency = "15m"
-        }
-
-        ksm.kubernetes "targets" {}
-
-        ksm.scrape "metrics" {
-          targets = ksm.kubernetes.targets.output
-          job_label = "kube-state-metrics"
-          forward_to = [prometheus.relabel.relable.receiver]
-        }
-
         // node-exporter
         import.git "node_exporter" {
           repository     = "https://github.com/grafana/alloy-modules.git"
