@@ -497,3 +497,25 @@ spec:
         annotations:
           summary: "High OVN cluster connection error rate"
           description: "OVN cluster server {{ $labels.instance }} has {{ $value }} connection errors per second"
+
+  - name: kubeovn.nb-options
+    rules:
+      - alert: OvnNbBcastArpFloodJobNotSucceeding
+        expr: |
+          (
+            time() - kube_cronjob_status_last_successful_time{namespace="kube-system", cronjob="ovn-nb-bcast-arp-flood"} > 1800
+          )
+          or
+          (
+            kube_cronjob_info{namespace="kube-system", cronjob="ovn-nb-bcast-arp-flood"}
+            unless on (namespace, cronjob)
+            kube_cronjob_status_last_successful_time{namespace="kube-system", cronjob="ovn-nb-bcast-arp-flood"}
+          )
+        for: 30m
+        labels:
+          team: devops
+          severity: warning
+          component: ovn
+        annotations:
+          summary: "OVN NB bcast ARP flood option is not being enforced"
+          description: "CronJob kube-system/ovn-nb-bcast-arp-flood has not completed successfully for over 30 minutes. If the NB option bcast_arp_nd_req_flood is lost, OVN stops answering broadcast ARP for SNAT EIPs and tenant egress fails once the upstream ARP cache expires. Check the Job logs and `ovn-nbctl get NB_Global . options:bcast_arp_nd_req_flood` on the NB leader."

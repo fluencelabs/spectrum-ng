@@ -123,3 +123,55 @@ changes.
 
 `ovn-nbctl lr-route-list <hub>` catches the same trap independently: the default
 route's next hop must lie in a CIDR where the router actually has an interface.
+
+## Broadcast ARP for SNAT EIPs — `bcast_arp_nd_req_flood`
+
+kube-ovn 1.16.8 (OVN 25.03.4) carries a vendor northd patch
+(`northd-bcast-arp-nd-req-flood-default-false.patch`, kube-ovn PR #7516) that
+adds a priority-90 flow to `ls_in_l2_lkup`:
+`(eth.bcast && arp.op == 1) || nd_ns_mcast -> next`. Broadcast ARP requests then
+go to `_MC_unknown`, which on an underlay switch is the localnet port only, and
+the upstream priority-80 flows that hand ARP for router NAT addresses to the
+router port never match. The upstream gateway's `who-has <hub public EIP>` goes
+unanswered; egress keeps working until the gateway's ARP entry for the EIP
+expires, then every tenant loses egress at once.
+
+The patch has an off switch, `NB_Global options:bcast_arp_nd_req_flood=true`
+(named `bcast_arp_req_flood` up to 1.16.7). The chart has no value for NB_Global
+options, so the `ovn-nb-bcast-arp-flood` CronJob in the kube-ovn app sets both
+names to `true` every five minutes, and writes only when a value differs. It
+reaches the leader through the `ovn-nb` Service over plain TCP, which holds as
+long as `networking.enableSsl` stays off.
+
+Rolling kube-ovn back does not help: the 1.16.7 patch installs the same flow
+under the older option name.
+
+Verify on the NB and SB leaders (`-l ovn-nb-leader=true`, `-l ovn-sb-leader=true`):
+
+```
+kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-nbctl get NB_Global . options:bcast_arp_nd_req_flood
+kubectl -n kube-system exec <ovn-central-pod> -c ovn-central -- ovn-sbctl lflow-list <public-underlay-switch> | grep 'ls_in_l2_lkup.*priority=90.*arp.op == 1'
+```
+
+The first prints `"true"`. The second prints nothing: a priority-90 broadcast
+ARP `next` flow on the public underlay switch means the option is not in effect.
+
+`OvnNbBcastArpFloodJobNotSucceeding` fires when the CronJob has not completed
+successfully for 30 minutes, including when it has never succeeded. Per-Job
+`KubeJobFailed` cannot catch a CronJob that always fails: every run is a new
+Job, and failed Jobs are cleaned up after 10 minutes, before its `for: 15m`.
+
+A green Job only proves that the option names it knows are set. The name has
+already changed once, between 1.16.7 and 1.16.8. On every kube-ovn bump, check
+`dist/images/patches/` in the new tag for the option the northd patch reads and
+run the `lflow-list` check above; if the name moved, update the CronJob.
+
+The trade-off: the vendor default exists to keep broadcast ARP/ND from being
+flooded to every port of large underlay switches, where the flood can exceed
+OVS's 4096-resubmit limit. Our underlay switches hold a localnet port, router
+ports and a handful of LSPs, far below that limit.
+
+Upstream issue: kubeovn/kube-ovn#7545. Once a release installs the skip-flood
+flow below the router-owned-IP flows, the CronJob can go. The kube-ovn Flux
+Kustomization runs with `prune: false`, so deleting the file does not remove the
+CronJob; delete it from each cluster by hand.
