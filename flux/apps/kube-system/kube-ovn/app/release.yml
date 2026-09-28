@@ -75,6 +75,11 @@ spec:
       disableModulesManagement: true
       ovsDirectory: "/var/lib/openvswitch"
       ovnDirectory: "/var/lib/ovn"
+      resources:
+        requests:
+          memory: "1Gi"
+        limits:
+          memory: "3Gi"
     cni:
       mountToolingDirectory: false
 
