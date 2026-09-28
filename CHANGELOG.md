@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.9](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.8...v0.3.9) (2026-09-28)
+
+
+### Features
+
+* **observability:** alert on DRBD suspended I/O, lost replication, and dead kube-ovn control plane ([#294](https://github.com/fluencelabs/spectrum-ng/issues/294)) ([916f857](https://github.com/fluencelabs/spectrum-ng/commit/916f857a2f1562ad85ee469659f3c9d4f7c129ef))
+
+
+### Bug Fixes
+
+* **kube-ovn:** keep NB bcast_arp_nd_req_flood=true so OVN answers ARP for SNAT EIPs ([#296](https://github.com/fluencelabs/spectrum-ng/issues/296)) ([a46bc5a](https://github.com/fluencelabs/spectrum-ng/commit/a46bc5afcf6a53975bcf0cd1574a8b34c731a7d7))
+* **kube-ovn:** raise ovs-ovn memory limit to 3Gi ([#298](https://github.com/fluencelabs/spectrum-ng/issues/298)) ([894194d](https://github.com/fluencelabs/spectrum-ng/commit/894194dca8d42904f19258c668c74ea327d56e40))
+
 ## [0.3.8](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.7...v0.3.8) (2026-09-28)
 
 
