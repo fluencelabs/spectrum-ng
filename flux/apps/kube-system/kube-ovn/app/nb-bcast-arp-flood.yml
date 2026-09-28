@@ -19,7 +19,6 @@ spec:
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
-          enableServiceLinks: false
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -46,7 +45,7 @@ spec:
               args:
                 - |
                   set -eu
-                  DB="tcp:[ovn-nb.kube-system]:6641"
+                  DB="tcp:[${OVN_NB_SERVICE_HOST}]:${OVN_NB_SERVICE_PORT}"
                   for OPT in bcast_arp_nd_req_flood bcast_arp_req_flood; do
                     RAW=$(ovn-nbctl --db="$DB" --timeout=30 --if-exists get NB_Global . "options:$OPT")
                     CUR=$(printf '%s' "$RAW" | tr -d '"')
