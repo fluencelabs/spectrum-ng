@@ -38,6 +38,7 @@ spec:
       protocol: "https"
       cert_file: "/etc/grafana-tls/tls.crt"
       cert_key: "/etc/grafana-tls/tls.key"
+      certs_watch_interval: "1m"
       root_url: "https://grafana.${CLUSTER_ID}.${NETWORK}.spectrum"
     log:
       mode: "console"
