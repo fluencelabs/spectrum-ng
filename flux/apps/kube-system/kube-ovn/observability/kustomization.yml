@@ -6,3 +6,4 @@ resources:
   - service-monitor.yml
   - alerts.yml
   - egress-alerts.yml
+  - abuse-alerts.yml

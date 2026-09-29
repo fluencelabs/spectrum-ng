@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: goflow2-mapping
+data:
+  mapping.yml: |
+    formatter:
+      fields:
+        - type
+        - time_received_ns
+        - time_flow_start_ns
+        - time_flow_end_ns
+        - sampler_address
+        - bytes
+        - packets
+        - etype
+        - proto
+        - src_addr
+        - dst_addr
+        - src_port
+        - dst_port
+        - tcp_flags
+        - in_if
+        - out_if
+        - interface_name
+        - flow_direction
+      protobuf:
+        - name: interface_name
+          index: 1000
+          type: string
+        - name: flow_direction
+          index: 1001
+          type: varint
+      render:
+        interface_name: string
+    ipfix:
+      mapping:
+        - field: 82
+          destination: interface_name
+        - field: 61
+          destination: flow_direction
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: goflow2
+  labels:
+    app.kubernetes.io/name: goflow2
+    app.kubernetes.io/part-of: kube-ovn-flows
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: goflow2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: goflow2
+        app.kubernetes.io/part-of: kube-ovn-flows
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+      containers:
+        - name: syn
+          image: docker.io/netsampler/goflow2:v2.2.6
+          args:
+            - -listen=netflow://127.0.0.1:4740
+            - -format=json
+            - -transport=file
+            - -addr=:4792
+            - -mapping=/etc/goflow2/mapping.yml
+          ports:
+            - name: metrics-syn
+              containerPort: 4792
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: mapping
+              mountPath: /etc/goflow2
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        - name: all
+          image: docker.io/netsampler/goflow2:v2.2.6
+          args:
+            - -listen=netflow://127.0.0.1:4741
+            - -format=json
+            - -transport=file
+            - -addr=:4791
+            - -mapping=/etc/goflow2/mapping.yml
+          ports:
+            - name: metrics-all
+              containerPort: 4791
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: mapping
+              mountPath: /etc/goflow2
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: mapping
+          configMap:
+            name: goflow2-mapping
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: goflow2
+  labels:
+    app.kubernetes.io/name: goflow2
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: goflow2
+  ports:
+    - name: metrics-all
+      port: 4791
+    - name: metrics-syn
+      port: 4792
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: goflow2
+  labels:
+    scrape: "true"
+spec:
+  endpoints:
+    - port: metrics-all
+      relabelings:
+        - targetLabel: probe
+          replacement: all
+    - port: metrics-syn
+      relabelings:
+        - targetLabel: probe
+          replacement: syn
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: goflow2

@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: linstor-controller
+  labels:
+    app: linstor-controller
+    scrape: "true"
+spec:
+  endpoints:
+    - port: prometheus
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app: linstor-controller

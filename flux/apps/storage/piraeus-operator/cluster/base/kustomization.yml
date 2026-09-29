@@ -2,3 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - cluster.yml
+configMapGenerator:
+  - name: linstor-satellite-lvm-conf
+    files:
+      - lvm.conf
+generatorOptions:
+  disableNameSuffixHash: true

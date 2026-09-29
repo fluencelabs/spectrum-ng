@@ -48,3 +48,20 @@ patches:
       metadata:
         name: cdi
       $patch: delete
+  # cdi-operator 1.66.0 drops the deprecated v1alpha1 from the cdis CRD at
+  # runtime, but the upstream manifest still ships it. Left as-is, Flux re-adds
+  # v1alpha1 every reconcile and the operator strips it a second later — the
+  # CRD flapped ~470 times in 12h on mainnet (generation 573780), and each flap
+  # makes every apiserver rebuild the cdis storage and terminate all CDI
+  # watchers. Remove it here so what Flux applies matches what the operator
+  # wants. The `test` guards the index: if upstream reorders versions the
+  # reconcile fails loudly instead of silently dropping v1beta1.
+  - target:
+      kind: CustomResourceDefinition
+      name: cdis.cdi.kubevirt.io
+    patch: |-
+      - op: test
+        path: /spec/versions/0/name
+        value: v1alpha1
+      - op: remove
+        path: /spec/versions/0

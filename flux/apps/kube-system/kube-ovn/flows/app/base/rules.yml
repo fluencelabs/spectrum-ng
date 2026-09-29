@@ -1,0 +1,39 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: kube-ovn-flows
+spec:
+  groups:
+    - name: kube-ovn-flows
+      interval: 1m
+      rules:
+        - alert: FlowProbeSilent
+          expr: sum by (probe, instance) (rate(goflow2_flow_traffic_packets_total[10m])) == 0
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: flow-observability
+          annotations:
+            summary: "Flow probe {{ $labels.probe }} has exported nothing for 15m"
+            description: >-
+              goflow2 on {{ $labels.instance }} has received no IPFIX packets from
+              the {{ $labels.probe }} probe for 15 minutes. Check
+              `kubectl -n kube-system logs ds/netobserv-ebpf-{{ $labels.probe }}`.
+
+        - alert: FlowProbeMissing
+          expr: |
+            absent(goflow2_flow_traffic_packets_total{probe="all"})
+            or absent(goflow2_flow_traffic_packets_total{probe="syn"})
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+            component: flow-observability
+          annotations:
+            summary: "Flow probe {{ $labels.probe }} is not being scraped"
+            description: >-
+              No goflow2 series for probe {{ $labels.probe }}: the goflow2
+              DaemonSet is down, the ServiceMonitor is not matched, or the
+              collector container never started. `kubectl -n kube-system get
+              ds goflow2` first.
