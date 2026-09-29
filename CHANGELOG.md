@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.9...v0.3.10) (2026-09-29)
+
+
+### Features
+
+* **storage:** register the satellite storage NetInterface with linstor-nic-sync on stage ([#300](https://github.com/fluencelabs/spectrum-ng/issues/300)) ([4d8fa20](https://github.com/fluencelabs/spectrum-ng/commit/4d8fa2090bb2661258b5c3797cf8e131d88991d4))
+
+
+### Bug Fixes
+
+* **storage,crd-operator:** take the registry pull secret name from REGISTRY_PULL_SECRET ([#303](https://github.com/fluencelabs/spectrum-ng/issues/303)) ([7bd1655](https://github.com/fluencelabs/spectrum-ng/commit/7bd16554680660774a7537fe6cc49e94e00a1e96))
+* **storage:** give the nic-sync sidecar a pull secret for containers.cloudless.dev ([#302](https://github.com/fluencelabs/spectrum-ng/issues/302)) ([e99d49b](https://github.com/fluencelabs/spectrum-ng/commit/e99d49bd6e3cdb463d66aadd858a0ecaadb4df68))
+
 ## [0.3.9](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.8...v0.3.9) (2026-09-28)
 
 
