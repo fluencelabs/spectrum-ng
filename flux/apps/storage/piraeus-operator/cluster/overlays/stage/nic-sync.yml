@@ -6,7 +6,7 @@ spec:
   podTemplate:
     spec:
       imagePullSecrets:
-        - name: fluence-regcred
+        - name: "${REGISTRY_PULL_SECRET}"
       containers:
         - name: nic-sync
           image: containers.cloudless.dev/release/linstor-nic-sync:0.1.1
