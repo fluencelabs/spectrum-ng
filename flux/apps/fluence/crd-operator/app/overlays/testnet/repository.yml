@@ -9,6 +9,6 @@ spec:
   # the same node-puller credentials. The secret is hand-seeded per cluster
   # (docs/adding-a-cluster.md) and NOT managed by Flux.
   secretRef:
-    name: regcred
+    name: "${REGISTRY_PULL_SECRET}"
   ref:
     tag: 0.3.1

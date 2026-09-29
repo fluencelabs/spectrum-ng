@@ -38,7 +38,7 @@ tokens in the manifests are filled from them at apply time.
 | Object | Kind | Created by | `optional` | Holds |
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
-| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC` |
+| `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC`, `REGISTRY_PULL_SECRET` |
 | `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
@@ -54,6 +54,7 @@ tokens in the manifests are filled from them at apply time.
 | `CLUSTER_ID` | `spectrum-manual-vars` | coredns `.spectrum` zone, grafana `root_url`, NetBird group/route/NBResource names, crd-api host | unique per cluster |
 | `PROVIDER` | `spectrum-manual-vars` | external-dns `txtOwnerId`, crd-api host | required (external-dns ks requires manual-vars) |
 | `PUBLIC_SUBNET_LIST` | `spectrum-manual-vars` | crd-operator controller public-network subnets | |
+| `REGISTRY_PULL_SECRET` | `spectrum-manual-vars` | `secretRef` of `OCIRepository crd-operator`; `imagePullSecrets` of the LINSTOR satellite pod | name of the hand-applied `.dockerconfigjson` secret for `containers.cloudless.dev`, present in both `fluence` and `storage`. No default: an unset value fails the crd-operator and linstor-cluster builds (StrictPostBuildSubstitutions) instead of rendering an empty name |
 | `ENVOY_PUBLIC_SUBNET` | `spectrum-manual-vars` | envoy proxy | required (envoy ks requires manual-vars) |
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
@@ -79,7 +80,7 @@ substitutions.
 | `alertmanager-config` | `observability` | `alertmanager.yaml` | VMAlertmanager | observability present |
 | `fluence-mesh-intermediate` | `observability` | `ca.crt` + `tls.crt` + `tls.key` | cert-manager `fluence-intermediate` Issuer → issues `grafana-spectrum-tls`; Grafana also mounts its `ca.crt` | observability present (Grafana mesh TLS/OIDC) |
 | `lightmare-ssh-creds` | `fluence` | `identity` + `known_hosts` | crd-operator chart `GitRepository lightmare` | **stage only** — testnet/mainnet pull the chart from OCI and need no SSH secret |
-| `regcred` (testnet) / `fluence-regcred` (mainnet) | `fluence` | `.dockerconfigjson` for `containers.cloudless.dev` (user `node-puller`) | crd-operator chart `OCIRepository crd-operator` (`secretRef`), and image pulls where the nodes carry no registry creds | **testnet/mainnet** — the chart moved from Docker Hub to the private zot in 2026-09; without this secret the next chart bump silently never arrives (Flux keeps the old chart and reports nothing but a stale revision). The name differs per network because both secrets were hand-applied before the OCIRepository needed them; `kubectl -n fluence get secret -o custom-columns=NAME:.metadata.name,TYPE:.type` shows which one a cluster has |
+| `${REGISTRY_PULL_SECRET}` (`fluence-regcred` on stage and mainnet, `regcred` on testnet) | `fluence`, `storage` | `.dockerconfigjson` for `containers.cloudless.dev` (user `node-puller`) | crd-operator chart `OCIRepository crd-operator` (`secretRef`), the satellite pod (`nic-sync` sidecar), and the crd-operator workloads (patched onto their ServiceAccounts/Deployments by hand) | **all clusters** — cluster nodes carry no registry credentials, so every pull from `containers.cloudless.dev` needs this secret, under the same name in both namespaces. Without it the next chart bump silently never arrives (Flux keeps the old chart and reports nothing but a stale revision) and the satellite pod stays NotReady, which stops piraeus-operator from updating the node address. Applied by hand, not in Git; the name is whatever the cluster already had and is set in `REGISTRY_PULL_SECRET` |
 
 > `netbird-api-token` is a hand-seeded admin PAT for the per-cluster NetBird service user
 > `spectrum-<NETWORK>` (e.g. `spectrum-testnet`). The service user, plus the shared
