@@ -64,6 +64,7 @@ tokens in the manifests are filled from them at apply time.
 | `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` property on the LINSTOR satellite | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`. Must equal the name used in the manual `linstor node interface create`; nothing verifies the two, see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
 | `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
+| `KUBE_DNS_IP` | `spectrum-manual-vars` | second nameserver in the kube-oidc-proxy and grafana `dnsConfig` (first is the NetBird sidecar on `127.0.0.1`) | `kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.clusterIP}'`. Defaults to `10.96.0.10`; stage is `10.112.0.10`. A wrong value leaves both pods without cluster DNS |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -321,8 +322,8 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 | `flux/apps/storage/piraeus-operator/cluster/overlays/foonet/` | `kustomization.yml`; add `satellite.yml` only if the cluster has a hand-built storage VLAN |
 
 > Any cluster that includes `flux/apps/observability` **must** also include
-> `flux/apps/networking` — Grafana joins the mesh (creates `SetupKey`/`NBSetupKey`,
-> annotates its pod for sidecar injection, and serves on `grafana.<id>.<net>.spectrum`
+> `flux/apps/networking` — Grafana joins the mesh (creates `SetupKey`/`SidecarProfile`,
+> labels its pod for sidecar injection, and serves on `grafana.<id>.<net>.spectrum`
 > over mesh-only `authentik.infra`). Without the NetBird operator those CRs reference
 > missing CRDs and OIDC login breaks.
 
