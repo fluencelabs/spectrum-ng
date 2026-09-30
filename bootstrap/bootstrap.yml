@@ -2020,5 +2020,5 @@ metadata:
 spec:
   interval: 5m0s
   ref:
-    branch: main
+    tag: v0.3.13 # x-release-please-version
   url: https://github.com/fluencelabs/spectrum-ng

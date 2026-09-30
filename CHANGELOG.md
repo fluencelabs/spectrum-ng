@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.13](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.12...v0.3.13) (2026-09-30)
+
+
+### Features
+
+* **flux:** pin the spectrum version in the cluster instead of git ([#312](https://github.com/fluencelabs/spectrum-ng/issues/312)) ([a2ef669](https://github.com/fluencelabs/spectrum-ng/commit/a2ef669b78c6b785c1ea8fec0644901d9becef11))
+
 ## [0.3.12](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.11...v0.3.12) (2026-09-30)
 
 

@@ -286,18 +286,25 @@ annotations are gone.
    This brings up Flux and the minimal `clusters/bootstrap` set (`kube-system` +
    `flux-system`).
 
-4. **Select the environment** (one-time). The env overlay is **not** reconciled by Flux
-   automatically — apply it by hand to repoint the `spectrum` GitRepository ref and the
-   root Kustomization from `./clusters/bootstrap` to `./clusters/<env>`:
+4. **Select the environment.** `flux-spectrum` renders the env overlay by `${NETWORK}` and
+   repoints the root Kustomization from `./clusters/bootstrap` to `./clusters/<env>`.
+
+5. **Pin the version.** The `spectrum` GitRepository is owned by the cluster, not by git:
+   no manifest in this repo sets its ref, so Flux never resets it. Bootstrap leaves it on
+   the latest release; set the ref the cluster should run:
 
    ```bash
-   kubectl apply -k flux/apps/flux-system/flux-instance/app/spectrum/overlays/<env>
+   # testnet / mainnet: a release tag
+   kubectl -n flux-system patch gitrepository spectrum --type merge \
+     -p '{"spec":{"ref":{"tag":"v0.3.13"}}}'
+   # stage / dev: follow main
+   kubectl -n flux-system patch gitrepository spectrum --type json \
+     -p '[{"op":"replace","path":"/spec/ref","value":{"branch":"main"}}]'
    ```
 
-   - `stage` → tracks branch `main`, path `./clusters/stage`
-   - `testnet` / `mainnet` → tracks git tag `testnet` / `mainnet`, path `./clusters/<env>`
+   Rolling a cluster to another version is the same patch.
 
-5. **Watch it converge:**
+6. **Watch it converge:**
 
    ```bash
    flux get kustomizations -A
@@ -315,7 +322,7 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 | Path | What |
 |---|---|
 | `clusters/foonet/kustomization.yml` | app-group list (copy from `testnet`; add `networking` if it runs Grafana) |
-| `flux/apps/flux-system/flux-instance/app/spectrum/overlays/foonet/` | `gitrepository.yml` (branch or tag) + `spectrum.yml` (`path: ./clusters/foonet`) |
+| `flux/apps/flux-system/flux-instance/app/spectrum/overlays/foonet/` | `kustomization.yml` + `spectrum.yml` (`path: ./clusters/foonet`) |
 | `flux/apps/fluence/crd-operator/app/overlays/foonet/` | chart source — OCI (like testnet/mainnet) or git (like stage) |
 | `flux/apps/networking/netbird-operator-config/app/overlays/foonet/` | `router.replicas: 1` patch (only if `networking` is included) |
 | `flux/apps/storage/piraeus-operator/cluster/overlays/foonet/` | `kustomization.yml`; add `satellite.yml` only if the cluster has a hand-built storage VLAN |
