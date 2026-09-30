@@ -4,3 +4,4 @@ resources:
   - router.yml
   - groups.yml
   - policy.yml
+  - support-rbac-cleanup.yml
