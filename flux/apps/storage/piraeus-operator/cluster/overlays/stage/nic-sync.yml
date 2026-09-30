@@ -20,6 +20,8 @@ spec:
               value: http://linstor-controller:3370
             - name: NIC_NAME
               value: "${STORAGE_PREF_NIC}"
+            - name: IFACE
+              value: "${STORAGE_IFACE}"
           resources:
             requests:
               cpu: 5m
