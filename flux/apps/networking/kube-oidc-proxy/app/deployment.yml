@@ -18,7 +18,7 @@ spec:
       dnsConfig:
         nameservers:
           - 127.0.0.1
-          - ${KUBE_DNS_IP:=10.96.0.10}
+          - ${KUBE_DNS_IP}
         searches:
           - kube-oidc-proxy.svc.cluster.local
           - svc.cluster.local
