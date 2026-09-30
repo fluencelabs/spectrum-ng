@@ -3,5 +3,7 @@ kind: Kustomization
 resources:
 - ../../base
 - nic-sync.yml
+- internal-tls.yml
 patches:
 - path: satellite.yml
+- path: cluster-tls.yml
