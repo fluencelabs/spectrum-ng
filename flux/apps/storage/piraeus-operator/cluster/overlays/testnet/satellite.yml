@@ -1,58 +1,27 @@
-# Attaches the LINSTOR satellite to the dedicated storage network and points DRBD
-# replication at it, mirroring stage. Without this nothing joins the linstor NAD
-# and Subnet — the subnet sits at used=0 and replication goes
-# over the pod network, i.e. through Geneve and out over the management VLAN.
+# Attaches the LINSTOR satellite to the storage network through the host: the
+# satellite runs in the host network namespace, and DRBD replication leaves the
+# node on a VLAN interface that Talos creates at boot (a VLANConfig document in
+# the node's config patch), not on a kube-ovn attachment. Storage then keeps
+# working while kube-ovn or OVS is down.
 #
-# The storage network is run BY HAND, end to end — beam owns no part of it. All
-# three values below come from spectrum-manual-vars, set at bootstrap alongside
-# the objects they name: STORAGE_NAD (`<namespace>/<name>` of the NAD),
-# STORAGE_SATELLITE_IPS, STORAGE_PREF_NIC (the LINSTOR NetInterface name). None
-# gets a default: an empty PrefNic or ip_pool is accepted by the CRD and breaks
-# replication silently, so a cluster without a storage network must not include
-# this file in its overlay.
+# Both values come from spectrum-manual-vars: STORAGE_PREF_NIC (the LINSTOR
+# NetInterface name) and STORAGE_IFACE (the Talos VLANConfig name, the same on
+# every node). The nic-sync sidecar registers the NetInterface from the address
+# on STORAGE_IFACE, so the two names must describe the same interface.
 #
-# ⚠️ That is a CONVENTION, not a mechanism: every overlay includes this file with
-# the same unconditional `patches:` entry, and nothing checks it against whether
-# the cluster actually has a storage network — see the stage overlay for the
-# full note.
-#
-# One step per node has no declarative form in Piraeus and is done by hand:
-#   linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-the-pool>
-# Piraeus only ever registers the PRIMARY pod IP (tracked in the node property
-# Aux/piraeus.io/configured-interfaces) and leaves interfaces it did not create
-# alone. PrefNic below names that interface, so on a node where the step has not
-# been done it would point at a NIC that does not exist — hence this file is
-# overlay-scoped, and hence the annotations landed first and PrefNic only once
-# the interfaces existed.
-#
-# ⚠️ PrefNic and that hand-registered interface are two ends of one name, and
-# nothing verifies them: PrefNic comes from STORAGE_PREF_NIC, the interface is
-# made by hand. Verify with `linstor node interface list <node>` against
-# `linstor node list-properties <node>`.
-#
-# Registered on testnet: kabat-02 → 10.118.147.12, kabat-03 → 10.118.147.11.
-# The addresses do NOT follow node order — ip_pool is a set, not a mapping, so
-# read the address off the pod rather than assuming the nth entry.
-#
-# ip_pool pins the addresses: a LINSTOR netinterface holds a literal IP, and a
-# dynamically reallocated one would go stale on every satellite restart — the
-# restart this very change caused moved the pod IPs from 10.16.0.13/15 to
-# 10.16.1.108/109 while `storage` stayed put. One entry per node running a
-# satellite — two on testnet — which is why the pool lives in the overlay and
-# not in the shared base.
+# None gets a default, on purpose: an empty PrefNic is accepted by the CRD and
+# breaks replication silently.
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
 metadata:
   name: talos-override
 spec:
   podTemplate:
-    metadata:
-      annotations:
-        k8s.v1.cni.cncf.io/networks: "${STORAGE_NAD}"
-        linstor.storage.ovn.kubernetes.io/ip_pool: "${STORAGE_SATELLITE_IPS}"
-  # Points DRBD replication at the interface registered above. The satellite's
-  # own control connection to the controller stays on the pod network
-  # (CurStltConnName remains default-ipv4) — only replication moves.
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+  # Points DRBD replication at the interface nic-sync registers. The satellite's
+  # own control connection to the controller stays on default-ipv4.
   properties:
     - name: PrefNic
       value: "${STORAGE_PREF_NIC}"
