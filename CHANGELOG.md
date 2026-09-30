@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.12](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.11...v0.3.12) (2026-09-30)
+
+
+### Bug Fixes
+
+* **flux:** keep the spectrum GitRepository when its manifest leaves the repo ([#307](https://github.com/fluencelabs/spectrum-ng/issues/307)) ([225693e](https://github.com/fluencelabs/spectrum-ng/commit/225693e24d250c743a3a265828cde6aec5949a57))
+
 ## [0.3.11](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.10...v0.3.11) (2026-09-30)
 
 
