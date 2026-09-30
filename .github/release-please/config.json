@@ -5,5 +5,15 @@
   "initial-version": "0.1.0",
   "packages": {
     ".": {}
-  }
+  },
+  "extra-files": [
+    {
+      "type": "generic",
+      "path": "bootstrap/bootstrap.yml"
+    },
+    {
+      "type": "generic",
+      "path": "bootstrap/bootstrap/spectrum.yml"
+    }
+  ]
 }
