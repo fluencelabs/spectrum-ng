@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.11](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.10...v0.3.11) (2026-09-30)
+
+
+### Bug Fixes
+
+* **cdi:** CDI 1.66.0 -&gt; 1.66.1, drop the importer pin to 1.64.0 ([#305](https://github.com/fluencelabs/spectrum-ng/issues/305)) ([f0679ad](https://github.com/fluencelabs/spectrum-ng/commit/f0679ad725d402be3ee1cc617f65ab0509319e98))
+
 ## [0.3.10](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.9...v0.3.10) (2026-09-29)
 
 
