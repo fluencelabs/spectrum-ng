@@ -67,7 +67,7 @@ spec:
         runAsGroup: 65534
       containers:
         - name: syn
-          image: docker.io/netsampler/goflow2:v2.2.6
+          image: docker.io/netsampler/goflow2:v2.2.7
           args:
             - -listen=netflow://127.0.0.1:4740
             - -format=json
@@ -91,7 +91,7 @@ spec:
             limits:
               memory: 256Mi
         - name: all
-          image: docker.io/netsampler/goflow2:v2.2.6
+          image: docker.io/netsampler/goflow2:v2.2.7
           args:
             - -listen=netflow://127.0.0.1:4741
             - -format=json
