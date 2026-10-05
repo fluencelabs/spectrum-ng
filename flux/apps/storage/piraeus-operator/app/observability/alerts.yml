@@ -112,8 +112,17 @@ spec:
             description: "LINSTOR reports resource {{ $labels.name }} in a bad state (linstor_resource_state={{ $value }}) on node {{ $labels.node }} for more than 10 minutes. The resource cannot assemble there: any pod scheduled to this node that needs the volume will hang in ContainerCreating."
 
         - alert: LinstorErrorReportStorm
+          # linstor_error_reports_count is not an event counter but the number of
+          # reports the controller currently holds, and it carries the controller's
+          # pod label: a rescheduled controller starts a new series at 0 and
+          # reloads the whole history within a minute, which any increase()
+          # reads as a storm. Compare what exists now with what existed 15m ago,
+          # per node and ignoring the pod; the label-less total duplicates the
+          # per-node series and is dropped (graph @cloudless/fluence, node #2501).
           expr: |
-            increase(linstor_error_reports_count[15m]) > 10
+            max by (hostname, module) (linstor_error_reports_count{hostname!=""})
+              - max by (hostname, module) (linstor_error_reports_count{hostname!=""} offset 15m)
+              > 10
           for: 10m
           labels:
             team: devops
