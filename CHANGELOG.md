@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.15](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.14...v0.3.15) (2026-10-05)
+
+
+### Features
+
+* **storage:** run the mainnet LINSTOR satellite on a Talos-owned storage VLAN ([#319](https://github.com/fluencelabs/spectrum-ng/issues/319)) ([c0e435d](https://github.com/fluencelabs/spectrum-ng/commit/c0e435d1f0c2d4a018e49f0bc737f9b8e21a5602))
+
 ## [0.3.14](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.13...v0.3.14) (2026-10-05)
 
 
