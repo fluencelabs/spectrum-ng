@@ -70,6 +70,14 @@ spec:
           # assuming — `kubectl -n default get svc kubernetes` names the range
           # the apiserver actually allocates from.
           v4: "${SERVICE_CIDR:=10.96.0.0/12}"
+      pods:
+        # Pod MTU on overlay subnets (--mtu). 0 keeps kube-ovn's default: the
+        # MTU of the tunnel interface minus the Geneve overhead. Moving the
+        # tunnel to a jumbo interface would then hand new pods a jumbo MTU while
+        # running ones keep the old one, and a mixed MTU inside one OVN logical
+        # switch silently drops large UDP — so a cluster moving its tunnel pins
+        # the current value here first (graph @cloudless/fluence, node #2502).
+        mtu: ${OVN_POD_MTU:=0}
 
     ovsOvn:
       disableModulesManagement: true
