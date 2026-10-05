@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.16](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.15...v0.3.16) (2026-10-05)
+
+
+### Bug Fixes
+
+* **piraeus-operator:** stop LinstorErrorReportStorm firing on controller reschedule ([#322](https://github.com/fluencelabs/spectrum-ng/issues/322)) ([1d7eb3b](https://github.com/fluencelabs/spectrum-ng/commit/1d7eb3b86aec106cccf6fc735325cffe40679c92))
+
 ## [0.3.15](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.14...v0.3.15) (2026-10-05)
 
 
