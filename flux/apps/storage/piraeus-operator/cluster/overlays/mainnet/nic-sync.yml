@@ -1,0 +1,39 @@
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: nic-sync
+spec:
+  podTemplate:
+    spec:
+      imagePullSecrets:
+        - name: "${REGISTRY_PULL_SECRET}"
+      containers:
+        - name: nic-sync
+          image: containers.cloudless.dev/release/linstor-nic-sync:0.1.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LINSTOR_URL
+              value: http://linstor-controller:3370
+            - name: NIC_NAME
+              value: "${STORAGE_PREF_NIC}"
+            - name: IFACE
+              value: "${STORAGE_IFACE}"
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
