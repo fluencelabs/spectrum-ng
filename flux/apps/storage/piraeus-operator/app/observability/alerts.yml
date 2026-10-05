@@ -113,7 +113,9 @@ spec:
 
         - alert: LinstorErrorReportStorm
           expr: |
-            increase(linstor_error_reports_count[15m]) > 10
+            max by (hostname, module) (linstor_error_reports_count{hostname!=""})
+              - max by (hostname, module) (linstor_error_reports_count{hostname!=""} offset 15m)
+              > 10
           for: 10m
           labels:
             team: devops
