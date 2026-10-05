@@ -22,9 +22,7 @@ Cluster-specific overrides, created manually.
 | `PROVIDER` | Infrastructure provider identifier |
 | `PUBLIC_SUBNET_LIST` | Public subnet list for CRD operator |
 | `ENVOY_PUBLIC_SUBNET` | Public subnet for Envoy proxy |
-| `STORAGE_SATELLITE_IPS` | Storage-network addresses for the LINSTOR satellite `ip_pool`, one per node running a satellite |
-| `STORAGE_NAD` | `<namespace>/<name>` of the hand-applied storage NAD, e.g. `storage/linstor` |
-| `STORAGE_IFACE` | Name of the Talos VLANConfig carrying DRBD replication (e.g. `storage`); the LINSTOR satellite runs in hostNetwork and nic-sync registers this interface's address — stage, testnet and mainnet overlays |
+| `STORAGE_IFACE` | Name of the Talos VLANConfig carrying DRBD replication (e.g. `storage`); the LINSTOR satellite runs in hostNetwork and nic-sync registers this interface's address — every cluster |
 | `STORAGE_PREF_NIC` | Name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage` |
 | `OVN_TUNNEL_IFACE` | Interface carrying Geneve traffic, kube-ovn `--iface` (optional; default is the interface holding the node IP) |
 | `OVN_POD_MTU` | Pod MTU on overlay subnets, kube-ovn `--mtu` (optional; `0` = derived from the tunnel interface). Pin the current value before moving `OVN_TUNNEL_IFACE` to a jumbo interface |

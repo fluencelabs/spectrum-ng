@@ -52,26 +52,20 @@ spec:
   postBuild:
     substituteFrom:
       # spectrum-vars is written by beam and carries NETWORK, which selects the
-      # overlay path. The storage values — STORAGE_NAD, STORAGE_SATELLITE_IPS,
-      # STORAGE_PREF_NIC and STORAGE_IFACE — are set per cluster by hand and live in
-      # spectrum-manual-vars, so this app has to read both.
+      # overlay path. The storage values — STORAGE_PREF_NIC and STORAGE_IFACE —
+      # are set per cluster by hand and live in spectrum-manual-vars, so this app
+      # has to read both.
       #
-      # The storage network objects themselves — ProviderNetwork, Vlan, the linstor
-      # Subnet and its NAD — are applied BY HAND on each cluster and rendered by
-      # nothing: this repo dropped the Subnet and NAD in #202, and beam withdrew
-      # from storage ownership entirely. On stage that is ProviderNetwork
-      # `storage` on the dedicated 10G port enp16s0f1, so replication does not
-      # share the workload underlay.
-      #
-      # STORAGE_CIDR, STORAGE_VLAN and STORAGE_MTU are therefore substituted into
-      # nothing here; leftover keys in either ConfigMap are simply unread. See
-      # docs/adding-a-cluster.md §3, which records the missing owner as an open
-      # risk.
+      # The storage network itself is a Talos VLANConfig (`storage`) in each
+      # node's config patch, owned by beam; the satellite runs in hostNetwork and
+      # nic-sync registers that interface's address with LINSTOR. Nothing here
+      # renders network objects; leftover STORAGE_* keys are simply unread. See
+      # docs/adding-a-cluster.md §3.
       - kind: ConfigMap
         name: spectrum-vars
         optional: false
       # optional: false so a cluster that never got spectrum-manual-vars fails the
-      # build loudly instead of substituting STORAGE_NAD and STORAGE_PREF_NIC to
+      # build loudly instead of substituting STORAGE_PREF_NIC and STORAGE_IFACE to
       # empty strings. NOTE this only catches a MISSING ConfigMap: flux does not
       # fail on a present ConfigMap that lacks a key, and an unset key is
       # indistinguishable from "". A present-but-incomplete ConfigMap still

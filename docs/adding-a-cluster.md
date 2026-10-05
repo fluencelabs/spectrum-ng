@@ -59,9 +59,8 @@ tokens in the manifests are filled from them at apply time.
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
-| `STORAGE_SATELLITE_IPS` | `spectrum-manual-vars` | `ip_pool` annotation on the LINSTOR satellite | one address per node running a satellite, from the storage subnet's CIDR. A **set**, not a mapping — the nth entry is not the nth node, read the address off the pod. Pinned for the node's life: LINSTOR stores the literal IP, so a reallocated one leaves a dead `NetInterface` and replication fails silently; see §3 |
-| `STORAGE_NAD` | `spectrum-manual-vars` | `k8s.v1.cni.cncf.io/networks` on the LINSTOR satellite | `<namespace>/<name>` of the hand-applied NAD, e.g. `storage/linstor` — the whole reference, not just the name. The `Subnet`'s `provider` encodes the same pair as `<nad>.<namespace>.ovn` |
-| `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` property on the LINSTOR satellite | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`. Must equal the name used in the manual `linstor node interface create`; nothing verifies the two, see §3 |
+| `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` on the LINSTOR satellite; `NIC_NAME` of nic-sync | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`; nic-sync registers it, see §3 |
+| `STORAGE_IFACE` | `spectrum-manual-vars` | `IFACE` of nic-sync | name of the Talos `VLANConfig` carrying replication, e.g. `storage`; see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
 | `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
 
@@ -109,82 +108,40 @@ substitutions.
 - Storage nodes must carry the label `beam/linstor_ready=true` — the piraeus
   `LinstorCluster` satellite `nodeSelector` targets it.
 
-### Dedicated storage network (per node, manual)
+### Dedicated storage network (per node, Talos)
 
-On a cluster that has a storage network, the satellite is attached to the `linstor`
-NAD and gets a pinned address from `STORAGE_SATELLITE_IPS`. Pointing DRBD
-replication at it takes one command **per node**, which has no declarative form in
-Piraeus:
+DRBD replication leaves the node on a VLAN interface that **Talos creates at boot** — a
+`VLANConfig` document named `storage` in the node's config patch (beam, patch weight 500),
+with an address from the cluster's storage CIDR. The LINSTOR satellite runs in
+`hostNetwork`, and the `nic-sync` sidecar reads the address of `STORAGE_IFACE` on the
+node and registers it as the LINSTOR `NetInterface` named `STORAGE_PREF_NIC`; `PrefNic`
+on the satellite points replication at it. Storage therefore keeps working while kube-ovn
+or OVS is down, and there is no hand-made `NetInterface`, NAD or storage `Subnet`.
 
-```bash
-linstor node interface create <node> <STORAGE_PREF_NIC> <ip-from-STORAGE_SATELLITE_IPS>
-```
+The satellite wiring (`satellite.yml`, `nic-sync.yml`) lives in the shared
+`cluster/base` and is the same on every cluster; overlays add only what genuinely
+differs (stage: TLS). A cluster whose nodes have no `storage` VLAN interface must not run
+this release: nic-sync finds no address and DRBD falls back to the pod network.
 
-`PrefNic` is declared in the overlay (`satellite.yml` → `spec.properties`) and does not
-need setting by hand. The interface does, because Piraeus only ever registers the
-primary pod IP — it tracks its own set in the node property
-`Aux/piraeus.io/configured-interfaces` and leaves interfaces it did not create alone,
-so a hand-registered one survives satellite restarts. Registration is therefore
-one-off per node, not a standing reconcile: the `NetInterface` lives in the LINSTOR
-controller's database, not in the satellite pod.
+Both values come from `spectrum-manual-vars` and have no default on purpose — an empty
+`PrefNic` is accepted by the CRD and breaks replication silently:
 
-> ⚠️ `PrefNic` and this hand-registered interface are two ends of one name, and nothing
-> verifies them against each other: `PrefNic` comes from `STORAGE_PREF_NIC`, the
-> interface is created by hand. A mismatch fails nothing — the pod starts, and DRBD
-> quietly replicates over the pod network instead. Check it whenever a node joins.
+| Variable | Typical value |
+|---|---|
+| `STORAGE_IFACE` | `storage` — the `VLANConfig` name, the same on every node |
+| `STORAGE_PREF_NIC` | `storage` — the LINSTOR `NetInterface` name |
 
-Two things this does **not** do: the satellite's control connection to the controller
-stays on the pod network (`CurStltConnName` remains `default-ipv4` — only replication
-moves), and the VLAN must actually be trunked to the node's port by the site. Verify
-with:
+The node side — addresses, CIDR outside the service and pod CIDRs, MTU, duplicate-address
+check, the order of switching — is the host-network migration method in the graph
+(`@cloudless/fluence`, node #2387). Verify on a node:
 
 ```bash
-linstor node interface list <node>     # default-ipv4 AND the STORAGE_PREF_NIC name
-linstor node list-properties <node>    # PrefNic = that same name
+linstor node interface list <node>     # default-ipv4 AND storage with the VLAN address
+linstor node list-properties <node>    # PrefNic = storage
 ```
 
-All three storage values in `satellite.yml` — `STORAGE_NAD`, `STORAGE_SATELLITE_IPS`
-and `STORAGE_PREF_NIC` — come from `spectrum-manual-vars`, set by hand at bootstrap
-alongside the objects they name. Keeping them as variables means one place per cluster
-describes its storage network, rather than splitting that description between a
-ConfigMap and three overlays.
-
-None of them has a default, deliberately. An unset variable substitutes to an empty string, and
-the CRD accepts an empty `PrefNic` or `ip_pool` — which points DRBD back at the pod
-network without failing anything. A cluster with no storage network must therefore leave `satellite.yml`
-out of its overlay, which is why the file is overlay-scoped rather than shared. Note
-also that `${VAR:?message}` does **not** help: in flux's substitution it yields the
-message text as the value and still succeeds, so there is no "required variable" that
-fails a build.
-
-> ⚠️ **Known open risk: nothing checks that the overlay and the cluster agree.** Leaving
-> `satellite.yml` out is a *convention*, not a mechanism — all three overlays include it
-> today with the same unconditional `patches:` entry. A cluster whose overlay carries the
-> file but which has no storage network gets an empty `ip_pool`; a cluster with the
-> network whose overlay omits the file gets no network annotation at all. Neither fails a
-> build, kills a pod, or logs an error; in both cases DRBD replicates over the pod
-> network — through Geneve and out the 1G management port. The only check that catches it
-> is observing the outcome — whether replication actually rides the storage NIC — which
-> needs LINSTOR metrics that are not scraped yet.
-
-What the satellite attaches *to* — the `ProviderNetwork`, the `Vlan`, the `linstor`
-`Subnet` and its NAD — is **applied by hand** on each cluster. On stage that is
-`ProviderNetwork storage` on the dedicated 10G port `enp16s0f1`, so replication does not
-share the workload underlay, plus `Vlan 504` and the subnet on it.
-
-beam briefly owned the `Subnet` and NAD (this repo dropped them in #202) and then
-withdrew the whole storage-ownership set, so **nothing outside a human creates or
-reconciles any of the four objects today**. The site also has to trunk the VLAN to the
-node's port, which nothing in Kubernetes can verify.
-
-> ⚠️ **This is the single point of loss in the storage network.** No manifest in any repo
-> describes these objects; they exist only on the live cluster, in one copy. Deleting
-> them does not break anything visibly — a running satellite keeps its interface until it
-> restarts — and nothing recreates them. Keep a copy of the four manifests to hand, and
-> re-check before reprovisioning a node.
->
-> This is unfinished, not intended: the objects need an owner, either back in this repo
-> as hardware manifests or somewhere that reconciles them.
+The satellite's control connection to the controller stays on `default-ipv4`; only
+replication moves.
 
 ### Which interface and VLAN carries what
 
@@ -193,7 +150,7 @@ A Kabat node has three traffic classes, and only two of them ride a VLAN today:
 | Traffic | How it leaves the node | Owner of the objects |
 |---|---|---|
 | Public (Kabat ASN) | tagged, through the underlay `ProviderNetwork` bridge | beam (`ProviderNetwork` + `Vlan` + the public `Subnet`, labelled `fluence/created-by=beam`) |
-| Storage / DRBD replication | tagged, through a `ProviderNetwork` bridge | all four objects (`ProviderNetwork`, `Vlan`, `Subnet`, NAD) by hand, reconciled by nothing; this repo keeps only the satellite wiring, see above |
+| Storage / DRBD replication | tagged, on the Talos VLAN interface `storage` (beside OVS, not in it) | Talos `VLANConfig` in the node patch (beam); this repo keeps the satellite wiring, see above |
 | Pod east-west (Geneve) | **untagged, on whichever interface holds the node IP** | kube-ovn default, until `OVN_TUNNEL_IFACE` is set |
 
 The third row is the one to check on a new cluster. kube-ovn picks the tunnel endpoint
