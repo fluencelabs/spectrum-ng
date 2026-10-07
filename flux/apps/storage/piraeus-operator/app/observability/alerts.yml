@@ -123,3 +123,32 @@ spec:
           annotations:
             summary: "LINSTOR is generating error reports rapidly"
             description: "The LINSTOR controller has written more than 10 error reports in 15 minutes, sustained for 10 minutes ({{ $value | printf \"%.0f\" }} in the last window). Inspect with `linstor error-reports list`; this accompanied the create-md storm in the 2026-08-18 incident."
+
+        # (граф @cloudless/fluence, узел #2528)
+        # Aggregated by (node, storage_pool) so a controller reschedule (new pod/instance labels)
+        # does not reset `for`; `total > 0` drops diskless pools (capacity 0).
+        - alert: LinstorStoragePoolLowSpace
+          expr: |
+            max by (node, storage_pool) (linstor_storage_pool_capacity_free_bytes)
+              / max by (node, storage_pool) (linstor_storage_pool_capacity_total_bytes > 0)
+              < 0.20
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "LINSTOR storage pool {{ $labels.storage_pool }} on {{ $labels.node }} is below 20% free"
+            description: "Storage pool {{ $labels.storage_pool }} on {{ $labels.node }} has had only {{ $value | humanizePercentage }} free for more than 30 minutes. The thin pool is overprovisioned: volumes promise more than it holds, and when it reaches 100% writes stop for every VM on this node at once. Free space before it gets there: move replicas off this node (place a replica on another node, then delete the one here), delete unused volumes and snapshots, or grow the pool; check `linstor storage-pool list --nodes {{ $labels.node }}`."
+
+        - alert: LinstorStoragePoolAlmostFull
+          expr: |
+            max by (node, storage_pool) (linstor_storage_pool_capacity_free_bytes)
+              / max by (node, storage_pool) (linstor_storage_pool_capacity_total_bytes > 0)
+              < 0.10
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "LINSTOR storage pool {{ $labels.storage_pool }} on {{ $labels.node }} is below 10% free"
+            description: "Storage pool {{ $labels.storage_pool }} on {{ $labels.node }} has had only {{ $value | humanizePercentage }} free for more than 10 minutes. The thin pool is overprovisioned, so ordinary guest writes keep filling it; at 100% LVM stops writes and every VM on this node freezes at once. Act now: move replicas off the node or delete unused volumes and snapshots until it is back above 20%; check `linstor storage-pool list --nodes {{ $labels.node }}` and `lvs` on the node."
