@@ -1,0 +1,71 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: netbird-support-rbac-cleanup
+  namespace: networking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netbird-support-rbac-cleanup
+rules:
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    resourceNames: ["netbird-support-readonly"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-support-rbac-cleanup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netbird-support-rbac-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: netbird-support-rbac-cleanup
+    namespace: networking
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netbird-support-rbac-cleanup
+  namespace: networking
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      serviceAccountName: netbird-support-rbac-cleanup
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cleanup
+          image: alpine/k8s:1.36.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              kubectl delete clusterrolebinding netbird-support-readonly --ignore-not-found
+              kubectl delete clusterrole netbird-support-readonly --ignore-not-found
+              echo "netbird-support-readonly removed (or already absent)"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi

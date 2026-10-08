@@ -79,9 +79,9 @@ spec:
   #
   # matchConditions are evaluated by the API server BEFORE it dials the webhook, so they still apply
   # when the operator is down. Narrowing the webhook to just the pods that actually ask for injection
-  # — the `netbird.io/setup-key` pod annotation is the only trigger; the `router` pod runs netbird as
-  # its main container and is not injected — makes Fail safe: an unavailable operator now blocks only
-  # those pods, their ReplicaSet retries, and they come up WITH the sidecar once it is back. Every
+  # — the `netbird.io/inject` pod label (SidecarProfile) or the legacy `netbird.io/setup-key`
+  # annotation; the `router` pod runs netbird as its main container and is not injected — makes
+  # Fail safe: an unavailable operator now blocks only those pods, their ReplicaSet retries, and they come up WITH the sidecar once it is back. Every
   # other pod in the cluster is never sent to the webhook at all.
   #
   # The chart exposes neither matchConditions nor a per-webhook failurePolicy (see values.webhook
@@ -101,7 +101,9 @@ spec:
               - op: add
                 path: /webhooks/0/matchConditions
                 value:
-                  - name: has-netbird-setup-key
+                  - name: asks-for-netbird-injection
                     expression: >-
-                      has(object.metadata.annotations) &&
-                      'netbird.io/setup-key' in object.metadata.annotations
+                      (has(object.metadata.annotations) &&
+                       'netbird.io/setup-key' in object.metadata.annotations) ||
+                      (has(object.metadata.labels) &&
+                       'netbird.io/inject' in object.metadata.labels)
