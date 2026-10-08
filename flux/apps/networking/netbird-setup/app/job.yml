@@ -1,3 +1,8 @@
+# Per-cluster NetBird setup against the shared management at netbird.infrahub.cloudless.dev:
+#   1. adds this cluster's routing peers to the spectrum-${NETWORK} group (policy destination);
+#   2. deletes this cluster's legacy service-CIDR route and nameserver group left by earlier
+#      versions. Mesh access is the operator's Network + NBResources (netbird-operator-config,
+#      netbird-services); this Job creates no routes and no DNS config.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -5,6 +10,8 @@ metadata:
   namespace: networking
   annotations:
     helm.sh/hook-delete-policy: before-hook-creation
+    # A Job pod template is immutable; let Flux recreate it on spec changes.
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 30
@@ -16,7 +23,7 @@ spec:
           command: ["python3", "-c"]
           args:
             - |
-              import json, os, urllib.request, urllib.error, ssl, socket, time
+              import json, os, urllib.request, urllib.error, ssl, time
 
               API_URL = "https://netbird.infrahub.cloudless.dev/api"
               TOKEN = os.environ["NB_API_KEY"]
@@ -38,7 +45,8 @@ spec:
                   )
                   try:
                       with urllib.request.urlopen(req, context=ctx) as resp:
-                          return json.loads(resp.read())
+                          raw = resp.read()
+                          return json.loads(raw) if raw.strip() else {}
                   except urllib.error.HTTPError as e:
                       print(f"API error {e.code}: {e.read().decode()}")
                       raise
@@ -65,11 +73,6 @@ spec:
                   raise SystemExit("Error: router group not found after 5 minutes")
               print(f"Found router group: {router_group['name']} ({router_group['id']})")
 
-              support = find_group("support", groups)
-              if not support:
-                  raise SystemExit("Error: support group not found")
-              print(f"Found support group: {support['id']}")
-
               # Find spectrum-{NETWORK} group
               env_group = find_group(f"spectrum-{NETWORK}", groups)
               if not env_group:
@@ -90,56 +93,49 @@ spec:
               else:
                   print(f"Router peers already in {env_group['name']}")
 
-              # --- 2. Create nameserver group ---
-              coredns_ip = socket.gethostbyname("kube-dns.kube-system.svc.cluster.local")
-              print(f"Detected CoreDNS IP: {coredns_ip}")
+              # --- 2. Remove this cluster's legacy service-CIDR route and nameserver group ---
+              # Earlier versions of this Job (and the removed netbird-route-setup Job) created a
+              # /12 route to the cluster's service CIDR and a nameserver group pointing at its
+              # CoreDNS ClusterIP, both distributed to `support`. Clusters share service CIDRs
+              # (10.112.0.0/12 on stage, testnet and mainnet poz-bey-c01), so support peers got
+              # several identical routes and sent service-IP traffic and .spectrum DNS to a random
+              # cluster. Mesh access now goes through the operator's NetBird Network (NBRoutingPeer
+              # + NBResources): k8s/grafana .spectrum names are domain resources resolved by the
+              # routing peer. Delete only what this Job created for THIS cluster, matched by the
+              # exact name and the exact description the Job wrote. Idempotent: absent -> no-op.
+              route_id = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-svc"
+              route_desc = f"Service CIDR for spectrum {NETWORK} cluster {CLUSTER_ID}"
+              for r in api("GET", "routes"):
+                  if r.get("network_id") != route_id:
+                      continue
+                  desc = r.get("description") or ""
+                  if desc != route_desc:
+                      print(f"Legacy route cleanup: SKIP route {r['id']} ({route_id}): "
+                            f"description {desc!r} is not {route_desc!r}")
+                      continue
+                  print(f"Legacy route cleanup: deleting route {r['id']} "
+                        f"network_id={route_id} network={r.get('network')} ({desc})")
+                  api("DELETE", f"routes/{r['id']}")
+                  print(f"Legacy route cleanup: deleted route {r['id']}")
+              print(f"Legacy route cleanup: done for {route_id}")
 
               ns_name = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-dns"
-              ns_payload = {
-                  "name": ns_name,
-                  "description": f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}",
-                  "nameservers": [{
-                      "ip": coredns_ip,
-                      "ns_type": "udp",
-                      "port": 53,
-                  }],
-                  "enabled": True,
-                  "groups": [support["id"]],
-                  "primary": False,
-                  "domains": [f"{CLUSTER_ID}.{NETWORK}.spectrum"],
-                  "search_domains_enabled": True,
-              }
-              nameservers = api("GET", "dns/nameservers")
-              existing = next((ns for ns in nameservers if ns["name"] == ns_name), None)
-              if existing:
-                  api("PUT", f"dns/nameservers/{existing['id']}", ns_payload)
-                  print(f"Nameserver group updated: {existing['id']}")
-              else:
-                  result = api("POST", "dns/nameservers", ns_payload)
-                  print(f"Nameserver group created: {result.get('id', 'ok')}")
-
-              # --- 3. Create service CIDR route ---
-              route_id = f"sp-{NETWORK}-{CLUSTER_ID[:8]}-svc"
-              routes = api("GET", "routes")
-              if any(r.get("network_id") == route_id for r in routes):
-                  print("Route already exists, skipping")
-              else:
-                  octets = coredns_ip.split(".")
-                  base = f"{octets[0]}.{int(octets[1]) & 0xF0}.0.0"
-                  service_cidr = f"{base}/12"
-                  print(f"Detected service CIDR: {service_cidr}")
-
-                  result = api("POST", "routes", {
-                      "description": f"Service CIDR for spectrum {NETWORK} cluster {CLUSTER_ID}",
-                      "network_id": route_id,
-                      "network": service_cidr,
-                      "enabled": True,
-                      "peer_groups": [router_group["id"]],
-                      "metric": 9999,
-                      "masquerade": True,
-                      "groups": [support["id"]],
-                  })
-                  print(f"Route created: {result.get('id', 'ok')}")
+              ns_desc = f"DNS for spectrum {NETWORK} cluster {CLUSTER_ID}"
+              ns_domains = [f"{CLUSTER_ID}.{NETWORK}.spectrum"]
+              for ns in api("GET", "dns/nameservers"):
+                  if ns.get("name") != ns_name:
+                      continue
+                  if ns.get("description") != ns_desc or ns.get("domains") != ns_domains:
+                      print(f"Legacy nameserver cleanup: SKIP group {ns['id']} ({ns_name}): "
+                            f"description/domains {ns.get('description')!r} {ns.get('domains')} "
+                            f"do not match what this Job created")
+                      continue
+                  ips = [n.get("ip") for n in ns.get("nameservers") or []]
+                  print(f"Legacy nameserver cleanup: deleting group {ns['id']} "
+                        f"name={ns_name} domains={ns_domains} nameservers={ips}")
+                  api("DELETE", f"dns/nameservers/{ns['id']}")
+                  print(f"Legacy nameserver cleanup: deleted group {ns['id']}")
+              print(f"Legacy nameserver cleanup: done for {ns_name}")
 
               print("Setup complete")
           env:
