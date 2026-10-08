@@ -3,7 +3,9 @@
 # B1 unified CA). ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
 # (spectrum-vars + spectrum-manual-vars). Consumed by the grafana pod (native TLS), mounted
 # from secret grafana-spectrum-tls. The served tls.crt is leaf+intermediate, so a client trusting
-# the Fluence Mesh Root validates the chain.
+# the Fluence Mesh Root validates the chain. The second name is the A record the NetBird
+# NetworkResource writes into the cluster's DNS zone (<service>.<namespace>.<zone>, see
+# flux/apps/networking/netbird-network).
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -16,6 +18,7 @@ spec:
   commonName: grafana.${CLUSTER_ID}.${NETWORK}.spectrum
   dnsNames:
     - grafana.${CLUSTER_ID}.${NETWORK}.spectrum
+    - grafana-service.observability.${CLUSTER_ID}.${NETWORK}.spectrum
   privateKey:
     algorithm: ECDSA
     size: 256

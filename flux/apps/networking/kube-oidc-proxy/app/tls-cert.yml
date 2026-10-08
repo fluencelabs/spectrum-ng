@@ -2,7 +2,9 @@
 # fluence-intermediate Issuer. ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
 # (spectrum-vars + spectrum-manual-vars). Consumed by the kube-oidc-proxy pod (native TLS),
 # mounted from secret kube-oidc-proxy-tls. The served tls.crt is leaf+intermediate, so a client
-# trusting the Fluence Mesh Root validates the chain. Mirrors grafana-tls-cert.yml.
+# trusting the Fluence Mesh Root validates the chain. Mirrors grafana-tls-cert.yml. The second
+# name is the A record the NetBird NetworkResource writes into the cluster's DNS zone
+# (<service>.<namespace>.<zone>, see flux/apps/networking/netbird-network).
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -15,6 +17,7 @@ spec:
   commonName: k8s.${CLUSTER_ID}.${NETWORK}.spectrum
   dnsNames:
     - k8s.${CLUSTER_ID}.${NETWORK}.spectrum
+    - kube-oidc-proxy.kube-oidc-proxy.${CLUSTER_ID}.${NETWORK}.spectrum
   privateKey:
     algorithm: ECDSA
     size: 256
