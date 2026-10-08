@@ -4,10 +4,9 @@ metadata:
   name: spectrum-${NETWORK}-access
 spec:
   name: "spectrum-${NETWORK}-access"
-  description: "Allow support and devops access to spectrum-${NETWORK} resources"
+  description: "Allow dev access to spectrum-${NETWORK} resources"
   sourceGroups:
-    - support
-    - devops
+    - dev
   destinationGroups:
     - spectrum-${NETWORK}
   bidirectional: false

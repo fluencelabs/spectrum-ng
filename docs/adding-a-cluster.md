@@ -84,7 +84,7 @@ substitutions.
 
 > `netbird-api-token` is a hand-seeded admin PAT for the per-cluster NetBird service user
 > `spectrum-<NETWORK>` (e.g. `spectrum-testnet`). The service user, plus the shared
-> `support`/`admins` groups, must already exist on the central management at
+> `dev` access group, must already exist on the central management at
 > `netbird.infrahub.cloudless.dev`. `netbird-gate` health-gates the whole NetBird stack
 > on this secret, so the cluster reconciles normally until it is seeded.
 >
