@@ -48,8 +48,8 @@ spec:
             - "--oidc-groups-claim=groups"
             # Prefix every OIDC identity so a token can NEVER land on a privileged system:* name
             # (e.g. an Authentik group literally named "system:masters"). v0.3.0 does NOT guard this
-            # itself. Coupled with rbac-users.yml subjects (oidc:devops/oidc:dev) and the
-            # groups resourceNames allowlist in rbac-proxy.yml — all three MUST change together.
+            # itself. Coupled with rbac-users.yml subjects (oidc:spectrum-admins/oidc:spectrum-users)
+            # — both MUST change together.
             - "--oidc-username-prefix=oidc:"
             - "--oidc-groups-prefix=oidc:"
             # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (no intermediate).
