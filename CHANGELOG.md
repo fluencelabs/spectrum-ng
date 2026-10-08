@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.18](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.17...v0.3.18) (2026-10-08)
+
+
+### Features
+
+* **netbird:** dev is the only NetBird access group (support renamed, devops dropped) ([#330](https://github.com/fluencelabs/spectrum-ng/issues/330)) ([099c9f2](https://github.com/fluencelabs/spectrum-ng/commit/099c9f2f78c4c6cedcfad9916b47ffef58908831))
+
+
+### Bug Fixes
+
+* **netbird:** stop creating legacy service-CIDR routes in netbird-setup ([#328](https://github.com/fluencelabs/spectrum-ng/issues/328)) ([010086c](https://github.com/fluencelabs/spectrum-ng/commit/010086cce75167de3f0a4a2bb3f08247db53fbcf))
+
 ## [0.3.17](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.16...v0.3.17) (2026-10-08)
 
 
