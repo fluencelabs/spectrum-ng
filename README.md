@@ -46,7 +46,7 @@ all clusters running the observability stack, since Grafana joins the mesh to re
 the mesh-only authentik.infra for OIDC.
 
 A hand-seeded admin PAT for the per-cluster NetBird service user `spectrum-<NETWORK>`
-(e.g. `spectrum-testnet`). The service user, plus the shared `support` and `admins`
+(e.g. `spectrum-testnet`). The service user, plus the shared `dev` and `devops`
 groups, must already exist on the centralized management at
 `netbird.infrahub.cloudless.dev`. The `netbird-token-rotate` CronJob rotates this PAT
 in place afterwards.
