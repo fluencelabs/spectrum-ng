@@ -32,6 +32,12 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
 ## Prerequisites (operator laptop)
 
 - On the NetBird mesh (so `authentik.infra` and `k8s.<id>.<net>.spectrum` resolve).
+  `k8s.<id>.<net>.spectrum` is a NetBird domain resource (`NBResource kube-oidc-proxy-spectrum`) on
+  the cluster's `spectrum-<net>-<id>` Network: the client asks that cluster's routing peer to resolve
+  it (the peer uses in-cluster CoreDNS and its `.spectrum` zone) and routes the answer through the
+  same peer. There is no per-cluster nameserver group or service-CIDR route any more — `netbird-setup`
+  deletes the legacy `sp-<net>-<id8>-dns` / `sp-<net>-<id8>-svc` objects, because clusters share the
+  `10.112.0.0/12` service CIDR and those routes sent support clients to a random cluster.
 - Trust the Fluence Mesh Root CA locally (same root already trusted for Grafana access).
 - `kubectl` plus `kubelogin` — install the `kubectl oidc-login` plugin:
   `kubectl krew install oidc-login` (or download the int128/kubelogin release).

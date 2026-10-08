@@ -51,7 +51,7 @@ tokens in the manifests are filled from them at apply time.
 | Variable | Source | Consumed by | Notes |
 |---|---|---|---|
 | `NETWORK` | `spectrum-vars` (beam) | everything; also selects every `overlays/${NETWORK}` path | the master switch |
-| `CLUSTER_ID` | `spectrum-manual-vars` | coredns `.spectrum` zone, grafana `root_url`, NetBird group/route/NBResource names, crd-api host | unique per cluster |
+| `CLUSTER_ID` | `spectrum-manual-vars` | coredns `.spectrum` zone, grafana `root_url`, NetBird group/NBResource names, crd-api host | unique per cluster |
 | `PROVIDER` | `spectrum-manual-vars` | external-dns `txtOwnerId`, crd-api host | required (external-dns ks requires manual-vars) |
 | `PUBLIC_SUBNET_LIST` | `spectrum-manual-vars` | crd-operator controller public-network subnets | |
 | `REGISTRY_PULL_SECRET` | `spectrum-manual-vars` | `secretRef` of `OCIRepository crd-operator`; `imagePullSecrets` of the LINSTOR satellite pod | name of the hand-applied `.dockerconfigjson` secret for `containers.cloudless.dev`, present in both `fluence` and `storage`. No default: an unset value fails the crd-operator and linstor-cluster builds (StrictPostBuildSubstitutions) instead of rendering an empty name |
@@ -76,7 +76,7 @@ substitutions.
 | Secret | Namespace | Key(s) | Consumer | Needed when |
 |---|---|---|---|---|
 | `spectrum-manual-secrets` | `flux-system` | `GRAFANA_OIDC_CLIENT_SECRET` | grafana OIDC (via substitution) | observability present |
-| `netbird-api-token` | `networking` | `NB_API_KEY` | netbird operator + setup/route/rotate jobs | `networking` group present (= every cluster with observability/Grafana mesh) |
+| `netbird-api-token` | `networking` | `NB_API_KEY` | netbird operator + `netbird-setup` job + rotate CronJob | `networking` group present (= every cluster with observability/Grafana mesh) |
 | `alertmanager-config` | `observability` | `alertmanager.yaml` | VMAlertmanager | observability present |
 | `fluence-mesh-intermediate` | `observability` | `ca.crt` + `tls.crt` + `tls.key` | cert-manager `fluence-intermediate` Issuer → issues `grafana-spectrum-tls`; Grafana also mounts its `ca.crt` | observability present (Grafana mesh TLS/OIDC) |
 | `lightmare-ssh-creds` | `fluence` | `identity` + `known_hosts` | crd-operator chart `GitRepository lightmare` | **stage only** — testnet/mainnet pull the chart from OCI and need no SSH secret |
@@ -295,8 +295,8 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 
 ## 6. Gotchas
 
-1. **`netbird-api-token` key is `NB_API_KEY`** (not `token`). The operator, setup/route
-   jobs and the rotate CronJob all read `NB_API_KEY`.
+1. **`netbird-api-token` key is `NB_API_KEY`** (not `token`). The operator, the `netbird-setup`
+   job and the rotate CronJob all read `NB_API_KEY`.
 2. **`CLOUDFLARE_TOKEN` moved out of the ConfigMap.** It used to sit in
    `spectrum-manual-vars` in plaintext, because `cluster-issuers` and
    `external-dns-cloudflare` had no Secret substitution source; they do now, and the
