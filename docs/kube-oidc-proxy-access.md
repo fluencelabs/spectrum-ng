@@ -12,7 +12,7 @@ kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infr
       prefixes them with "oidc:" and sets Impersonate-User / Impersonate-Group
       → real kube-apiserver
         → RBAC: group oidc:spectrum-admins → cluster-admin,
-                oidc:spectrum-users → SPECTRUM_USERS_CLUSTER_ROLE (view by default)
+                oidc:spectrum-users → view (+ cluster-admin where the cluster lists users-full-access)
 ```
 
 The apiserver itself is owned by **beam** and is not OIDC-configured; the proxy does impersonation,
@@ -36,8 +36,8 @@ dnsConfig or hand-rolled sidecar. This mirrors the Grafana OIDC back-channel (PR
 - `kubectl` plus `kubelogin` — install the `kubectl oidc-login` plugin:
   `kubectl krew install oidc-login` (or download the int128/kubelogin release).
 - Member of Authentik group `spectrum-admins` (cluster-admin everywhere) or `spectrum-users`
-  (cluster-admin on stage/testnet, read-only `view` on mainnet — set per cluster by
-  `SPECTRUM_USERS_CLUSTER_ROLE` in `spectrum-manual-vars`, default `view`).
+  (read-only `view` everywhere; cluster-admin on clusters whose `clusters/<name>` overlay lists
+  `kube-oidc-proxy/users-full-access` — stage and testnet).
 
 ## kubeconfig
 
@@ -145,5 +145,5 @@ kubectl oidc-login get-token --oidc-issuer-url=https://authentik.infra/applicati
 
 # 5. RBAC: admin can write, viewer is read-only
 kubectl get ns          # spectrum-admins → OK ; spectrum-users → OK (read)
-kubectl create ns probe # spectrum-admins → OK ; spectrum-users → Forbidden on view, OK on cluster-admin
+kubectl create ns probe # spectrum-admins → OK ; spectrum-users → Forbidden on mainnet, OK on stage/testnet
 ```

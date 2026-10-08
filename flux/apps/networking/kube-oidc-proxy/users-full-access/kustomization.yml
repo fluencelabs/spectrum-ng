@@ -1,0 +1,6 @@
+# Full access for `spectrum-users`, opt-in per cluster: listed only by clusters/stage and
+# clusters/testnet. Mainnet does not list it and keeps the read-only binding from ../app.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ks.yml

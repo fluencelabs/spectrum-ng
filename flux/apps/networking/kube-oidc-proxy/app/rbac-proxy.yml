@@ -11,7 +11,8 @@ metadata:
 # the token carries any group not on the list). Safety comes from `--oidc-username-prefix=oidc:` /
 # `--oidc-groups-prefix=oidc:`: every impersonated user/group is namespaced under `oidc:`, so a token
 # can never impersonate `system:masters` or any privileged `system:*` identity. Only
-# `oidc:spectrum-admins` and `oidc:spectrum-users` have RBAC bindings (rbac-users.yml); all other
+# `oidc:spectrum-admins` and `oidc:spectrum-users` have RBAC bindings (rbac-users.yml,
+# users-full-access/); all other
 # `oidc:*` groups grant nothing.
 # serviceaccounts impersonate is deliberately NOT granted.
 apiVersion: rbac.authorization.k8s.io/v1

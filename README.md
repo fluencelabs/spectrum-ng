@@ -28,7 +28,6 @@ Cluster-specific overrides, created manually.
 | `OVN_POD_MTU` | Pod MTU on overlay subnets, kube-ovn `--mtu` (optional; `0` = derived from the tunnel interface). Pin the current value before moving `OVN_TUNNEL_IFACE` to a jumbo interface |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
-| `SPECTRUM_USERS_CLUSTER_ROLE` | ClusterRole the Authentik group `spectrum-users` gets through kube-oidc-proxy (optional; default `view`). `cluster-admin` on stage and testnet, unset on mainnet. `roleRef` is immutable: after changing it, delete ClusterRoleBinding `spectrum-kube-users` so Flux recreates it |
 
 ### Secret: `alertmanager-config` (namespace: `observability`)
 
