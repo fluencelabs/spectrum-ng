@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.17](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.16...v0.3.17) (2026-10-08)
+
+
+### Features
+
+* **kube-oidc-proxy:** gate cluster access on spectrum-admins / spectrum-users ([#326](https://github.com/fluencelabs/spectrum-ng/issues/326)) ([cea1f2c](https://github.com/fluencelabs/spectrum-ng/commit/cea1f2cc26cce7bc0428ce3c659aeee0f46fd9ab))
+* **netbird:** move sidecars to SidecarProfile, clean up legacy NetBird leftovers ([#231](https://github.com/fluencelabs/spectrum-ng/issues/231)) ([e83ca1b](https://github.com/fluencelabs/spectrum-ng/commit/e83ca1b713d0dfda6cbdf3f549b40308aacc625a))
+* **piraeus-operator:** alert when a LINSTOR storage pool runs low on space ([#324](https://github.com/fluencelabs/spectrum-ng/issues/324)) ([154bb3a](https://github.com/fluencelabs/spectrum-ng/commit/154bb3a3fbd785af987601214dec0c73f89a3c29))
+
 ## [0.3.16](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.15...v0.3.16) (2026-10-05)
 
 
