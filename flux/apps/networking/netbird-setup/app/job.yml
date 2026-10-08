@@ -85,9 +85,17 @@ spec:
               missing = [pid for pid in router_peer_ids if pid not in env_peer_ids]
               if missing:
                   all_peers = list(set(env_peer_ids + router_peer_ids))
+                  # PUT replaces the whole group: send its network resources back too, or every
+                  # NBResource drops out of spectrum-{NETWORK}, the access policy matches nothing
+                  # and the cluster vanishes from the mesh until the operator next reconciles.
+                  resources = [
+                      {"id": r["id"], "type": r["type"]}
+                      for r in env_group.get("resources", []) or []
+                  ]
                   api("PUT", f"groups/{env_group['id']}", {
                       "name": env_group["name"],
                       "peers": all_peers,
+                      "resources": resources,
                   })
                   print(f"Added {len(missing)} router peers to {env_group['name']}")
               else:
