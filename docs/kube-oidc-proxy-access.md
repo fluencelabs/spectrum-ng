@@ -19,9 +19,9 @@ The apiserver itself is owned by **beam** and is not OIDC-configured; the proxy 
 so no apiserver flags are required.
 
 The proxy pod reaches the mesh-only `authentik.infra` (for OIDC discovery/JWKS) via a NetBird sidecar
-that the **netbird-operator (≥0.3.x) auto-injects** from the pod annotation `netbird.io/setup-key`.
-The sidecar runs as root, brings up WireGuard and rewrites the pod's shared `/etc/resolv.conf` — no
-dnsConfig or hand-rolled sidecar. This mirrors the Grafana OIDC back-channel (PR #142).
+that the **netbird-operator auto-injects** via a `SidecarProfile` matching the pod label
+`netbird.io/inject`. The sidecar's resolver is pinned to `127.0.0.1:53` and the pod's `dnsConfig`
+points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafana OIDC back-channel.
 
 > **Security note — the `oidc:` prefix is load-bearing.** The proxy runs with
 > `--oidc-username-prefix=oidc:` / `--oidc-groups-prefix=oidc:`, so every OIDC identity is namespaced
@@ -103,7 +103,7 @@ users:
 
 > The NetBird **setup key is auto-minted** by the netbird-operator (`SetupKey` CR in
 > `netbird-setupkey.yml`) — nothing hand-delivered. The sidecar is auto-injected via the
-> `netbird.io/setup-key` pod annotation.
+> `SidecarProfile` in the same file.
 
 ## Infra-side (provisioned as code — `terraform apply` by the infra owner)
 

@@ -12,18 +12,20 @@ spec:
     metadata:
       labels:
         app: kube-oidc-proxy
-      annotations:
-        # Trigger NetBird sidecar injection by the netbird-operator (>=0.3.x) mutating webhook. The
-        # value is the NBSetupKey resource name (see netbird-setupkey.yml). The injected `netbird`
-        # container joins the mesh and — running as root — creates the WireGuard interface AND rewrites
-        # the pod's shared /etc/resolv.conf, so the proxy container resolves & routes the mesh-only
-        # authentik.infra for OIDC discovery/JWKS. No dnsConfig and no hand-rolled sidecar. Mirrors the
-        # Grafana OIDC back-channel (PR #142, validated on stage 2026-06-05).
-        # We deliberately do NOT set netbird.io/init-sidecar: native-sidecar injection left the pod
-        # stuck (Init / no sandbox) under kube-ovn; a regular container works (the proxy re-reads
-        # resolv.conf once netbird is up, per glibc).
-        netbird.io/setup-key: kube-oidc-proxy
+        netbird.io/inject: "true"
     spec:
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+          - ${KUBE_DNS_IP}
+        searches:
+          - kube-oidc-proxy.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+        options:
+          - name: ndots
+            value: "5"
       serviceAccountName: kube-oidc-proxy
       # No pod-level securityContext: the operator-injected netbird sidecar inherits pod-level context
       # and MUST run as root (WireGuard + /etc/resolv.conf rewrite). Hardening is set on the proxy
