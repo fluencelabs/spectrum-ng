@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.19](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.18...v0.3.19) (2026-10-08)
+
+
+### Bug Fixes
+
+* **netbird:** keep the group's network resources when netbird-setup adds router peers ([#332](https://github.com/fluencelabs/spectrum-ng/issues/332)) ([26aa684](https://github.com/fluencelabs/spectrum-ng/commit/26aa684e488a31883a781588578cd55f18192027))
+
 ## [0.3.18](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.17...v0.3.18) (2026-10-08)
 
 
