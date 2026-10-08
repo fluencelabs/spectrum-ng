@@ -1,11 +1,13 @@
 # Authentik group -> cluster access. Groups arrive as Impersonate-Group headers from the OIDC
 # `groups` claim, prefixed with "oidc:" by the proxy (--oidc-groups-prefix). Subjects MUST carry that
-# prefix and MUST match the resourceNames allowlist in rbac-proxy.yml.
+# prefix.
 #
-# We gate on the base role groups `devops` / `dev` (always populated from GitHub teams
-# fluencelabs/devops & /devs), NOT dedicated k8s-admins/k8s-viewers: the dedicated groups were new
-# and Authentik did not retro-assign them to existing users on re-login, which blocked access. The
-# Authentik app access policy (infra spectrum_kube_oidc.tf) also gates on devops/dev to match.
+# Two groups, the same on every cluster: `spectrum-admins` and `spectrum-users` (graph
+# `@cloudless/fluence`, node #2554). Who is in them is decided in infra (Authentik, declarative
+# people roles); what a group gets is decided here. Every cluster: spectrum-admins -> cluster-admin,
+# spectrum-users -> view. A cluster that should give spectrum-users full access lists
+# ../users-full-access in its clusters/<name> overlay (stage, testnet); RBAC is additive, so that
+# second binding raises the group without touching this one.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -16,18 +18,18 @@ roleRef:
   name: cluster-admin
 subjects:
   - kind: Group
-    name: oidc:devops
+    name: oidc:spectrum-admins
     apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: spectrum-kube-viewers
+  name: spectrum-kube-users
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
   - kind: Group
-    name: oidc:dev
+    name: oidc:spectrum-users
     apiGroup: rbac.authorization.k8s.io

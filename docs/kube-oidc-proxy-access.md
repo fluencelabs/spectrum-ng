@@ -11,7 +11,8 @@ kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infr
     → kube-oidc-proxy: validates iss/aud/signature, reads username + groups,
       prefixes them with "oidc:" and sets Impersonate-User / Impersonate-Group
       → real kube-apiserver
-        → RBAC: group oidc:k8s-admins → cluster-admin, oidc:k8s-viewers → view
+        → RBAC: group oidc:spectrum-admins → cluster-admin,
+                oidc:spectrum-users → view (+ cluster-admin where the cluster lists users-full-access)
 ```
 
 The apiserver itself is owned by **beam** and is not OIDC-configured; the proxy does impersonation,
@@ -25,8 +26,8 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
 > **Security note — the `oidc:` prefix is load-bearing.** The proxy runs with
 > `--oidc-username-prefix=oidc:` / `--oidc-groups-prefix=oidc:`, so every OIDC identity is namespaced
 > and an Authentik group named e.g. `system:masters` arrives as the inert `oidc:system:masters`.
-> The RBAC subjects (`oidc:k8s-admins`/`oidc:k8s-viewers`), the prefix flags, and the
-> `resourceNames` allowlist in `rbac-proxy.yml` are coupled — change them together.
+> The RBAC subjects (`oidc:spectrum-admins`/`oidc:spectrum-users` in `rbac-users.yml`) and the
+> prefix flags are coupled — change them together.
 
 ## Prerequisites (operator laptop)
 
@@ -34,7 +35,9 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
 - Trust the Fluence Mesh Root CA locally (same root already trusted for Grafana access).
 - `kubectl` plus `kubelogin` — install the `kubectl oidc-login` plugin:
   `kubectl krew install oidc-login` (or download the int128/kubelogin release).
-- Member of Authentik group `k8s-admins` (full) or `k8s-viewers` (read-only).
+- Member of Authentik group `spectrum-admins` (cluster-admin everywhere) or `spectrum-users`
+  (read-only `view` everywhere; cluster-admin on clusters whose `clusters/<name>` overlay lists
+  `kube-oidc-proxy/users-full-access` — stage and testnet).
 
 ## kubeconfig
 
@@ -107,8 +110,8 @@ users:
 The Authentik app + groups are defined in **`infra/infrahub/terraform/authentik/spectrum_kube_oidc.tf`**
 (mirrors the spectrum-grafana app): public client + PKCE, slug `spectrum-kube-<network>`, mesh login
 flow `authentik-infra-authentication`, redirects `http://localhost:{8000,18000}`, scopes
-`openid profile email groups`, access groups `k8s-admins`/`k8s-viewers` (GitHub-team-backed via
-`local_group_mappings`: `devops`/`devs`). After `terraform apply`:
+`openid profile email groups`, access groups `spectrum-admins`/`spectrum-users` (filled from the declarative people roles in
+`people.tf`). After `terraform apply`:
 
 1. Copy `client_id` from Vault `security/authentik-oidc/spectrum-kube-<network>` →
    `spectrum-manual-vars` `KUBE_OIDC_CLIENT_ID`; set `KUBE_OIDC_SLUG=spectrum-kube-<network>`.
@@ -141,6 +144,6 @@ kubectl oidc-login get-token --oidc-issuer-url=https://authentik.infra/applicati
   | jq -r .status.token | cut -d. -f2 | base64 -d 2>/dev/null | jq '{groups, preferred_username}'
 
 # 5. RBAC: admin can write, viewer is read-only
-kubectl get ns          # oidc:k8s-admins → OK ; oidc:k8s-viewers → OK (read)
-kubectl create ns probe # oidc:k8s-admins → OK ; oidc:k8s-viewers → Forbidden
+kubectl get ns          # spectrum-admins → OK ; spectrum-users → OK (read)
+kubectl create ns probe # spectrum-admins → OK ; spectrum-users → Forbidden on mainnet, OK on stage/testnet
 ```

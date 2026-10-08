@@ -6,12 +6,14 @@ metadata:
 ---
 # The proxy authenticates to the real apiserver as this SA, then sets impersonation headers from the
 # validated OIDC token. The proxy passes through EVERY group in the token (prefixed `oidc:`), and a
-# real user has many Authentik groups (devops, grafana-admins, vault-admins, …) — so the groups
+# real user has many Authentik groups (spectrum-admins, grafana-admins, vault-admins, …) — so the groups
 # impersonate verb is UNRESTRICTED (a resourceNames allowlist would 403 the whole request the moment
 # the token carries any group not on the list). Safety comes from `--oidc-username-prefix=oidc:` /
 # `--oidc-groups-prefix=oidc:`: every impersonated user/group is namespaced under `oidc:`, so a token
-# can never impersonate `system:masters` or any privileged `system:*` identity. Only `oidc:devops`
-# (→cluster-admin) and `oidc:dev` (→view) have RBAC bindings; all other `oidc:*` groups grant nothing.
+# can never impersonate `system:masters` or any privileged `system:*` identity. Only
+# `oidc:spectrum-admins` and `oidc:spectrum-users` have RBAC bindings (rbac-users.yml,
+# users-full-access/); all other
+# `oidc:*` groups grant nothing.
 # serviceaccounts impersonate is deliberately NOT granted.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
