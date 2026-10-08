@@ -11,5 +11,9 @@ metadata:
 spec:
   dnsZoneRef:
     name: ${CLUSTER_ID}.${NETWORK}.spectrum
+  # Not the routingClientImage pin (0.80.0) from the operator HelmRelease: the operator starts this
+  # client with NB_DISABLE_UPDATE_SETTINGS=true, and 0.80.0 then fails to log in ("update settings
+  # are disabled", stage 2026-10-08). 0.72.4 is the client operator v0.8.0 is built against.
+  image: ghcr.io/netbirdio/netbird:0.72.4
   workloadOverride:
     replicas: 1
