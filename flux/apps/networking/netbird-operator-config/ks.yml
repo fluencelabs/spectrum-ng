@@ -4,7 +4,7 @@ metadata:
   name: netbird-operator-config
   namespace: flux-system
 spec:
-  path: ./flux/apps/networking/netbird-operator-config/app/overlays/${NETWORK}
+  path: ./flux/apps/networking/netbird-operator-config/app/base
   prune: false
   targetNamespace: networking
   sourceRef:

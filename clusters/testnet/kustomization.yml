@@ -13,5 +13,3 @@ resources:
   - ../../flux/apps/networking
   - ../../flux/apps/networking/kube-oidc-proxy/users-full-access
   - ../../flux/apps/fluence
-components:
-  - ../../flux/apps/networking/netbird-network-switch

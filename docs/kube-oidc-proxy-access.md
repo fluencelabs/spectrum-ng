@@ -1,13 +1,13 @@
 # kube-oidc-proxy — operator access
 
 Authenticated `kubectl` access to the beam cluster API via Authentik SSO, over the NetBird mesh.
-Analogous to Grafana at `https://grafana.<cluster_id>.<network>.spectrum`.
+Analogous to Grafana at `https://grafana-service.observability.<cluster_id>.<network>.spectrum`.
 
 ## How it works
 
 ```
 kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infra) → ID token
-  → https://k8s.<cluster_id>.<network>.spectrum   (NetBird mesh, Fluence leaf cert)
+  → https://kube-oidc-proxy.kube-oidc-proxy.<cluster_id>.<network>.spectrum   (NetBird mesh, Fluence leaf cert)
     → kube-oidc-proxy: validates iss/aud/signature, reads username + groups,
       prefixes them with "oidc:" and sets Impersonate-User / Impersonate-Group
       → real kube-apiserver
@@ -31,18 +31,13 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
 
 ## Prerequisites (operator laptop)
 
-- On the NetBird mesh (so `authentik.infra` and `k8s.<id>.<net>.spectrum` resolve).
-  `k8s.<id>.<net>.spectrum` is a NetBird domain resource (`NBResource kube-oidc-proxy-spectrum`) on
-  the cluster's `spectrum-<net>-<id>` Network: the client asks that cluster's routing peer to resolve
-  it (the peer uses in-cluster CoreDNS and its `.spectrum` zone) and routes the answer through the
-  same peer. There is no per-cluster nameserver group or service-CIDR route any more — `netbird-setup`
-  deletes the legacy `sp-<net>-<id8>-dns` / `sp-<net>-<id8>-svc` objects, because clusters share the
-  `10.112.0.0/12` service CIDR and those routes sent mesh clients to a random cluster.
-  **Stage and testnet** have moved to the v1alpha1 Network API (`flux/apps/networking/netbird-network`,
-  switched on per cluster by `netbird-network-switch`): the proxy is
-  `kube-oidc-proxy.kube-oidc-proxy.<id>.<net>.spectrum` (an A record the operator writes into the
-  infra-owned NetBird DNS zone `<id>.<net>.spectrum`) and `k8s.<id>.<net>.spectrum` no longer exists
-  there; use that name as `server:` below. Grafana there is `grafana-service.observability.<id>.<net>.spectrum`.
+- On the NetBird mesh (so `authentik.infra` and the proxy name resolve). The proxy is published by a
+  `NetworkResource` (`flux/apps/networking/netbird-network`) on the cluster's NetworkRouter
+  `sp-<net>-<id8>`: the operator writes the A record
+  `kube-oidc-proxy.kube-oidc-proxy.<id>.<net>.spectrum` → the Service ClusterIP into the
+  infra-owned NetBird DNS zone `<id>.<net>.spectrum`, and the client routes that /32 through the
+  router. Clusters share the `10.112.0.0/12` service CIDR, so a published ClusterIP must not repeat
+  across clusters a peer can reach.
 - Trust the Fluence Mesh Root CA locally (same root already trusted for Grafana access).
 - `kubectl` plus `kubelogin` — install the `kubectl oidc-login` plugin:
   `kubectl krew install oidc-login` (or download the int128/kubelogin release).
@@ -60,7 +55,7 @@ kind: Config
 clusters:
   - name: beam-<network>
     cluster:
-      server: https://k8s.<cluster_id>.<network>.spectrum
+      server: https://kube-oidc-proxy.kube-oidc-proxy.<cluster_id>.<network>.spectrum
       certificate-authority: /path/to/fluence-mesh-root.pem
 contexts:
   - name: beam-<network>
@@ -145,7 +140,8 @@ kubectl -n kube-oidc-proxy exec deploy/kube-oidc-proxy -c proxy -- getent hosts 
 kubectl -n kube-oidc-proxy get deploy kube-oidc-proxy
 
 # 3. Served cert chains to the Fluence Mesh Root
-openssl s_client -connect k8s.<id>.<net>.spectrum:443 -servername k8s.<id>.<net>.spectrum </dev/null
+H=kube-oidc-proxy.kube-oidc-proxy.<id>.<net>.spectrum
+openssl s_client -connect $H:443 -servername $H </dev/null
 
 # 4. The id_token actually carries groups + preferred_username (catches the missing-claim case that
 #    RBAC smoke tests cannot distinguish from an RBAC misconfig)

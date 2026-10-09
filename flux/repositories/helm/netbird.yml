@@ -2,9 +2,8 @@
 #
 # 0.4.0+ moved off the classic HelmRepository (netbirdio.github.io/helms, which stopped at 0.3.1)
 # to an OCI registry on GHCR and renamed the chart kubernetes-operator -> netbird-operator. The old
-# companion chart `netbird-operator-config` was NOT republished here; its routing-peer CR is now
-# inlined under flux/apps/networking/netbird-operator-config/app/base (the operator still reconciles
-# the legacy netbird.io/v1 NBRoutingPeer/NBResource/NBPolicy/NBGroup kinds). Public, anonymous pull.
+# companion chart `netbird-operator-config` was NOT republished here; the routing peer is the
+# v1alpha1 NetworkRouter in flux/apps/networking/netbird-network. Public, anonymous pull.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
