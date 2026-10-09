@@ -12,4 +12,5 @@ resources:
   - ../../flux/apps/observability
   - ../../flux/apps/networking
   - ../../flux/apps/networking/kube-oidc-proxy/users-full-access
+  - ../../flux/apps/networking/netbird-network
   - ../../flux/apps/fluence

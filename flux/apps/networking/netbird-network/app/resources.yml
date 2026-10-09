@@ -1,0 +1,31 @@
+# Each NetworkResource publishes one ClusterIP Service as a NetBird resource in the
+# spectrum-${NETWORK} group (the infra-owned policy lets `dev` reach it on tcp/443) and adds the A
+# record <service>.<namespace>.<CLUSTER_ID>.<NETWORK>.spectrum -> ClusterIP to the cluster's zone.
+# A NetworkResource must live in its Service's namespace (serviceRef is a local reference).
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  networkRouterRef:
+    name: sp-${NETWORK}-${CLUSTER_ID:0:8}
+    namespace: networking
+  serviceRef:
+    name: grafana-service
+  groups:
+    - name: spectrum-${NETWORK}
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: kube-oidc-proxy
+  namespace: kube-oidc-proxy
+spec:
+  networkRouterRef:
+    name: sp-${NETWORK}-${CLUSTER_ID:0:8}
+    namespace: networking
+  serviceRef:
+    name: kube-oidc-proxy
+  groups:
+    - name: spectrum-${NETWORK}
