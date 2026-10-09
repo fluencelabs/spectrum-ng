@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.21](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.20...v0.3.21) (2026-10-09)
+
+
+### Bug Fixes
+
+* **netbird:** keep the NetworkRouter on client 0.72.4 and out of Renovate ([#339](https://github.com/fluencelabs/spectrum-ng/issues/339)) ([753a4a1](https://github.com/fluencelabs/spectrum-ng/commit/753a4a1058646f584a893f10116b52d1cf5536c0))
+
 ## [0.3.20](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.19...v0.3.20) (2026-10-09)
 
 
