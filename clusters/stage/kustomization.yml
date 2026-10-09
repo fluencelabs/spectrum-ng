@@ -14,3 +14,53 @@ resources:
   - ../../flux/apps/networking/kube-oidc-proxy/users-full-access
   - ../../flux/apps/networking/netbird-network
   - ../../flux/apps/fluence
+patches:
+  # Stage reaches grafana and kube-oidc-proxy only through the v1alpha1 Network API
+  # (netbird-network). The v1 path is dropped here: no NBResource Jobs or exposed Services
+  # (netbird-services-*), and no netbird-setup, whose only remaining job was adding the v1 router's
+  # peers to spectrum-stage. Access policy and groups are infra's (crossplane).
+  - patch: |
+      $patch: delete
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: netbird-setup
+        namespace: flux-system
+  - patch: |
+      $patch: delete
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: netbird-services-grafana
+        namespace: flux-system
+  - patch: |
+      $patch: delete
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: netbird-services-kube-oidc-proxy
+        namespace: flux-system
+  # netbird-token-rotate waited on netbird-setup; on stage it needs only the operator.
+  - target:
+      kind: Kustomization
+      name: netbird-token-rotate
+    patch: |
+      - op: replace
+        path: /spec/dependsOn
+        value:
+          - name: netbird-operator
+  # Grafana's public URL is the name the NetworkResource publishes in the cluster's zone.
+  - target:
+      kind: Kustomization
+      name: grafana
+    patch: |
+      - op: add
+        path: /spec/patches
+        value:
+          - target:
+              kind: Grafana
+              name: grafana
+            patch: |
+              - op: replace
+                path: /spec/config/server/root_url
+                value: "https://grafana-service.observability.${CLUSTER_ID}.${NETWORK}.spectrum"
