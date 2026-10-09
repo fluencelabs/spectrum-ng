@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.24](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.23...v0.3.24) (2026-10-09)
+
+
+### Features
+
+* **netbird:** crd-api on the mesh for stage and testnet only, in its own group ([#347](https://github.com/fluencelabs/spectrum-ng/issues/347)) ([5307674](https://github.com/fluencelabs/spectrum-ng/commit/53076748db185babaa00e78e845238184c192134))
+* **netbird:** reach crd-api over the mesh with TLS and no JWT; drop crd-api-open ([#345](https://github.com/fluencelabs/spectrum-ng/issues/345)) ([727da0b](https://github.com/fluencelabs/spectrum-ng/commit/727da0bbc8471f7f94a73cbaba5871e583e450ca))
+
 ## [0.3.23](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.22...v0.3.23) (2026-10-09)
 
 
