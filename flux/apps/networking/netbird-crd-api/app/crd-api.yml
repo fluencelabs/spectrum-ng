@@ -1,4 +1,5 @@
-# crd-api on the NetBird mesh: TLS with the cluster's mesh certificate (same CA as grafana and
+# crd-api on the NetBird mesh, stage and testnet only (clusters/<cluster> include this ks; mainnet
+# has no mesh crd-api): TLS with the cluster's mesh certificate (same CA as grafana and
 # kube-oidc-proxy) and no JWT, unlike the public route on eg-gw (crd-operator SecurityPolicy).
 # An Envoy Gateway of its own, eg-mesh, whose Service is ClusterIP-only and named `crd-api`, so the
 # NetworkResource publishes it as crd-api.ingress.<CLUSTER_ID>.<NETWORK>.spectrum. Nothing here is
@@ -103,3 +104,19 @@ spec:
         - path:
             type: PathPrefix
             value: /
+---
+# Own destination group, not spectrum-<network>: the network-wide dev policy must not reach crd-api.
+# infra owns the group and the policy that lets e2e in (graph @cloudless/fluence #171).
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: crd-api
+  namespace: ingress
+spec:
+  networkRouterRef:
+    name: sp-${NETWORK}-${CLUSTER_ID:0:8}
+    namespace: networking
+  serviceRef:
+    name: crd-api
+  groups:
+    - name: spectrum-${NETWORK}-crd-api
