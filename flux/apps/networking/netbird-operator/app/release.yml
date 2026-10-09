@@ -48,19 +48,16 @@ spec:
       # webhook CA via cert-manager.io/inject-ca-from (cert-manager + cainjector are already
       # installed, see flux/apps/ingress/cert-manager). No issuer wiring needed from us.
       enableCertManager: true
-      # failurePolicy applies to BOTH webhooks the chart renders: the mutating pod webhook and the
-      # validating NBGroup-DELETE webhook. Keep it Ignore here so the NBGroup one stays non-blocking;
-      # the pod webhook is flipped to Fail by the postRenderer below, where it can be paired with the
+      # With ingress off the chart renders only the mutating pod webhook. Keep the chart-wide
+      # failurePolicy Ignore; the postRenderer below flips the pod webhook to Fail, paired with the
       # matchConditions that make Fail safe.
       failurePolicy: Ignore
-    # "ingress" is the operator's v1 Service-annotation path (netbird.io/expose -> NBResource). Mesh
-    # names now come from NetworkResources (flux/apps/networking/netbird-network), which do not need
-    # it, and no Service here carries netbird.io/expose. It stays on only because it also gates which
-    # webhooks the chart renders, and the pod webhook is patched below; turning it off is a separate,
-    # checked change. Gateway API unused.
+    # "ingress" is the operator's v1 Service-annotation path (netbird.io/expose -> NBResource). Off:
+    # mesh names come from NetworkResources (flux/apps/networking/netbird-network) and no Service
+    # here carries netbird.io/expose. Turning it off drops only the v1 NBGroup-DELETE validating
+    # webhook; the pod webhook and the deployment render unchanged. Gateway API unused.
     ingress:
-      enabled: true
-      allowAutomaticPolicyCreation: true
+      enabled: false
       # The routing peer is our NetworkRouter (netbird-network), so keep the chart's ingress-router
       # OFF. router.enabled must still be present: the chart template does
       # `and .Values.ingress.enabled .Values.ingress.router.enabled` and Go's `and` evaluates both
