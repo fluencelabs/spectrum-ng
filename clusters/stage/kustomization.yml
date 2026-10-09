@@ -49,7 +49,9 @@ patches:
         path: /spec/dependsOn
         value:
           - name: netbird-operator
-  # Grafana's public URL is the name the NetworkResource publishes in the cluster's zone.
+  # Grafana's public URL is the name the NetworkResource publishes in the cluster's zone. `$$`
+  # escapes the root `spectrum` ks substitution (it reads only spectrum-vars, which has no
+  # CLUSTER_ID); the variables are filled in by the grafana ks postBuild.
   - target:
       kind: Kustomization
       name: grafana
@@ -63,4 +65,4 @@ patches:
             patch: |
               - op: replace
                 path: /spec/config/server/root_url
-                value: "https://grafana-service.observability.${CLUSTER_ID}.${NETWORK}.spectrum"
+                value: "https://grafana-service.observability.$${CLUSTER_ID}.$${NETWORK}.spectrum"
