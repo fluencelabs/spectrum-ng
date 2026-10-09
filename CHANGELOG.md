@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.23](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.22...v0.3.23) (2026-10-09)
+
+
+### Bug Fixes
+
+* **mesh:** drop commonName from the mesh leaf certs ([#343](https://github.com/fluencelabs/spectrum-ng/issues/343)) ([b266403](https://github.com/fluencelabs/spectrum-ng/commit/b2664034833e1f13a8d4dad2cd2997755b5c4046))
+
 ## [0.3.22](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.21...v0.3.22) (2026-10-09)
 
 
