@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.22](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.21...v0.3.22) (2026-10-09)
+
+
+### Features
+
+* **netbird:** one mesh path for every network: NetworkRouter/NetworkResource ([#341](https://github.com/fluencelabs/spectrum-ng/issues/341)) ([05a41c6](https://github.com/fluencelabs/spectrum-ng/commit/05a41c69447a863192c5d559b00315731cdfddac))
+
 ## [0.3.21](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.20...v0.3.21) (2026-10-09)
 
 
