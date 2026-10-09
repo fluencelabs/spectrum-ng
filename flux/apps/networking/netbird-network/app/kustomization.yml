@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - router.yml
   - resources.yml
+  - crd-api.yml
