@@ -61,7 +61,7 @@
   "packageRules": [
     {
       "description": "NetworkRouter client follows netbird-operator v0.8.0 (0.72.4): 0.80.0 cannot log in there. Bump only with the operator, checked on a live router.",
-      "matchFileNames": ["flux/apps/networking/netbird-network/**"],
+      "matchPaths": ["flux/apps/networking/netbird-network/**"],
       "matchPackageNames": ["ghcr.io/netbirdio/netbird"],
       "enabled": false
     },
