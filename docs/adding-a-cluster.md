@@ -51,7 +51,7 @@ tokens in the manifests are filled from them at apply time.
 | Variable | Source | Consumed by | Notes |
 |---|---|---|---|
 | `NETWORK` | `spectrum-vars` (beam) | everything; also selects every `overlays/${NETWORK}` path | the master switch |
-| `CLUSTER_ID` | `spectrum-manual-vars` | coredns `.spectrum` zone, grafana `root_url`, NetworkRouter name and DNS zone, crd-api host | unique per cluster |
+| `CLUSTER_ID` | `spectrum-manual-vars` | grafana `root_url`, NetworkRouter name and DNS zone, crd-api host | unique per cluster |
 | `PROVIDER` | `spectrum-manual-vars` | external-dns `txtOwnerId`, crd-api host | required (external-dns ks requires manual-vars) |
 | `PUBLIC_SUBNET_LIST` | `spectrum-manual-vars` | crd-operator controller public-network subnets | |
 | `REGISTRY_PULL_SECRET` | `spectrum-manual-vars` | `secretRef` of `OCIRepository crd-operator`; `imagePullSecrets` of the LINSTOR satellite pod | name of the hand-applied `.dockerconfigjson` secret for `containers.cloudless.dev`, present in both `fluence` and `storage`. No default: an unset value fails the crd-operator and linstor-cluster builds (StrictPostBuildSubstitutions) instead of rendering an empty name |
