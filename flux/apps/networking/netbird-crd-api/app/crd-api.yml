@@ -106,7 +106,7 @@ spec:
             value: /
 ---
 # Own destination group, not spectrum-<network>: the network-wide dev policy must not reach crd-api.
-# infra owns the group and the policy that lets e2e in (graph @cloudless/fluence #171).
+# infra owns the group and the policy that lets crd-api-access in (graph @cloudless/fluence #171).
 apiVersion: netbird.io/v1alpha1
 kind: NetworkResource
 metadata:
