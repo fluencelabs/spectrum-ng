@@ -14,7 +14,8 @@ spec:
   secretName: grafana-spectrum-tls
   duration: 2160h # 90d
   renewBefore: 360h
-  commonName: grafana-service.observability.${CLUSTER_ID}.${NETWORK}.spectrum
+  # No commonName: cert-manager caps it at 64 bytes and the zone name is longer; clients match
+  # dnsNames (SAN) anyway.
   dnsNames:
     - grafana-service.observability.${CLUSTER_ID}.${NETWORK}.spectrum
   privateKey:

@@ -14,7 +14,8 @@ spec:
   secretName: kube-oidc-proxy-tls
   duration: 2160h # 90d
   renewBefore: 360h
-  commonName: kube-oidc-proxy.kube-oidc-proxy.${CLUSTER_ID}.${NETWORK}.spectrum
+  # No commonName: cert-manager caps it at 64 bytes and the zone name is longer; clients match
+  # dnsNames (SAN) anyway.
   dnsNames:
     - kube-oidc-proxy.kube-oidc-proxy.${CLUSTER_ID}.${NETWORK}.spectrum
   privateKey:
