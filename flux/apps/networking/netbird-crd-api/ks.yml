@@ -1,0 +1,33 @@
+# crd-api over the NetBird mesh; included only by clusters/stage and clusters/testnet.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: netbird-crd-api
+  namespace: flux-system
+spec:
+  path: ./flux/apps/networking/netbird-crd-api/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
+  dependsOn:
+    # NetworkRouter the NetworkResource attaches to.
+    - name: netbird-network
+    # fluence namespace and the crd-operator-api Service.
+    - name: crd-operator
+    # Gateway API / Envoy Gateway CRDs and the eg-public GatewayClass.
+    - name: envoy-proxy
+    # observability namespace and its fluence-intermediate Issuer (the leaf is issued there).
+    - name: grafana
