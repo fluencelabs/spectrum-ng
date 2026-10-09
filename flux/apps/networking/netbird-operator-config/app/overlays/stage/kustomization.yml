@@ -2,34 +2,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
-# Stage runs the v1alpha1 NetworkRouter (flux/apps/networking/netbird-network) instead of the v1
-# routing peer, and infra owns the spectrum-stage group and access policy. This ks has prune: false,
-# so dropping these objects here does not delete them from the cluster; that cleanup is manual.
-patches:
-  - patch: |
-      $patch: delete
-      apiVersion: netbird.io/v1
-      kind: NBRoutingPeer
-      metadata:
-        name: router
-        namespace: networking
-  - patch: |
-      $patch: delete
-      apiVersion: netbird.io/v1
-      kind: NBGroup
-      metadata:
-        name: spectrum-${NETWORK}
-        namespace: networking
-  - patch: |
-      $patch: delete
-      apiVersion: netbird.io/v1
-      kind: NBGroup
-      metadata:
-        name: spectrum-${NETWORK}-${CLUSTER_ID}
-        namespace: networking
-  - patch: |
-      $patch: delete
-      apiVersion: netbird.io/v1
-      kind: NBPolicy
-      metadata:
-        name: spectrum-${NETWORK}-access
+components:
+  - ../../components/no-v1

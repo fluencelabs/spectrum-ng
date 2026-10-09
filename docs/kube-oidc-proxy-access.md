@@ -38,10 +38,11 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
   same peer. There is no per-cluster nameserver group or service-CIDR route any more — `netbird-setup`
   deletes the legacy `sp-<net>-<id8>-dns` / `sp-<net>-<id8>-svc` objects, because clusters share the
   `10.112.0.0/12` service CIDR and those routes sent mesh clients to a random cluster.
-  **Stage** has moved to the v1alpha1 Network API (`flux/apps/networking/netbird-network`): the proxy
-  is `kube-oidc-proxy.kube-oidc-proxy.<id>.stage.spectrum` (an A record the operator writes into the
-  infra-owned NetBird DNS zone `<id>.stage.spectrum`) and `k8s.<id>.stage.spectrum` no longer exists;
-  use that name as `server:` below. Grafana on stage is `grafana-service.observability.<id>.stage.spectrum`.
+  **Stage and testnet** have moved to the v1alpha1 Network API (`flux/apps/networking/netbird-network`,
+  switched on per cluster by `netbird-network-switch`): the proxy is
+  `kube-oidc-proxy.kube-oidc-proxy.<id>.<net>.spectrum` (an A record the operator writes into the
+  infra-owned NetBird DNS zone `<id>.<net>.spectrum`) and `k8s.<id>.<net>.spectrum` no longer exists
+  there; use that name as `server:` below. Grafana there is `grafana-service.observability.<id>.<net>.spectrum`.
 - Trust the Fluence Mesh Root CA locally (same root already trusted for Grafana access).
 - `kubectl` plus `kubelogin` — install the `kubectl oidc-login` plugin:
   `kubectl krew install oidc-login` (or download the int128/kubelogin release).
