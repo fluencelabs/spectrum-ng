@@ -32,13 +32,3 @@ data:
         reload
         loadbalance
     }
-
-    ${CLUSTER_ID}.${NETWORK}.spectrum:53 {
-        errors
-        log
-        template ANY ANY {
-            match "^(?P<service>[a-zA-Z0-9-]+)\.${CLUSTER_ID}\.${NETWORK}\.spectrum\.$"
-            answer "{{ .Name }} 60 IN CNAME {{ .Group.service }}.networking.svc.cluster.local."
-        }
-        cache 30
-    }

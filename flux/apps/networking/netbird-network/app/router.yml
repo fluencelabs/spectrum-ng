@@ -1,6 +1,6 @@
 # Routing peer and NetBird Network of this cluster. The operator names the NetBird Network after
 # metadata.name, so the name carries the cluster (sp-<network>-<first 8 of CLUSTER_ID>, the prefix
-# netbird-setup already uses). Keep it short: the operator derives a Service
+# the removed netbird-setup Job used). Keep it short: the operator derives a Service
 # networkrouter-<name>-forwarder from it, and a Service name is capped at 63 characters.
 # dnsZoneRef.name is matched against the zone's name in NetBird; the zone is created by infra.
 apiVersion: netbird.io/v1alpha1

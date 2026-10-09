@@ -1,9 +1,7 @@
 # Mesh exposure through the operator's v1alpha1 Network API (NetworkRouter + NetworkResource), which
 # also writes A records into the cluster's NetBird DNS zone <CLUSTER_ID>.<NETWORK>.spectrum.
-# Included per cluster from clusters/<cluster>/kustomization.yml, not from the networking
-# aggregator: the zone and the per-network access policy are owned by infra (crossplane), and the
-# NetworkRouter never becomes ready until its zone exists. Add a cluster here only after infra has
-# created both for it.
+# The zone and the per-network access policy are owned by infra (crossplane); a new cluster's
+# NetworkRouter stays not ready until infra has created its zone.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

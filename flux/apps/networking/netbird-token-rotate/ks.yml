@@ -23,4 +23,4 @@ spec:
         name: spectrum-manual-vars
         optional: true
   dependsOn:
-    - name: netbird-setup
+    - name: netbird-operator

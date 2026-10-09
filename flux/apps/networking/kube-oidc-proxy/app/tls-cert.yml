@@ -1,10 +1,10 @@
-# Leaf cert for the mesh-only hostname k8s.<cluster_id>.<network>.spectrum, signed by the
-# fluence-intermediate Issuer. ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild
-# (spectrum-vars + spectrum-manual-vars). Consumed by the kube-oidc-proxy pod (native TLS),
-# mounted from secret kube-oidc-proxy-tls. The served tls.crt is leaf+intermediate, so a client
-# trusting the Fluence Mesh Root validates the chain. Mirrors grafana-tls-cert.yml. The second
-# name is the A record the NetBird NetworkResource writes into the cluster's DNS zone
-# (<service>.<namespace>.<zone>, see flux/apps/networking/netbird-network).
+# Leaf cert for the mesh-only hostname kube-oidc-proxy.kube-oidc-
+# proxy.<cluster_id>.<network>.spectrum (the A record the NetworkResource writes into the cluster's
+# NetBird DNS zone, flux/apps/networking/netbird-network), signed by the fluence-intermediate
+# Issuer. ${CLUSTER_ID}/${NETWORK} are substituted by the ks postBuild (spectrum-vars + spectrum-
+# manual-vars). Consumed by the kube-oidc-proxy pod (native TLS), mounted from secret kube-oidc-
+# proxy-tls. The served tls.crt is leaf+intermediate, so a client trusting the Fluence Mesh Root
+# validates the chain. Mirrors grafana-tls-cert.yml.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -14,9 +14,8 @@ spec:
   secretName: kube-oidc-proxy-tls
   duration: 2160h # 90d
   renewBefore: 360h
-  commonName: k8s.${CLUSTER_ID}.${NETWORK}.spectrum
+  commonName: kube-oidc-proxy.kube-oidc-proxy.${CLUSTER_ID}.${NETWORK}.spectrum
   dnsNames:
-    - k8s.${CLUSTER_ID}.${NETWORK}.spectrum
     - kube-oidc-proxy.kube-oidc-proxy.${CLUSTER_ID}.${NETWORK}.spectrum
   privateKey:
     algorithm: ECDSA
