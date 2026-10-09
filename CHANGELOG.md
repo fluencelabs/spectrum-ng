@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.20](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.19...v0.3.20) (2026-10-09)
+
+
+### Features
+
+* **netbird:** drop the v1 mesh path on stage ([#337](https://github.com/fluencelabs/spectrum-ng/issues/337)) ([d212f2a](https://github.com/fluencelabs/spectrum-ng/commit/d212f2a72c81d9a928092c4987f8873a4ccca121))
+* **netbird:** publish grafana and kube-oidc-proxy through NetworkRouter/NetworkResource on stage ([#334](https://github.com/fluencelabs/spectrum-ng/issues/334)) ([93d3f6c](https://github.com/fluencelabs/spectrum-ng/commit/93d3f6c635f13eaefb756f673009ba6d8b9db32d))
+
+
+### Bug Fixes
+
+* **grafana:** escape the stage root_url variables from the root ks substitution ([#338](https://github.com/fluencelabs/spectrum-ng/issues/338)) ([e583004](https://github.com/fluencelabs/spectrum-ng/commit/e58300462b389617e97bcf358ced3852cfc56ec0))
+
 ## [0.3.19](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.18...v0.3.19) (2026-10-08)
 
 
