@@ -29,3 +29,17 @@ spec:
     name: kube-oidc-proxy
   groups:
     - name: spectrum-${NETWORK}
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: crd-api
+  namespace: ingress
+spec:
+  networkRouterRef:
+    name: sp-${NETWORK}-${CLUSTER_ID:0:8}
+    namespace: networking
+  serviceRef:
+    name: crd-api
+  groups:
+    - name: spectrum-${NETWORK}

@@ -1,0 +1,105 @@
+# crd-api on the NetBird mesh: TLS with the cluster's mesh certificate (same CA as grafana and
+# kube-oidc-proxy) and no JWT, unlike the public route on eg-gw (crd-operator SecurityPolicy).
+# An Envoy Gateway of its own, eg-mesh, whose Service is ClusterIP-only and named `crd-api`, so the
+# NetworkResource publishes it as crd-api.ingress.<CLUSTER_ID>.<NETWORK>.spectrum. Nothing here is
+# reachable from outside the mesh; external-dns only publishes cloudless.dev names.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: eg-mesh
+  namespace: ingress
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: crd-api
+        type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: eg-mesh
+  namespace: ingress
+spec:
+  gatewayClassName: eg-public
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: eg-mesh
+  listeners:
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: crd-api.ingress.${CLUSTER_ID}.${NETWORK}.spectrum
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: crd-api-mesh-tls
+            namespace: observability
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: fluence
+---
+# The leaf is issued in observability, where the cluster's mesh intermediate (the hand-delivered
+# fluence-mesh-intermediate secret behind the fluence-intermediate Issuer) lives, so ingress needs
+# no copy of the CA key; the ReferenceGrant lets eg-mesh read it from there.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: crd-api-mesh-tls
+  namespace: observability
+spec:
+  secretName: crd-api-mesh-tls
+  duration: 2160h # 90d
+  renewBefore: 360h
+  # No commonName: cert-manager caps it at 64 bytes and the zone name is longer.
+  dnsNames:
+    - crd-api.ingress.${CLUSTER_ID}.${NETWORK}.spectrum
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: fluence-intermediate
+    kind: Issuer
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: eg-mesh-crd-api-tls
+  namespace: observability
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: ingress
+  to:
+    - group: ""
+      kind: Secret
+      name: crd-api-mesh-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: crd-operator-api-mesh
+  namespace: fluence
+spec:
+  hostnames:
+    - crd-api.ingress.${CLUSTER_ID}.${NETWORK}.spectrum
+  parentRefs:
+    - name: eg-mesh
+      namespace: ingress
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: crd-operator-api
+          port: 8080
+      matches:
+        - path:
+            type: PathPrefix
+            value: /

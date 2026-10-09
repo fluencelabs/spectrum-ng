@@ -31,3 +31,6 @@ spec:
     # Namespaces and the ClusterIP Services the NetworkResources point at.
     - name: grafana
     - name: kube-oidc-proxy
+    - name: crd-operator
+    # Gateway API and Envoy Gateway CRDs for the crd-api mesh gateway.
+    - name: envoy
