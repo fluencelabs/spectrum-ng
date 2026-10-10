@@ -40,11 +40,11 @@ spec:
             - "--secure-port=443"
             - "--tls-cert-file=/etc/oidc/tls/tls.crt"
             - "--tls-private-key-file=/etc/oidc/tls/tls.key"
-            # Mesh-only authentik.infra (no public edge / QUIC). The operator-injected netbird sidecar
+            # Mesh-only authentik.networking.infrahub.fluence (no public edge / QUIC). The operator-injected netbird sidecar
             # gives this pod mesh reachability for discovery/JWKS. KUBE_OIDC_SLUG defaults to "kube";
             # KUBE_OIDC_CLIENT_ID has no safe default and MUST be set in spectrum-manual-vars (Flux
             # blanks undefined vars -> empty client-id breaks OIDC).
-            - "--oidc-issuer-url=https://authentik.infra/application/o/${KUBE_OIDC_SLUG:=kube}/"
+            - "--oidc-issuer-url=https://authentik.networking.infrahub.fluence/application/o/${KUBE_OIDC_SLUG:=kube}/"
             - "--oidc-client-id=${KUBE_OIDC_CLIENT_ID}"
             - "--oidc-username-claim=preferred_username"
             - "--oidc-groups-claim=groups"
@@ -54,7 +54,7 @@ spec:
             # — both MUST change together.
             - "--oidc-username-prefix=oidc:"
             - "--oidc-groups-prefix=oidc:"
-            # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (no intermediate).
+            # authentik.networking.infrahub.fluence's leaf is signed DIRECTLY by the Fluence Mesh Root (no intermediate).
             # Trust it via the ca.crt of the fluence-mesh-intermediate bootstrap secret (which IS the
             # self-signed CN=Fluence Mesh Root CA) — same source Grafana uses for tls_client_ca. Reuses
             # an already-required secret instead of a second hand-delivered object.
@@ -66,7 +66,7 @@ spec:
               containerPort: 8080
           # /ready calls AuthenticateToken and stays 503 until OIDC discovery (via the injected mesh
           # sidecar) succeeds, then latches ready=true. readiness alone removes the pod from endpoints
-          # during a transient authentik.infra outage and self-heals. A startupProbe gives the mesh +
+          # during a transient authentik.networking.infrahub.fluence outage and self-heals. A startupProbe gives the mesh +
           # OIDC a generous cold-start budget. No livenessProbe on /ready: a restart would reset the
           # in-process discovery retry and the warm sidecar mesh — counterproductive (upstream ships
           # readiness-only for this reason).
@@ -111,7 +111,7 @@ spec:
           secret:
             secretName: kube-oidc-proxy-tls
         - name: fluence-ca
-          # Fluence Mesh Root (public CA cert) to verify authentik.infra's served leaf. Sourced from
+          # Fluence Mesh Root (public CA cert) to verify authentik.networking.infrahub.fluence's served leaf. Sourced from
           # the ca.crt of the fluence-mesh-intermediate bootstrap secret (already required on every
           # cluster; its ca.crt IS the self-signed CN=Fluence Mesh Root CA). Projected to root.crt to
           # match --oidc-ca-file. Reusing it avoids a second hand-delivered object (a missing standalone

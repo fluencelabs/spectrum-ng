@@ -6,7 +6,7 @@ Analogous to Grafana at `https://grafana-service.observability.<cluster_id>.<net
 ## How it works
 
 ```
-kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infra) → ID token
+kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.networking.infrahub.fluence) → ID token
   → https://kube-oidc-proxy.kube-oidc-proxy.<cluster_id>.<network>.spectrum   (NetBird mesh, Fluence leaf cert)
     → kube-oidc-proxy: validates iss/aud/signature, reads username + groups,
       prefixes them with "oidc:" and sets Impersonate-User / Impersonate-Group
@@ -18,7 +18,7 @@ kubectl → oidc-login (browser auth-code + PKCE → Authentik on authentik.infr
 The apiserver itself is owned by **beam** and is not OIDC-configured; the proxy does impersonation,
 so no apiserver flags are required.
 
-The proxy pod reaches the mesh-only `authentik.infra` (for OIDC discovery/JWKS) via a NetBird sidecar
+The proxy pod reaches the mesh-only `authentik.networking.infrahub.fluence` (for OIDC discovery/JWKS) via a NetBird sidecar
 that the **netbird-operator auto-injects** via a `SidecarProfile` matching the pod label
 `netbird.io/inject`. The sidecar's resolver is pinned to `127.0.0.1:53` and the pod's `dnsConfig`
 points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafana OIDC back-channel.
@@ -31,7 +31,7 @@ points there first, then at cluster DNS (`KUBE_DNS_IP`). Same setup as the Grafa
 
 ## Prerequisites (operator laptop)
 
-- On the NetBird mesh (so `authentik.infra` and the proxy name resolve). The proxy is published by a
+- On the NetBird mesh (so `authentik.networking.infrahub.fluence` and the proxy name resolve). The proxy is published by a
   `NetworkResource` (`flux/apps/networking/netbird-network`) on the cluster's NetworkRouter
   `sp-<net>-<id8>`: the operator writes the A record
   `kube-oidc-proxy.kube-oidc-proxy.<id>.<net>.spectrum` → the Service ClusterIP into the
@@ -72,7 +72,7 @@ users:
         args:
           - oidc-login
           - get-token
-          - --oidc-issuer-url=https://authentik.infra/application/o/<slug>/
+          - --oidc-issuer-url=https://authentik.networking.infrahub.fluence/application/o/<slug>/
           - --oidc-client-id=<client_id>
           - --oidc-use-pkce
           - --oidc-extra-scope=profile
@@ -82,7 +82,7 @@ users:
 
 > The central Authentik has a `groups` scope mapping (Grafana and Vault use it), so request
 > `groups` — the proxy's `--oidc-groups-claim=groups` reads it from the id_token. First `kubectl`
-> call opens a browser to `authentik.infra`; kubelogin caches the token.
+> call opens a browser to `authentik.networking.infrahub.fluence`; kubelogin caches the token.
 
 ## Required per-cluster Flux vars (spectrum-manual-vars ConfigMap)
 
@@ -105,7 +105,7 @@ users:
 
 | Secret | Keys | Purpose |
 |---|---|---|
-| `fluence-mesh-intermediate` | `tls.crt`, `tls.key`, `ca.crt` | Per-cluster intermediate CA backing the `fluence-intermediate` Issuer (same hand-delivery as the Grafana namespace). Its **`ca.crt` is the Fluence Mesh Root** and is also mounted as the proxy's `--oidc-ca-file` to verify `authentik.infra` — no separate CA secret. |
+| `fluence-mesh-intermediate` | `tls.crt`, `tls.key`, `ca.crt` | Per-cluster intermediate CA backing the `fluence-intermediate` Issuer (same hand-delivery as the Grafana namespace). Its **`ca.crt` is the Fluence Mesh Root** and is also mounted as the proxy's `--oidc-ca-file` to verify `authentik.networking.infrahub.fluence` — no separate CA secret. |
 
 > The NetBird **setup key is auto-minted** by the netbird-operator (`SetupKey` CR in
 > `netbird-setupkey.yml`) — nothing hand-delivered. The sidecar is auto-injected via the
@@ -122,19 +122,21 @@ flow `authentik-infra-authentication`, redirects `http://localhost:{8000,18000}`
 1. Copy `client_id` from Vault `security/authentik-oidc/spectrum-kube-<network>` →
    `spectrum-manual-vars` `KUBE_OIDC_CLIENT_ID`; set `KUBE_OIDC_SLUG=spectrum-kube-<network>`.
    (Public client → no `client_secret` to copy.)
-2. NetBird needs no extra policy — `authentik.infra`'s NBResource source group is `All`.
+2. NetBird needs no extra policy — the `authentik` group policy lets `All` reach `authentik.networking.infrahub.fluence` on tcp/443.
 
-> NetBird: no extra policy needed — `authentik.infra`'s NBResource policy source group is `All`, so
-> the auto-injected sidecar peer can reach it out of the box (same as Grafana's back-channel).
+> NetBird: no extra policy needed — the `authentik` group policy's source is `All`, so the
+> auto-injected sidecar peer can reach it out of the box (same as Grafana's back-channel). The name
+> itself comes from the NetBird zone `infrahub.fluence`; the sidecar peer must be in a group that
+> zone is distributed to, or the proxy fails with `no such host`.
 - Confirm beam runs **Talos ≥ 1.8** (the netbird sidecar mounts `/dev/net/tun`; the runc 1.2.0–1.2.3
   TUN regression does not apply on ≥ 1.8 / runc ≥ 1.2.4).
 
 ## Verification (after Flux rollout)
 
 ```bash
-# 1. The PROXY container (not the sidecar) must resolve authentik.infra — this is the DNS path the
+# 1. The PROXY container (not the sidecar) must resolve authentik.networking.infrahub.fluence — this is the DNS path the
 #    proxy actually uses; testing from the netbird container would give a false green.
-kubectl -n kube-oidc-proxy exec deploy/kube-oidc-proxy -c proxy -- getent hosts authentik.infra
+kubectl -n kube-oidc-proxy exec deploy/kube-oidc-proxy -c proxy -- getent hosts authentik.networking.infrahub.fluence
 
 # 2. Proxy became Ready (it only latches ready after OIDC discovery via the mesh succeeds)
 kubectl -n kube-oidc-proxy get deploy kube-oidc-proxy
@@ -145,7 +147,7 @@ openssl s_client -connect $H:443 -servername $H </dev/null
 
 # 4. The id_token actually carries groups + preferred_username (catches the missing-claim case that
 #    RBAC smoke tests cannot distinguish from an RBAC misconfig)
-kubectl oidc-login get-token --oidc-issuer-url=https://authentik.infra/application/o/<slug>/ \
+kubectl oidc-login get-token --oidc-issuer-url=https://authentik.networking.infrahub.fluence/application/o/<slug>/ \
   --oidc-client-id=<client_id> --oidc-use-pkce \
   --oidc-extra-scope=profile --oidc-extra-scope=email --oidc-extra-scope=groups \
   | jq -r .status.token | cut -d. -f2 | base64 -d 2>/dev/null | jq '{groups, preferred_username}'

@@ -43,7 +43,7 @@ kubectl create secret generic alertmanager-config \
 
 Required on every cluster that deploys the `networking` (NetBird) app group — i.e.
 all clusters running the observability stack, since Grafana joins the mesh to reach
-the mesh-only authentik.infra for OIDC.
+the mesh-only authentik.networking.infrahub.fluence for OIDC.
 
 A hand-seeded admin PAT for the per-cluster NetBird service user `spectrum-<NETWORK>`
 (e.g. `spectrum-testnet`). The service user, plus the shared `dev` access

@@ -41,7 +41,7 @@ spec:
             description: >-
               The deployment has available replicas but no pod in that namespace
               carries a `netbird` container, so it is not on the mesh and cannot
-              resolve mesh-only names such as authentik.infra. This does not heal by
+              resolve mesh-only names such as authentik.networking.infrahub.fluence. This does not heal by
               itself — the webhook only injects at admission. Fix with
               `kubectl -n {{ $labels.namespace }} rollout restart deploy/{{ $labels.deployment }}`
               once the netbird-operator is up, then confirm the new pod has two
