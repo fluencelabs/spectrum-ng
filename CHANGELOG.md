@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.28](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.27...v0.3.28) (2026-10-10)
+
+
+### Bug Fixes
+
+* **kube-ovn:** drop the bcast ARP flood CronJob, fixed upstream in 1.16.10 ([#369](https://github.com/fluencelabs/spectrum-ng/issues/369)) ([41d9fba](https://github.com/fluencelabs/spectrum-ng/commit/41d9fba59d2467f30981fb09f4b1d316403cf1c3))
+
 ## [0.3.27](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.26...v0.3.27) (2026-10-10)
 
 
