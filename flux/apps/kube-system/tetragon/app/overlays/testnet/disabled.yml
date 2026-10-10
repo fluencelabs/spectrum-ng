@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tetragon-app
+data:
+  enabled: "false"
+  reason: "VM escape detection is being proven on stage first (NKS #2722, #2728)"
