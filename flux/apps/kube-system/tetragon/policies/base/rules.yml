@@ -1,0 +1,81 @@
+# Alerts on Tetragon's export stream in VictoriaLogs (graph @cloudless/fluence,
+# #2724). Same traps as kube-ovn/observability/egress-alerts.yml: the whole
+# LogsQL lives in `expr`, and the `_time:` window is wider than the interval so
+# a single event survives `for:`.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: tetragon-vm-escape
+  labels:
+    rule-type: vlogs
+spec:
+  groups:
+    - name: tetragon-vm-escape
+      type: vlogs
+      interval: 1m
+      rules:
+        - alert: TenantQemuExec
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND -process_kprobe.process.pod.name:tetragon-canary* | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: critical
+            component: vm-escape
+          annotations:
+            summary: "qemu-kvm in {{ $labels.launcher_pod }} started a process"
+            description: >-
+              The qemu-kvm process of {{ $labels.launcher_pod }} in
+              {{ $labels.tenant_namespace }} on {{ $labels.node }} called exec
+              {{ $value }} times in the last 15 minutes. qemu never starts
+              programs on its own, so this is the first step after a guest
+              escape until proven otherwise (graph @cloudless/fluence, #2722).
+              The workspace id is the namespace suffix. What it ran:
+              `_time:1h namespace:kube-system container:export-stdout "qemu-exec"
+              "{{ $labels.launcher_pod }}"` in VictoriaLogs.
+              WHAT TO DO: isolate first — stop the VM, keep the node cordoned
+              until it is inspected — then find the owner. On stage while the
+              policy is observe-only, a hit from KubeVirt itself is a false
+              positive and must be recorded on #2729 before enforcement.
+
+        - alert: KernelModuleLoaded
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND "kernel-module-load" | unpack_json | filter process_kprobe.policy_name:="kernel-module-load" | rename process_kprobe.function_name as hook, process_kprobe.process.binary as binary, node_name as node | stats by (node, hook, binary) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: warning
+            component: vm-escape
+          annotations:
+            summary: "Kernel module load on {{ $labels.node }} by {{ $labels.binary }}"
+            description: >-
+              {{ $labels.binary }} triggered {{ $labels.hook }} on
+              {{ $labels.node }} ({{ $value }} times in 15m). Talos loads its
+              modules at boot, before Tetragon starts, so a runtime load is
+              either a component autoloading one (record it) or someone with
+              host privileges inserting code. Details:
+              `_time:1h namespace:kube-system container:export-stdout
+              "kernel-module-load"` in VictoriaLogs.
+
+        # The canary runs every 10 minutes; 30m without its event means the
+        # detector is blind, and every other alert here is silent for the same
+        # reason, not because nothing happened. It parses the event through the
+        # same unpack_json field paths TenantQemuExec filters on, so a renamed
+        # field in Tetragon's JSON blinds this alert's query too and it fires,
+        # instead of TenantQemuExec silently matching nothing.
+        - alert: TetragonCanarySilent
+          expr: '_time:30m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND process_kprobe.process.pod.name:tetragon-canary* | stats count() as hits | filter hits:=0'
+          for: 10m
+          labels:
+            team: devops
+            severity: warning
+            component: vm-escape
+          annotations:
+            summary: "VM escape detector is blind: no canary event for 30m"
+            description: >-
+              The tetragon-canary CronJob makes a process at
+              /usr/libexec/qemu-kvm exec `true` every 10 minutes, and its event
+              has not reached VictoriaLogs in 30 minutes. Walk the path:
+              `kubectl -n kube-system get cronjob tetragon-canary` (is it
+              running?), `kubectl -n kube-system get tracingpolicies`
+              (is qemu-exec loaded?), `kubectl -n kube-system logs ds/tetragon
+              -c export-stdout` (is Tetragon exporting?), then Alloy and
+              VictoriaLogs.

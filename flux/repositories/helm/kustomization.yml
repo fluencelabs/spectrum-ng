@@ -9,3 +9,4 @@ resources:
   - nfd.yml
   - piraeus-charts.yml
   - netbird.yml
+  - cilium.yml
