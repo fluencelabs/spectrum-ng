@@ -5,10 +5,11 @@ metadata:
   labels:
     dashboards: "grafana"
 spec:
-  # Pinned: grafana-operator picks the Grafana image from its own default (11.3.0 in v5.18,
-  # 13.1.3 in v5.25), so an operator bump would silently upgrade Grafana two majors. Upgrade
-  # Grafana on purpose, by moving this pin.
-  version: 11.3.0
+  # Pinned: grafana-operator picks the Grafana image from its own default, so an operator bump
+  # would silently move Grafana. Upgrade Grafana on purpose, by moving this pin. The SQLite DB on
+  # grafana-pvc is migrated on upgrade: moving the pin back is not a clean rollback (wipe the PVC;
+  # datasources, folders and dashboards are re-pushed by the operator).
+  version: 13.1.3
 
   # Don't let the operator manage the admin-credentials secret — its default is the static admin/admin,
   # which Grafana 11.x then force-changes on first login. The grafana-admin-bootstrap Job seeds a
