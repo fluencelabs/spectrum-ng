@@ -63,3 +63,14 @@ kubectl create secret generic netbird-api-token \
 
 The `netbird-gate` Flux Kustomization health-gates the whole NetBird stack on this
 secret, so the rest of the cluster reconciles normally until it is present.
+
+## CVE dashboard
+
+The `CVE scan` workflow (weekly and on demand) renders the `mainnet` and `testnet`
+clusters with flux-local, scans every image with trivy for fixable HIGH/CRITICAL CVEs
+and keeps the open issue **CVE Dashboard 🛡️** (label `security`) up to date. New
+findings are announced in a comment that mentions `@fluencelabs/DevOps`.
+
+crd-operator's chart and images live in `containers.cloudless.dev`; set the repository
+secrets `CLOUDLESS_REGISTRY_USERNAME` / `CLOUDLESS_REGISTRY_PASSWORD` to scan them too,
+otherwise the dashboard lists them as left out.
