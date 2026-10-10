@@ -8,7 +8,7 @@ spec:
     cluster_id: "${CLUSTER_ID}"
     network: ${NETWORK}
   datasource:
-    url: "http://vlogs-stack.observability.svc:9428"
+    url: "http://vlsingle-stack.observability.svc:9428"
   notifier:
     url: "http://vmalertmanager-stack.observability.svc:9093"
   evaluationInterval: "30s"
