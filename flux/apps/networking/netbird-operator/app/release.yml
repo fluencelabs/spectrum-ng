@@ -28,8 +28,6 @@ spec:
       retries: 3
   values:
     managementURL: "https://netbird.infrahub.cloudless.dev"
-    # Default NetBird client image of the operator (the chart default follows the operator: 0.72.4
-    # on v0.8.0); sidecars pin the same version in their SidecarProfiles.
     routingClientImage: ghcr.io/netbirdio/netbird:0.80.0
     cluster:
       name: "spectrum-${NETWORK}-${CLUSTER_ID}"
