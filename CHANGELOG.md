@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.25](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.24...v0.3.25) (2026-10-10)
+
+
+### Features
+
+* **oidc:** move Grafana and kube-oidc-proxy to authentik.networking.infrahub.fluence ([#350](https://github.com/fluencelabs/spectrum-ng/issues/350)) ([79921de](https://github.com/fluencelabs/spectrum-ng/commit/79921deb97634b352ce752a674b433930384aa92))
+
 ## [0.3.24](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.23...v0.3.24) (2026-10-09)
 
 
