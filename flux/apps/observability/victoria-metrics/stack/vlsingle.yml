@@ -1,5 +1,3 @@
-# VLSingle replaces the VLogs resource, read-only in vm-operator since v0.61. Its Service is
-# vlsingle-stack (VLogs was vlogs-stack); log readers and writers point there.
 apiVersion: operator.victoriametrics.com/v1
 kind: VLSingle
 metadata:
