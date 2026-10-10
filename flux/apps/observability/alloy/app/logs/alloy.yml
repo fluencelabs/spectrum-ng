@@ -122,6 +122,6 @@ spec:
         // WRITING
         loki.write "victorialogs" {
           endpoint {
-            url = "http://vlogs-stack.observability.svc:9428/insert/loki/api/v1/push"
+            url = "http://vlsingle-stack.observability.svc:9428/insert/loki/api/v1/push"
           }
         }
