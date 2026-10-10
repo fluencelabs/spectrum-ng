@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.27](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.26...v0.3.27) (2026-10-10)
+
+
+### Bug Fixes
+
+* **netbird:** declare the NetworkRouter image so Flux owns it ([#366](https://github.com/fluencelabs/spectrum-ng/issues/366)) ([8919276](https://github.com/fluencelabs/spectrum-ng/commit/8919276d0a415831da76ff71c2ba08543dd1da81))
+
 ## [0.3.26](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.25...v0.3.26) (2026-10-10)
 
 
