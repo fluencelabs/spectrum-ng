@@ -11,6 +11,7 @@ metadata:
 spec:
   dnsZoneRef:
     name: ${CLUSTER_ID}.${NETWORK}.spectrum
+  image: ghcr.io/netbirdio/netbird:0.80.0
   workloadOverride:
     replicas: 1
     podTemplate:
