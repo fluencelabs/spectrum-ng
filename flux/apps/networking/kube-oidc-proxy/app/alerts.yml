@@ -26,7 +26,7 @@ spec:
             description: >-
               kube-oidc-proxy has had no available replica for 10 minutes, so no one
               can log in to this cluster's apiserver. If the logs show a repeating
-              `lookup authentik.infra ... no such host`, the pod is missing its
+              `lookup authentik.networking.infrahub.fluence ... no such host`, the pod is missing its
               NetBird sidecar — see NetbirdSidecarMissing.
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -65,5 +65,5 @@ spec:
             description: >-
               {{ $value }} `oidc authenticator` errors in the last 5m. Every login
               attempt fails while this repeats. The usual cause is that the issuer
-              host authentik.infra does not resolve, because the pod has no NetBird
+              host authentik.networking.infrahub.fluence does not resolve, because the pod has no NetBird
               sidecar and so is not on the mesh.

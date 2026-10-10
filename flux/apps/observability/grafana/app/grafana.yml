@@ -60,19 +60,19 @@ spec:
       client_id: "${GRAFANA_OIDC_CLIENT_ID}"
       client_secret: "$__env{GF_OAUTH_CLIENT_SECRET}"
       scopes: "openid profile email groups"
-      # ALL THREE legs now target the mesh-only authentik.infra — no dependency on the public edge.
-      #   - auth_url (browser leg): the operator laptop resolves authentik.infra over NetBird.
+      # ALL THREE legs now target the mesh-only authentik.networking.infrahub.fluence — no dependency on the public edge.
+      #   - auth_url (browser leg): the operator laptop resolves authentik.networking.infrahub.fluence over NetBird.
       #   - token_url / api_url (server-side, from the Grafana pod): the pod is joined to the mesh by a
       #     NetBird sidecar that the netbird-operator injects via SidecarProfile (pod label
       #     `netbird.io/inject`, deployment below); the pod resolves through the sidecar's resolver on
       #     127.0.0.1.
-      # authentik.infra's leaf is signed DIRECTLY by the Fluence Mesh Root (infra Issuer
+      # authentik.networking.infrahub.fluence's leaf is signed DIRECTLY by the Fluence Mesh Root (infra Issuer
       # fluence-root-ca; chain leaf->root, no intermediate — confirmed issuer=CN=Fluence Mesh Root CA).
       # Grafana's server-side OAuth client must trust that root explicitly; mounted from the ca.crt of
       # the fluence-mesh-intermediate secret (= the public Fluence Mesh Root cert; see deployment volumes).
-      auth_url: "https://authentik.infra/application/o/authorize/"
-      token_url: "https://authentik.infra/application/o/token/"
-      api_url: "https://authentik.infra/application/o/userinfo/"
+      auth_url: "https://authentik.networking.infrahub.fluence/application/o/authorize/"
+      token_url: "https://authentik.networking.infrahub.fluence/application/o/token/"
+      api_url: "https://authentik.networking.infrahub.fluence/application/o/userinfo/"
       tls_client_ca: "/etc/fluence-ca/root.crt"
       login_attribute_path: "preferred_username"
       email_attribute_path: "email"
@@ -169,7 +169,7 @@ spec:
                   mountPath: /etc/grafana-tls
                   readOnly: true
                 # Fluence Mesh Root (public cert) so the server-side OAuth client trusts
-                # authentik.infra (tls_client_ca above). See volumes.fluence-ca.
+                # authentik.networking.infrahub.fluence (tls_client_ca above). See volumes.fluence-ca.
                 - name: fluence-ca
                   mountPath: /etc/fluence-ca
                   readOnly: true

@@ -287,7 +287,7 @@ Kustomization fails to reconcile. For a new network `foonet`, add:
 > Any cluster that includes `flux/apps/observability` **must** also include
 > `flux/apps/networking` — Grafana joins the mesh (creates `SetupKey`/`SidecarProfile`,
 > labels its pod for sidecar injection, and serves on `grafana-service.observability.<id>.<net>.spectrum`
-> over mesh-only `authentik.infra`). Without the NetBird operator those CRs reference
+> over mesh-only `authentik.networking.infrahub.fluence`). Without the NetBird operator those CRs reference
 > missing CRDs and OIDC login breaks.
 >
 > Mesh names come from `flux/apps/networking/netbird-network` (NetworkRouter + NetworkResources).
