@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.26](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.25...v0.3.26) (2026-10-10)
+
+
+### Features
+
+* **ci:** weekly CVE scan of cluster images into a dashboard issue ([#352](https://github.com/fluencelabs/spectrum-ng/issues/352)) ([40ed062](https://github.com/fluencelabs/spectrum-ng/commit/40ed062c40b3b510673cff40619e303eecf66ab0))
+
+
+### Bug Fixes
+
+* **alloy-operator:** bump to 0.8.0 for CVE fixes, Alloy v1.9.2 to v1.20.0 ([#362](https://github.com/fluencelabs/spectrum-ng/issues/362)) ([b1fab93](https://github.com/fluencelabs/spectrum-ng/commit/b1fab9331f985db84918d6a00e4a9930e68c6f23))
+* **ci:** CVE alert ignores image tags, so a bump does not re-announce CVEs ([#360](https://github.com/fluencelabs/spectrum-ng/issues/360)) ([a09df12](https://github.com/fluencelabs/spectrum-ng/commit/a09df124b1300d11682252c878f03e8e96a2a177))
+* **ci:** CVE scan setup and first-run alert ([#354](https://github.com/fluencelabs/spectrum-ng/issues/354)) ([7c6734e](https://github.com/fluencelabs/spectrum-ng/commit/7c6734e16201989c64bd54e9988641f583655c12))
+* **ci:** scan only images that run; keep a failed image's CVEs on the dashboard ([#364](https://github.com/fluencelabs/spectrum-ng/issues/364)) ([dc50d58](https://github.com/fluencelabs/spectrum-ng/commit/dc50d58647244d61b30575c3b5f37a590bb3adf4))
+* **external-dns:** bump chart to 1.23.0 (app v0.23.0) for CVE fixes ([#356](https://github.com/fluencelabs/spectrum-ng/issues/356)) ([00d857a](https://github.com/fluencelabs/spectrum-ng/commit/00d857aa413ac7f024d188c5b06db42f3b1614ab))
+* **grafana-operator:** bump to 5.25.0 for CVE fixes, pin Grafana 11.3.0 ([#357](https://github.com/fluencelabs/spectrum-ng/issues/357)) ([3aa84fc](https://github.com/fluencelabs/spectrum-ng/commit/3aa84fc4faaf0ebeb7fe9d5e251606be0838b02a))
+* **grafana:** upgrade Grafana 11.3.0 to 13.1.3 for CVE fixes ([#358](https://github.com/fluencelabs/spectrum-ng/issues/358)) ([8e2d883](https://github.com/fluencelabs/spectrum-ng/commit/8e2d8833f69cb548976c2a333214b97715ef7bd1))
+* **kube-ovn:** bump to v1.16.12 ([#363](https://github.com/fluencelabs/spectrum-ng/issues/363)) ([fafbaa9](https://github.com/fluencelabs/spectrum-ng/commit/fafbaa905bee223d8ecb560bc1525c33ff707017))
+* **netbird:** run the NetworkRouter on 0.80.0 with update settings unlocked ([#361](https://github.com/fluencelabs/spectrum-ng/issues/361)) ([0149845](https://github.com/fluencelabs/spectrum-ng/commit/0149845c101cb0110f370f41f843d947977910b5))
+* **vm-operator:** bump to 0.68.1 (operator v0.75.0), migrate VLogs to VLSingle ([#359](https://github.com/fluencelabs/spectrum-ng/issues/359)) ([8b9c658](https://github.com/fluencelabs/spectrum-ng/commit/8b9c6586c2ba72c795cff9840aa3633482979be4))
+
 ## [0.3.25](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.24...v0.3.25) (2026-10-10)
 
 
