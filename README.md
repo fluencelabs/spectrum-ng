@@ -75,4 +75,5 @@ repository with security alerts enabled.
 
 crd-operator's chart and images live in `containers.cloudless.dev`; set the repository
 secrets `CLOUDLESS_REGISTRY_USERNAME` / `CLOUDLESS_REGISTRY_PASSWORD` to scan them too,
-otherwise the job summary lists them as left out and their alerts close.
+otherwise the job summary lists them (and every other image from that registry) as
+left out, and their alerts close.
