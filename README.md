@@ -66,7 +66,7 @@ secret, so the rest of the cluster reconciles normally until it is present.
 
 ## CVE dashboard
 
-The `CVE scan` workflow (weekly and on demand) renders the `mainnet` and `testnet`
+The `CVE scan` workflow (daily and on demand) renders the `mainnet` and `testnet`
 clusters with flate, scans every image with trivy for fixable HIGH/CRITICAL CVEs
 and keeps the open issue **CVE Dashboard 🛡️** (label `security`) up to date. New
 findings are announced in a comment that mentions `@fluencelabs/DevOps`.
