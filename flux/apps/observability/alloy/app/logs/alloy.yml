@@ -8,10 +8,22 @@ spec:
     tolerations:
       - effect: NoSchedule
         operator: Exists
+    volumes:
+      extra:
+        # Read positions of loki.source.file below, kept on the node so a recreated pod
+        # resumes each log file where the previous one stopped instead of re-sending it.
+        - name: storage
+          hostPath:
+            path: /var/lib/alloy-logs
+            type: DirectoryOrCreate
   alloy:
     enableReporting: false
+    storagePath: /var/lib/alloy
     mounts:
       varlog: true
+      extra:
+        - name: storage
+          mountPath: /var/lib/alloy
     extraEnv:
       # Salt for email hashes in the PII stages below (log-hash-salt.yml).
       - name: LOG_HASH_SALT
@@ -27,8 +39,14 @@ spec:
         }
 
         // DISCOVERY
+        // Each DaemonSet pod reads only the pods of its own node (HOSTNAME is the node name),
+        // so every line is collected once.
         discovery.kubernetes "pod" {
           role = "pod"
+          selectors {
+            role  = "pod"
+            field = "spec.nodeName=" + sys.env("HOSTNAME")
+          }
         }
 
         // RELABELING
@@ -83,12 +101,24 @@ spec:
           }
         }
 
-        loki.source.kubernetes "pod_logs" {
-          targets    = discovery.relabel.pod_logs.output
+        // Tails the node's /var/log/pods files; positions live in the storage path above.
+        local.file_match "pod_logs" {
+          path_targets = discovery.relabel.pod_logs.output
+        }
+
+        loki.source.file "pod_logs" {
+          targets    = local.file_match.pod_logs.targets
           forward_to = [loki.process.flow_records.receiver]
         }
 
         loki.process "flow_records" {
+          stage.cri {}
+
+          // The file source labels each line with its path, which no reader filters on.
+          stage.label_drop {
+            values = ["filename"]
+          }
+
           stage.match {
             selector = "{namespace=\"kube-system\", container=~\"syn|all\"}"
             stage.limit {
