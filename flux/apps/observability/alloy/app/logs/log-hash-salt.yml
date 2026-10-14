@@ -1,0 +1,15 @@
+# Salt for the email hashes alloy-logs writes instead of addresses (alloy.yml, PII stages).
+# LOG_HASH_SALT comes from the per-cluster Secret spectrum-manual-secrets (ks postBuild); it is
+# seeded once by hand and never changed, since a new salt stops hashes matching older logs.
+# Readable by whoever may read secrets in `observability` or `flux-system`, and shown by
+# Alloy's own UI/API (:12345, evaluated component arguments) to whoever reaches the
+# alloy-logs pod. To find one user's events:
+#   salt=$(kubectl -n observability get secret alloy-log-hash-salt -o jsonpath='{.data.salt}' | base64 -d)
+#   printf '%s' "user@example.com$salt" | sha256sum | cut -c1-16   # search email:<that>
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alloy-log-hash-salt
+type: Opaque
+stringData:
+  salt: ${LOG_HASH_SALT}

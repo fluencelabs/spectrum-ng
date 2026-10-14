@@ -14,5 +14,12 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
+  postBuild:
+    # LOG_HASH_SALT for app/logs/log-hash-salt.yml. Not optional, so a cluster without the
+    # Secret fails this build; a Secret without the key still renders an empty salt.
+    substituteFrom:
+      - kind: Secret
+        name: spectrum-manual-secrets
+        optional: false
   dependsOn:
     - name: alloy-operator

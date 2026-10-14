@@ -39,7 +39,7 @@ tokens in the manifests are filled from them at apply time.
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
 | `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC`, `REGISTRY_PULL_SECRET` |
-| `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
+| `spectrum-manual-secrets` | Secret | **manual** | optional; required for alloy | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN`, `LOG_HASH_SALT` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
 > variables are optional. `CLUSTER_ID` etc. are still required for manifests to render
@@ -59,6 +59,7 @@ tokens in the manifests are filled from them at apply time.
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
+| `LOG_HASH_SALT` | `spectrum-manual-secrets` | baked into Secret `alloy-log-hash-salt` (key `salt`) → env of alloy-logs, salts the `email:<hash>` written instead of addresses | sensitive. Seed once with `openssl rand -hex 16` and never change it: a new salt stops hashes matching older logs. A missing key renders an empty salt without any error |
 | `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` on the LINSTOR satellite; `NIC_NAME` of nic-sync | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`; nic-sync registers it, see §3 |
 | `STORAGE_IFACE` | `spectrum-manual-vars` | `IFACE` of nic-sync | name of the Talos `VLANConfig` carrying replication, e.g. `storage`; see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
@@ -75,7 +76,7 @@ substitutions.
 
 | Secret | Namespace | Key(s) | Consumer | Needed when |
 |---|---|---|---|---|
-| `spectrum-manual-secrets` | `flux-system` | `GRAFANA_OIDC_CLIENT_SECRET` | grafana OIDC (via substitution) | observability present |
+| `spectrum-manual-secrets` | `flux-system` | `GRAFANA_OIDC_CLIENT_SECRET`, `LOG_HASH_SALT` | grafana OIDC, alloy-logs email hashes (via substitution) | observability present |
 | `netbird-api-token` | `networking` | `NB_API_KEY` | netbird operator + rotate CronJob | `networking` group present (= every cluster with observability/Grafana mesh) |
 | `alertmanager-config` | `observability` | `alertmanager.yaml` | VMAlertmanager | observability present |
 | `fluence-mesh-intermediate` | `observability` | `ca.crt` + `tls.crt` + `tls.key` | cert-manager `fluence-intermediate` Issuer → issues `grafana-spectrum-tls`; Grafana also mounts its `ca.crt` | observability present (Grafana mesh TLS/OIDC) |
@@ -212,7 +213,8 @@ annotations are gone.
    # Substitution Secret (anything sensitive)
    kubectl -n flux-system create secret generic spectrum-manual-secrets \
      --from-literal=GRAFANA_OIDC_CLIENT_SECRET=<oidc_client_secret> \
-     --from-literal=CLOUDFLARE_TOKEN=<cf_token>
+     --from-literal=CLOUDFLARE_TOKEN=<cf_token> \
+     --from-literal=LOG_HASH_SALT=$(openssl rand -hex 16)
 
    # Standalone secrets
    kubectl create namespace networking

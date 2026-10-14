@@ -28,6 +28,7 @@ Cluster-specific overrides, created manually.
 | `OVN_POD_MTU` | Pod MTU on overlay subnets, kube-ovn `--mtu` (optional; `0` = derived from the tunnel interface). Pin the current value before moving `OVN_TUNNEL_IFACE` to a jumbo interface |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
+| `LOG_HASH_SALT` | Salt for the email hashes in stored pod logs; lives in Secret `spectrum-manual-secrets`, required wherever `observability` runs. Seed once (`openssl rand -hex 16`) and never change it: a new salt stops hashes matching older logs |
 
 ### Secret: `alertmanager-config` (namespace: `observability`)
 
