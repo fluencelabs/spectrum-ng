@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.29](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.28...v0.3.29) (2026-10-14)
+
+
+### Features
+
+* **alloy:** mask PII in pod logs at ingestion ([#375](https://github.com/fluencelabs/spectrum-ng/issues/375)) ([e280aab](https://github.com/fluencelabs/spectrum-ng/commit/e280aabcf2d1dc50c382505972ae1d79d930fd5e))
+
 ## [0.3.28](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.27...v0.3.28) (2026-10-10)
 
 
