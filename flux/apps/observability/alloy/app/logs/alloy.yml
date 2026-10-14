@@ -12,6 +12,13 @@ spec:
     enableReporting: false
     mounts:
       varlog: true
+    extraEnv:
+      # Salt for email hashes in the PII stages below (log-hash-salt.yml).
+      - name: LOG_HASH_SALT
+        valueFrom:
+          secretKeyRef:
+            name: alloy-log-hash-salt
+            key: salt
     configMap:
       content: |-
         logging {
@@ -91,6 +98,56 @@ spec:
               by_label_name = "container"
             }
           }
+          forward_to = [loki.process.pii.receiver]
+        }
+
+        // PII: masked at ingestion for every reader, so stored logs hold none
+        // (graph @cloudless/fluence, node #2859). Bearer/Basic credentials, JWTs, URL
+        // userinfo passwords and secret values are dropped; an email becomes
+        // email:<first 16 hex of sha256(email + salt)>, so one user's events stay searchable
+        // by hashing their address with the salt from secret alloy-log-hash-salt; the last
+        // IPv4 octet becomes 0. Runs before crd_operator, so the message it lifts into a label
+        // is already masked. Replacements never add or drop quotes, so JSON lines still parse
+        // below. Not caught: secrets in free prose, IPv6.
+        loki.process "pii" {
+          stage.replace {
+            expression = "(?i)\\b(?:bearer|basic)\\s+([A-Za-z0-9._~+/=-]{8,})"
+            replace    = "<redacted>"
+          }
+
+          stage.replace {
+            expression = "(eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+)"
+            replace    = "<jwt>"
+          }
+
+          stage.replace {
+            expression = "://[^:/\\s@\"]+:([^@/\\s\"]+)@"
+            replace    = "<redacted>"
+          }
+
+          // JSON string values: "password":"…" (also inside escaped JSON in a message).
+          stage.replace {
+            expression = "(?i)\"(?:password|passwd|secret|client_secret|api_?key|private_key|access_token|refresh_token|id_token|auth_token)\\\\?\"\\s*:\\s*\\\\?\"([^\"\\\\]+)"
+            replace    = "<redacted>"
+          }
+
+          // key=value / key: value in text and URL query strings; bare "token" only as a
+          // query parameter, since chain apps log token addresses.
+          stage.replace {
+            expression = "(?i)(?:\\b(?:password|passwd|secret|client_secret|api_?key|private_key|access_token|refresh_token|id_token|auth_token)|[?&]token)\\s*[:=]\\s*\\\\?[\"']?([A-Za-z0-9._~+/=-]+)"
+            replace    = "<redacted>"
+          }
+
+          stage.replace {
+            expression = "([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})"
+            replace    = "email:{{ Sha2Hash .Value \"" + sys.env("LOG_HASH_SALT") + "\" | trunc 16 }}"
+          }
+
+          stage.replace {
+            expression = "\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.(\\d{1,3})\\b"
+            replace    = "0"
+          }
+
           forward_to = [loki.process.crd_operator.receiver]
         }
 
