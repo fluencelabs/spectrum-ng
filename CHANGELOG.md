@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.30](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.29...v0.3.30) (2026-10-14)
+
+
+### Bug Fixes
+
+* **alloy:** tail pod logs per node from files with persisted positions ([#377](https://github.com/fluencelabs/spectrum-ng/issues/377)) ([50b2d5e](https://github.com/fluencelabs/spectrum-ng/commit/50b2d5ea6aba6befa186578157e53cd8bf77cba0))
+
 ## [0.3.29](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.28...v0.3.29) (2026-10-14)
 
 
