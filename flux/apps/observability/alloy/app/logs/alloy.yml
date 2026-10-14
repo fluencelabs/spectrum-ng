@@ -140,7 +140,9 @@ spec:
 
           stage.replace {
             expression = "([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})"
-            replace    = "email:{{ Sha2Hash .Value \"" + sys.env("LOG_HASH_SALT") + "\" | trunc 16 }}"
+            // The chart renders this content through Helm tpl; the raw-string action hands the
+            // stage template through to Alloy verbatim.
+            replace    = "email:{{`{{ Sha2Hash .Value \"" + sys.env("LOG_HASH_SALT") + "\" | trunc 16 }}`}}"
           }
 
           stage.replace {
