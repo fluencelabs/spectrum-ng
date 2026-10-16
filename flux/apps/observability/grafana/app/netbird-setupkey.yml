@@ -23,7 +23,7 @@ spec:
   containerOverride:
     # Client pinned explicitly: operator v0.8.0 injects 0.72.4 by default. Keep in step with
     # routingClientImage in netbird-operator/app/release.yml.
-    image: ghcr.io/netbirdio/netbird:0.80.0
+    image: ghcr.io/netbirdio/netbird:0.81.2
     env:
       - name: NB_SETUP_KEY
         valueFrom:
