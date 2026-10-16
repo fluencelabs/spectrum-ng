@@ -35,6 +35,17 @@ spec:
       # Per-cluster via ${ENABLE_EXTERNAL_VPCS} (spectrum-vars); default off so
       # clusters that don't set the var are unaffected.
       enableExternalVpcs: ${ENABLE_EXTERNAL_VPCS:=false}
+      # AdminNetworkPolicy / BaselineAdminNetworkPolicy (--enable-anp). ANP
+      # ACLs sit in OVN ACL tier 1, ahead of the tier-2 allow kube-ovn gives
+      # every pod to its own node's IP and join IP — the one rule a
+      # NetworkPolicy (tier 2, lower priority) cannot override. lightmare's
+      # chart ships the ANP that closes that path for workspace pods.
+      #
+      # On every cluster: with no ANP object it adds three informers and no
+      # ACL, so the switch is inert until lightmare's per-cluster values enable
+      # its policy. Needs the CRDs from network-policy-api-crds (dependsOn in
+      # ../ks.yml).
+      ENABLE_ANP: true
 
     agent:
       # Interface carrying inter-node Geneve traffic (--iface). Empty keeps
