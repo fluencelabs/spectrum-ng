@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.31](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.30...v0.3.31) (2026-10-17)
+
+
+### Features
+
+* **fluence:** label the fluence namespace privileged for crd-operator heap dumps on hostPath ([#385](https://github.com/fluencelabs/spectrum-ng/issues/385)) ([f96891d](https://github.com/fluencelabs/spectrum-ng/commit/f96891de24d4ace18782277b0e11492a95487d73))
+* **kube-ovn:** install network-policy-api CRDs and enable AdminNetworkPolicy ([#381](https://github.com/fluencelabs/spectrum-ng/issues/381)) ([979417e](https://github.com/fluencelabs/spectrum-ng/commit/979417ef1ff3f620345c2cac433afde1a73fd135))
+
+
+### Bug Fixes
+
+* **alloy:** scrape cAdvisor from the kubelet directly so container metrics land again ([#383](https://github.com/fluencelabs/spectrum-ng/issues/383)) ([c88af0b](https://github.com/fluencelabs/spectrum-ng/commit/c88af0b242cfa2a852f357697ba53f72f1cd12fe))
+
 ## [0.3.30](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.29...v0.3.30) (2026-10-14)
 
 
