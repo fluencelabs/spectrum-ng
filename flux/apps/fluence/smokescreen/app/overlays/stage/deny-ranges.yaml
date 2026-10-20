@@ -1,11 +1,1 @@
-# smokescreen's deny list for stage: only what lies outside the private and
-# special ranges, which the proxy refuses on every network already
-# (app/base/deployment.yml lists them). That is the nodes' public addresses:
-# every node ExternalIP, and a public underlay the nodes hold addresses in.
-# Kept identical to crd-operator's `controller.workspaceEgress.extraDenyCidrs`
-# for stage (flux/apps/fluence/crd-operator/app/overlays/stage/release.yml).
-#
-# TODO: empty until the ExternalIPs are read live from the cluster
-# (kubectl get nodes -o wide); until then a node's public address stays
-# reachable through the proxy.
 deny_ranges: []
