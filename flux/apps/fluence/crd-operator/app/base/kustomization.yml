@@ -4,3 +4,9 @@ resources:
   - release.yml
   - securitypolicy.yml
   - httproute.yml
+configMapGenerator:
+  - name: crd-operator-workspace-egress
+    files:
+      - values.yaml=workspace-egress-values.yaml
+    options:
+      disableNameSuffixHash: true
