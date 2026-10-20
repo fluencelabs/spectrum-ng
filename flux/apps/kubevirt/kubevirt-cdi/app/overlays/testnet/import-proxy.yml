@@ -1,0 +1,23 @@
+# Every CDI import (an HTTP Storage import, a golden Image) goes through the
+# smokescreen egress proxy (flux/apps/fluence/smokescreen), which refuses any
+# internal destination. The CDI operator copies this into CDIConfig.spec and
+# the import controller reads it from CDIConfig.status; an importer pod keeps
+# the setting it was created with. Plain HTTP proxy for both schemes (https
+# is tunnelled by CONNECT), hence no trustedCAProxy.
+#
+# Only after (1) a crd-operator chart and controller that know
+# `controller.workspaceEgress.importProxy`, with it enabled in this
+# cluster's crd-operator overlay: without the peer, workspace importers
+# cannot reach the proxy; and (2) the proxy running and checked (an importer
+# dialling a node IP through it gets 407). From here imports fail closed
+# while the proxy is down. Rollback: remove this patch first.
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: CDI
+metadata:
+  name: cdi
+spec:
+  config:
+    importProxy:
+      HTTPProxy: http://smokescreen.fluence.svc:4750
+      HTTPSProxy: http://smokescreen.fluence.svc:4750
+      noProxy: ""
