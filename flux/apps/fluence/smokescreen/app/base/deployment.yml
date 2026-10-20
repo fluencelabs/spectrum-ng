@@ -3,8 +3,7 @@
 # and it refuses any destination whose resolved address is internal. No
 # hostname ACL: every hostname is allowed and the dialled address decides.
 # Unlike the workspace egress NetworkPolicy it closes the importer's own node
-# too, and it does not
-# depend on when Kube-OVN programs a new pod's ACLs.
+# too, and it does not depend on when Kube-OVN programs a new pod's ACLs.
 #
 # Workspace importers reach these pods through the AdminNetworkPolicy in
 # ../../admin-policy (namespace `fluence`, pod label
