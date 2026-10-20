@@ -28,7 +28,7 @@ spec:
       retries: 3
   values:
     managementURL: "https://netbird.infrahub.cloudless.dev"
-    routingClientImage: ghcr.io/netbirdio/netbird:0.81.2
+    routingClientImage: ghcr.io/netbirdio/netbird:0.81.3
     cluster:
       name: "spectrum-${NETWORK}-${CLUSTER_ID}"
       dns: svc.cluster.local
