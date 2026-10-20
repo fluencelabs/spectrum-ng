@@ -8,21 +8,6 @@ spec:
     - HonorWaitForFirstConsumer
     - WebhookPvcRendering
     - CrossNamespaceVolumeDataSource
-    # Every CDI import (an HTTP Storage import, a golden Image) goes through
-    # the smokescreen egress proxy (flux/apps/fluence/smokescreen), which
-    # refuses any internal destination. The CDI operator copies this into
-    # CDIConfig.spec and the import controller reads it from CDIConfig.status;
-    # an importer pod keeps the setting it was created with. Plain HTTP proxy
-    # for both schemes (https is tunnelled by CONNECT), hence no
-    # trustedCAProxy. Imports fail closed while the proxy is down.
-    #
-    # Rollback is two releases: drop this block first; remove the proxy and
-    # its AdminNetworkPolicy only in a later one, once CDIConfig.status no
-    # longer carries importProxy and every importer created with it is gone.
-    importProxy:
-      HTTPProxy: http://smokescreen.fluence.svc:4750
-      HTTPSProxy: http://smokescreen.fluence.svc:4750
-      noProxy: ""
   infra:
     tolerations:
     - key: CriticalAddonsOnly
