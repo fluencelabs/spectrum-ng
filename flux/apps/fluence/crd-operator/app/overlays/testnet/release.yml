@@ -15,17 +15,6 @@ spec:
         tag: "0.9.2"
       persistence:
         storageClassName: lvm-thin-r2
-      # The chart's built-in denyCidrs default covers every private and special
-      # range (10/8, 100.64/10, 172.16/12, 192.168/16, 169.254/16, 127/8, 0/8,
-      # 224/4, 240/4); extraDenyCidrs appends what lies outside them: the nodes'
-      # public addresses (every ExternalIP, a public underlay the nodes sit in).
-      # Kept identical to smokescreen's deny list for testnet
-      # (flux/apps/fluence/smokescreen/app/overlays/testnet/deny-ranges.yaml).
-      #
-      # TODO: empty until the ExternalIPs are read live from the cluster
-      # (kubectl get nodes -o wide). Needs a chart that knows extraDenyCidrs.
-      workspaceEgress:
-        extraDenyCidrs: []
 
     api:
       image:

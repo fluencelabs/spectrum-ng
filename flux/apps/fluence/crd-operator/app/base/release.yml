@@ -57,6 +57,25 @@ spec:
         LTM_CRD_CTRL__EGRESS__CLUSTER_DEFAULT_EXTERNAL_NETWORK: "${EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK:=false}"
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__NAMESERVERS: '["1.1.1.1" ,"8.8.8.8"]'
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__SEARCHES: '[]'
+      # Every private and special IPv4 range: it covers each cluster's pod,
+      # service, join, storage and node networks. A network's overlay appends
+      # only public addresses (node ExternalIPs) with a JSON6902 `add`, never
+      # a list of its own (a values patch would replace this one). No IPv6
+      # range on purpose: a family with no CIDR here gets no outside access,
+      # so listing one would open IPv6 egress.
+      workspaceEgress:
+        denyCidrs:
+          - 0.0.0.0/8
+          - 10.0.0.0/8
+          - 100.64.0.0/10
+          - 127.0.0.0/8
+          - 169.254.0.0/16
+          - 172.16.0.0/12
+          - 192.0.0.0/24
+          - 192.168.0.0/16
+          - 198.18.0.0/15
+          - 224.0.0.0/4
+          - 240.0.0.0/4
       persistence:
         enabled: true
         accessModes:
