@@ -1,7 +1,6 @@
-# smokescreen's settings shared by every network; the init container appends
-# the network's `deny-ranges.yaml` (app/overlays/<NETWORK>) to this file.
 ip: 0.0.0.0
 port: 4750
 # smokescreen's default (300s) bounds a plain-http response streamed through
 # it: a slower download is cut. https tunnels are bounded by idleness.
 write_timeout: 6h
+deny_ranges: [0.0.0.0/8, 240.0.0.0/4${NODE_PUBLIC_CIDRS:=}]
