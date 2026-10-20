@@ -1,16 +1,11 @@
-# smokescreen's deny list on testnet. `deny_ranges` is the crd-operator
-# testnet overlay's `workspaceEgress.denyCidrs` as proposed alongside this
-# (not read live from the cluster; that change carries the provenance of each
-# range), kept in step with it by hand. smokescreen refuses private,
-# loopback, link-local, CGNAT and its own addresses by itself, so what
-# matters here is every PUBLIC address of the cluster: the nodes'
-# ExternalIPs are not listed yet (neither list has them).
-deny_ranges:
-  - 10.16.0.0/16
-  - 10.112.0.0/12
-  - 10.118.147.0/24
-  - 100.64.0.0/16
-  - 100.65.0.0/24
-  - 10.244.0.0/16
-  - 10.103.0.0/16
-  - 169.254.0.0/16
+# smokescreen's deny list for testnet: only what lies outside the private and
+# special ranges, which the proxy refuses on every network already
+# (app/base/deployment.yml lists them). That is the nodes' public addresses:
+# every node ExternalIP, and a public underlay the nodes hold addresses in.
+# Kept identical to crd-operator's `controller.workspaceEgress.extraDenyCidrs`
+# for testnet (flux/apps/fluence/crd-operator/app/overlays/testnet/release.yml).
+#
+# TODO: empty until the ExternalIPs are read live from the cluster
+# (kubectl get nodes -o wide); until then a node's public address stays
+# reachable through the proxy.
+deny_ranges: []

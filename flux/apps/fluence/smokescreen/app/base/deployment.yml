@@ -1,11 +1,15 @@
 # CDI's importer pods fetch every HTTP(S) import, redirects included, through
 # this proxy once the CDI resource points at it (flux/apps/kubevirt/kubevirt-cdi),
-# and it refuses any destination whose resolved address is internal: its own
-# defaults (RFC 1918, fc00::/7, loopback, link-local, multicast, CGNAT
-# 100.64.0.0/10, IPv4-embedding IPv6, its own interfaces) plus the network's
-# deny list (`deny-ranges.yaml` of its overlay; the init container joins it
-# to the shared `config.yaml`). No hostname ACL: every hostname is allowed
-# and the dialled address decides. Unlike the workspace egress
+# and it refuses any destination whose resolved address is internal. Built
+# in (smokescreen v0.1.0 classifyAddr, on every network): 10/8, 172.16/12,
+# 192.168/16, fc00::/7 (private), 100.64/10 (CGNAT), 127/8 and ::1,
+# 169.254/16 and fe80::/10, multicast, 0.0.0.0 and broadcast (not global
+# unicast), IPv4-embedding IPv6, and its own interfaces. Added below with
+# --deny-range (appended to the config's list, not replacing it): 0/8 and
+# 240/4, which Go counts as global unicast. Each network's
+# `deny-ranges.yaml` adds only public addresses (node ExternalIPs); the init
+# container joins it to the shared `config.yaml`. No hostname ACL: every
+# hostname is allowed and the dialled address decides. Unlike the workspace egress
 # NetworkPolicy it closes the importer's own node too, and it does not
 # depend on when Kube-OVN programs a new pod's ACLs.
 #
@@ -110,6 +114,9 @@ spec:
             - /opt/smokescreen/smokescreen
           args:
             - --config-file=/opt/smokescreen/config.yaml
+            # The two special ranges the built-ins miss (header comment).
+            - --deny-range=0.0.0.0/8
+            - --deny-range=240.0.0.0/4
           ports:
             - name: proxy
               containerPort: 4750

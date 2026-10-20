@@ -1,20 +1,13 @@
-# smokescreen's deny list on mainnet. One overlay serves both mainnet
-# clusters, poz-bey-c01 and fra-flix-01, so this is the union of their
-# ranges. Nothing here was read live from either cluster, and mainnet's
-# crd-operator overlay sets no workspace egress deny list to copy.
-# smokescreen refuses private, loopback, link-local, CGNAT and its own
-# addresses by itself, so what matters is every PUBLIC address of both
-# clusters: the nodes' ExternalIPs are not listed yet, nor the storage
-# networks (STORAGE_CIDR lives in each cluster's spectrum-manual-vars).
-deny_ranges:
-  - 10.16.0.0/16    # Kube-OVN ovn-default (pod network): chart default, assumed
-  - 100.64.0.0/16   # Kube-OVN join subnet: chart default, assumed
-  - 10.112.0.0/12   # poz-bey-c01 service CIDR (kube-dns 10.112.0.10)
-  - 10.208.0.0/12   # fra-flix-01 service CIDR: inferred from kube-dns 10.208.0.10
-  - 10.103.0.19/32  # poz-bey-c01 node InternalIPs
-  - 10.103.0.20/32
-  - 10.103.0.21/32
-  - 10.113.0.1/32   # fra-flix-01 node InternalIPs
-  - 10.113.0.2/32
-  - 10.113.0.3/32
-  - 169.254.0.0/16  # link-local / metadata
+# smokescreen's deny list for mainnet: only what lies outside the private and
+# special ranges, which the proxy refuses on every network already
+# (app/base/deployment.yml lists them). That is the nodes' public addresses:
+# every node ExternalIP, and a public underlay the nodes hold addresses in.
+# One overlay serves two clusters, poz-bey-c01 and fra-flix-01: list the
+# public addresses of both.
+# Kept identical to crd-operator's `controller.workspaceEgress.extraDenyCidrs`
+# for mainnet (flux/apps/fluence/crd-operator/app/overlays/mainnet/release.yml).
+#
+# TODO: empty until the ExternalIPs are read live from the cluster
+# (kubectl get nodes -o wide); until then a node's public address stays
+# reachable through the proxy.
+deny_ranges: []
