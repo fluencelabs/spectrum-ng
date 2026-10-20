@@ -31,6 +31,10 @@ spec:
     crds: CreateReplace
   driftDetection:
     mode: enabled
+  valuesFrom:
+    - kind: ConfigMap
+      name: crd-operator-workspace-egress
+      valuesKey: values.yaml
   values:
     controller:
       config:
