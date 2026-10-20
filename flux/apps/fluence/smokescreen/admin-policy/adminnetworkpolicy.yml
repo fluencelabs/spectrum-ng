@@ -14,6 +14,11 @@
 # closes nodes or networks overlaps, so the order against such a policy does
 # not matter; 90 leaves every lower number for them anyway.
 #
+# Kube-OVN (1.16) writes the rule's ACL only when the ANP is added with the
+# proxy's pods already addressed, hence its Kustomization waits on the proxy;
+# a later re-add without them (a kube-ovn-controller restart while the proxy
+# is down) drops the allow until the ANP is added again.
+#
 # Kube-OVN adds a new importer pod to the subject's port group only after CNI:
 # until then its dial to the proxy is dropped by the NetworkPolicy (fails
 # closed) and the import retries.
@@ -23,7 +28,7 @@
 apiVersion: policy.networking.k8s.io/v1alpha1
 kind: AdminNetworkPolicy
 metadata:
-  name: smokescreen-import-egress
+  name: smokescreen-importer-egress
   labels:
     app.kubernetes.io/name: smokescreen
     app.kubernetes.io/component: import-proxy
