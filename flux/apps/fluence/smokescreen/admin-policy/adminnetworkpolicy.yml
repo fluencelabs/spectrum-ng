@@ -12,7 +12,7 @@
 # Priority: Kube-OVN refuses two ANPs with the same priority, and a lower
 # number wins. The peer is the proxy's pod addresses only, which no Deny that
 # closes nodes or networks overlaps, so the order against such a policy does
-# not matter; 90 leaves every lower number for them anyway.
+# not matter; 91 leaves every lower number for them anyway.
 #
 # Kube-OVN (1.16) writes the rule's ACL only when the ANP is added with the
 # proxy's pods already addressed, hence its Kustomization waits on the proxy;
@@ -28,12 +28,12 @@
 apiVersion: policy.networking.k8s.io/v1alpha1
 kind: AdminNetworkPolicy
 metadata:
-  name: smokescreen-importer-egress
+  name: smokescreen-import-egress
   labels:
     app.kubernetes.io/name: smokescreen
     app.kubernetes.io/component: import-proxy
 spec:
-  priority: 90
+  priority: 91
   subject:
     pods:
       namespaceSelector:
