@@ -1,0 +1,77 @@
+# CDI's importer pods fetch every HTTP(S) import, redirects included, through
+# this proxy once the CDI resource points at it (flux/apps/kubevirt/kubevirt-cdi),
+# and it refuses any destination whose resolved address is internal: its own
+# defaults (RFC 1918, fc00::/7, loopback, link-local, multicast, CGNAT
+# 100.64.0.0/10, IPv4-embedding IPv6, its own interfaces) plus the cluster's
+# deny list (`config.yaml` of the overlay). No hostname ACL: every hostname
+# is allowed and the dialled address decides. Unlike the workspace egress
+# NetworkPolicy it closes the importer's own node too, and it does not
+# depend on when Kube-OVN programs a new pod's ACLs.
+#
+# crd-operator's controller lets workspace importers reach these pods
+# (controller.workspaceEgress.importProxy: namespace `fluence`, pod label
+# `app.kubernetes.io/name=smokescreen`, port 4750); keep the three in step.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smokescreen
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smokescreen
+  template:
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: smokescreen
+          # Built from upstream's v0.1.0 tag by lightmare
+          # (docker/smokescreen/Dockerfile, .github/workflows/smokescreen-image.yml):
+          # upstream publishes no image that pulls anonymously. Release tags
+          # are `<upstream version>-<image revision>`, published once.
+          image: containers.cloudless.dev/release/smokescreen:v0.1.0-1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config-file=/etc/smokescreen/config.yaml
+          ports:
+            - name: proxy
+              containerPort: 4750
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: proxy
+          livenessProbe:
+            tcpSocket:
+              port: proxy
+          volumeMounts:
+            - name: config
+              mountPath: /etc/smokescreen
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          # Not measured yet: a Go proxy copying streams.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: smokescreen-config

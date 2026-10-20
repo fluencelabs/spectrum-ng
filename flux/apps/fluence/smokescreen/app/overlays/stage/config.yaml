@@ -1,0 +1,21 @@
+# smokescreen's configuration on stage. `deny_ranges` is the crd-operator
+# stage overlay's `workspaceEgress.denyCidrs`, kept in step with it by hand
+# (flux/apps/fluence/crd-operator/app/overlays/stage/release.yml has the
+# provenance of each range). smokescreen refuses private, loopback,
+# link-local, CGNAT and its own addresses by itself, so what matters here is
+# every PUBLIC address of the cluster: the nodes' ExternalIPs are not listed
+# yet (neither list has them).
+ip: 0.0.0.0
+port: 4750
+deny_ranges:
+  - 10.16.0.0/16
+  - 10.112.0.0/12
+  - 10.118.149.0/24
+  - 100.64.0.0/16
+  - 100.65.0.0/24
+  - 10.244.0.0/24
+  - 10.103.0.0/16
+  - 169.254.0.0/16
+# smokescreen's default (300s) bounds a plain-http response streamed through
+# it: a slower download is cut. https tunnels are bounded by idleness.
+write_timeout: 6h
