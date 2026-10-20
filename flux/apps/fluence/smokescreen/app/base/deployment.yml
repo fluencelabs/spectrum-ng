@@ -11,6 +11,13 @@
 # Workspace importers reach these pods through the AdminNetworkPolicy in
 # ../../admin-policy (namespace `fluence`, pod label
 # `app.kubernetes.io/name=smokescreen`, port 4750); keep the three in step.
+#
+# No image is built for it: an init container fetches upstream's release
+# binary, checks it against the sha256 below and puts it in an emptyDir, and
+# the proxy runs it from distroless. The download needs github.com and its
+# release-asset CDN on 443: nothing limits this pod's egress (the
+# NetworkPolicy below is ingress-only, and no egress policy selects the
+# `fluence` namespace), and the proxy needs the open internet anyway.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,20 +31,71 @@ spec:
     spec:
       automountServiceAccountToken: false
       securityContext:
-        fsGroup: 1000
-        runAsGroup: 1000
+        fsGroup: 65532
+        runAsGroup: 65532
         runAsNonRoot: true
-        runAsUser: 1000
+        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: fetch
+          image: docker.io/curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+          imagePullPolicy: IfNotPresent
+          env:
+            # A bump changes the version AND both sha256s: take each from the
+            # asset itself (download, sha256sum) and cross-check upstream's
+            # SHA256SUMS. Nothing reads SHA256SUMS at run time.
+            - name: SMOKESCREEN_VERSION
+              value: v0.1.0
+            - name: SHA256_LINUX_AMD64
+              value: 4e1e447449e3cc653dae956208588722b5c8fe8ce894f633adc756a851d1ec46
+            - name: SHA256_LINUX_ARM64
+              value: f15ddd0dc2b2cbc6d7318f441928939eb9bedfab2a1881508af3096a1e24b7c9
+          command:
+            - /bin/sh
+            - -euc
+            - |
+              case "$(uname -m)" in
+                x86_64) arch=amd64; sum="$SHA256_LINUX_AMD64" ;;
+                aarch64) arch=arm64; sum="$SHA256_LINUX_ARM64" ;;
+                *) echo "unsupported architecture $(uname -m)" >&2; exit 1 ;;
+              esac
+              name="smokescreen_${SMOKESCREEN_VERSION}_linux_${arch}"
+              asset=/opt/smokescreen/asset.tar.gz
+              curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 \
+                --retry 5 --retry-all-errors --max-time 300 -o "$asset" \
+                "https://github.com/stripe/smokescreen/releases/download/${SMOKESCREEN_VERSION}/${name}.tar.gz"
+              echo "${sum}  ${asset}" | sha256sum -c -
+              tar -xzOf "$asset" "${name}/smokescreen" > /opt/smokescreen/smokescreen
+              rm "$asset"
+              chmod 0555 /opt/smokescreen/smokescreen
+          volumeMounts:
+            - name: bin
+              mountPath: /opt/smokescreen
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
       containers:
         - name: smokescreen
-          # Upstream publishes no image that pulls anonymously, and nothing
-          # builds this one yet (lightmare's build was dropped): the tag does
-          # not exist. Replace it with the image this repo settles on before
-          # merging.
-          image: containers.cloudless.dev/release/smokescreen:v0.1.0-1
+          # distroless static, nonroot (uid 65532): the binary is static Go.
+          image: gcr.io/distroless/static:nonroot@sha256:516757106de35205efb70b91ba03f6f1298424a0678c603255cf2852a7000087
           imagePullPolicy: IfNotPresent
+          command:
+            - /opt/smokescreen/smokescreen
           args:
             - --config-file=/etc/smokescreen/config.yaml
           ports:
@@ -51,6 +109,9 @@ spec:
             tcpSocket:
               port: proxy
           volumeMounts:
+            - name: bin
+              mountPath: /opt/smokescreen
+              readOnly: true
             - name: config
               mountPath: /etc/smokescreen
               readOnly: true
@@ -59,9 +120,10 @@ spec:
             capabilities:
               drop:
                 - ALL
-            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+            runAsGroup: 65532
             runAsNonRoot: true
-            runAsUser: 1000
+            runAsUser: 65532
             seccompProfile:
               type: RuntimeDefault
           # Not measured yet: a Go proxy copying streams.
@@ -72,6 +134,9 @@ spec:
             limits:
               memory: 256Mi
       volumes:
+        - name: bin
+          emptyDir:
+            sizeLimit: 64Mi
         - name: config
           configMap:
             name: smokescreen-config
