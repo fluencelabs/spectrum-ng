@@ -9,10 +9,17 @@
 #
 # Rules, in order (the first match wins):
 # - pod-network: Pass the pod network to the NetworkPolicy, which admits only
-#   the DNS and proxy pods there. 10.16.0.0/16 is kube-ovn's default
-#   `ovn-default` CIDR, which no cluster overrides
-#   (flux/apps/kube-system/kube-ovn). A cluster on another pod CIDR fails
-#   closed: its golden imports are denied, nothing opens.
+#   the DNS and proxy pods there. The pod network is `POD_CIDR` from
+#   `spectrum-manual-vars`: the v4 `cidrBlock` of kube-ovn's `ovn-default`
+#   subnet (`kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'`).
+#   It defaults to kube-ovn's own default, 10.16.0.0/16, which this repo does
+#   not override (flux/apps/kube-system/kube-ovn). A wrong value fails closed:
+#   the DNS and proxy pods fall to the Deny, so the cluster's golden imports
+#   are denied and nothing opens. One v4 CIDR only: on a dual-stack
+#   `ovn-default` the v6 half falls to the Deny as well (the importers reach
+#   DNS and the proxy through their v4 ClusterIPs). Never a range wider than
+#   the pod network: whatever it covers is handed to the NetworkPolicy, which
+#   cannot close the node's own addresses.
 # - everything-else: Deny every other address, the node's own IPs and the join
 #   network included.
 #
@@ -49,7 +56,7 @@ spec:
       action: Pass
       to:
         - networks:
-            - 10.16.0.0/16
+            - ${POD_CIDR:=10.16.0.0/16}
     - name: everything-else
       action: Deny
       to:

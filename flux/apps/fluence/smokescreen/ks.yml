@@ -81,5 +81,12 @@ spec:
     - name: network-policy-api-crds
     - name: crd-operator
     - name: kubevirt-cdi
+  # POD_CIDR, the pod network the ANP passes (defaults to kube-ovn's
+  # 10.16.0.0/16 when unset).
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
   wait: true
   timeout: 5m
