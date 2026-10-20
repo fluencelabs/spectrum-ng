@@ -1,0 +1,58 @@
+# Closes what networkpolicy.yml cannot: Kube-OVN (1.16, `CreateNodeACL`) lets
+# every pod reach its own node's InternalIP and join IP in ACL tier 2 at a
+# priority above any NetworkPolicy's drop. An AdminNetworkPolicy sits in tier
+# 1, ahead of it, and is applied after load balancing, so a Service is matched
+# by its backends (a node-backed one, the apiserver, included).
+#
+# Subject: the same importer pods as networkpolicy.yml, in `cloudless-images`
+# only; workspace importers are not touched.
+#
+# Rules, in order (the first match wins):
+# - pod-network: Pass the pod network to the NetworkPolicy, which admits only
+#   the DNS and proxy pods there. 10.16.0.0/16 is kube-ovn's default
+#   `ovn-default` CIDR, which no cluster overrides
+#   (flux/apps/kube-system/kube-ovn). A cluster on another pod CIDR fails
+#   closed: its golden imports are denied, nothing opens.
+# - everything-else: Deny every other address, the node's own IPs and the join
+#   network included.
+#
+# Peers are `networks` only. The `nodes` peer is not in the standard-channel
+# CRD the clusters run, and a `pods` peer has Kube-OVN's ACL trap: the rule's
+# ACL is written only if the peer already has addresses when the ANP is added
+# (see ../admin-policy/adminnetworkpolicy.yml). A CIDR is never empty.
+#
+# Priority: Kube-OVN refuses two ANPs with the same priority (smokescreen's own
+# is 91; 90 was its earlier one). The subjects do not overlap, so the order
+# between them does not matter.
+#
+# Selectors are written out by hand: no kustomize `labels` here.
+apiVersion: policy.networking.k8s.io/v1alpha1
+kind: AdminNetworkPolicy
+metadata:
+  name: smokescreen-images-importer-egress
+  labels:
+    app.kubernetes.io/name: smokescreen
+    app.kubernetes.io/component: import-proxy
+spec:
+  priority: 89
+  subject:
+    pods:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cloudless-images
+      podSelector:
+        matchLabels:
+          app: containerized-data-importer
+          cdi.kubevirt.io: importer
+  egress:
+    - name: pod-network
+      action: Pass
+      to:
+        - networks:
+            - 10.16.0.0/16
+    - name: everything-else
+      action: Deny
+      to:
+        - networks:
+            - 0.0.0.0/0
+            - ::/0
