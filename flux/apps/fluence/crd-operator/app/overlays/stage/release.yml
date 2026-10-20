@@ -31,16 +31,6 @@ spec:
           - 10.244.0.0/24   # node spec.podCIDRs (allocated, unused by Kube-OVN)
           - 10.103.0.0/16   # node network: kabat-05 InternalIP 10.103.0.127; prefix assumed
           - 169.254.0.0/16  # link-local / metadata
-      # Lets workspace importers reach the smokescreen proxy
-      # (flux/apps/fluence/smokescreen): its pods sit in the pod network,
-      # which denyCidrs closes. Needs a chart and controller that know
-      # `importProxy` (an older chart ignores it); must be live before the
-      # CDI resource points importers at the proxy.
-      importProxy:
-        enabled: true
-        namespace: fluence
-        podLabel: app.kubernetes.io/name=smokescreen
-        port: 4750
 
     vmApi:
       jwt:

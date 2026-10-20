@@ -15,20 +15,6 @@ spec:
         tag: "0.9.2"
       persistence:
         storageClassName: lvm-thin-r2
-      # denyCidrs for testnet comes with the change setting the testnet
-      # workspace egress deny list; this needs it (the chart refuses an
-      # enabled policy with an empty list).
-      workspaceEgress:
-        # Lets workspace importers reach the smokescreen proxy
-        # (flux/apps/fluence/smokescreen): its pods sit in the pod network,
-        # which denyCidrs closes. Needs a chart and controller that know
-        # `importProxy` (an older chart ignores it); must be live before the
-        # CDI resource points importers at the proxy.
-        importProxy:
-          enabled: true
-          namespace: fluence
-          podLabel: app.kubernetes.io/name=smokescreen
-          port: 4750
 
     api:
       image:

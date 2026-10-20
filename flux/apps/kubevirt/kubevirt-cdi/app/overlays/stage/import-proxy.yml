@@ -5,12 +5,12 @@
 # the setting it was created with. Plain HTTP proxy for both schemes (https
 # is tunnelled by CONNECT), hence no trustedCAProxy.
 #
-# Only after (1) a crd-operator chart and controller that know
-# `controller.workspaceEgress.importProxy`, with it enabled in this
-# cluster's crd-operator overlay: without the peer, workspace importers
-# cannot reach the proxy; and (2) the proxy running and checked (an importer
-# dialling a node IP through it gets 407). From here imports fail closed
-# while the proxy is down. Rollback: remove this patch first.
+# Only after the proxy and its AdminNetworkPolicy (without it the
+# workspace-egress NetworkPolicy keeps workspace importers off the proxy)
+# are running and checked: an importer dialling a node IP through it gets
+# 407. From here imports fail closed while the proxy is down. Rollback:
+# remove this patch first, and keep the proxy until CDIConfig.status no
+# longer carries importProxy and every importer created with it is gone.
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: CDI
 metadata:
