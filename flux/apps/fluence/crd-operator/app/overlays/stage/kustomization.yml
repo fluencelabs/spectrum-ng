@@ -5,19 +5,3 @@ resources:
   - repository.yml
 patches:
   - path: release.yml
-# The workspace egress deny list is the base's default (every private and
-# special range); a network appends only its public addresses — every node
-# ExternalIP, a public underlay the nodes sit in — one JSON6902 `add` per
-# CIDR, so the default is never replaced. The same addresses as smokescreen's
-# deny list for stage
-# (flux/apps/fluence/smokescreen/app/overlays/stage/deny-ranges.yaml).
-#
-# TODO: the node ExternalIPs, once read live from the cluster
-# (kubectl get nodes -o wide); none is known yet. Then add:
-#  - target:
-#      kind: HelmRelease
-#      name: crd-operator
-#    patch: |-
-#      - op: add
-#        path: /spec/values/controller/workspaceEgress/denyCidrs/-
-#        value: <ExternalIP>/32
