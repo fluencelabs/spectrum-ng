@@ -16,6 +16,21 @@ spec:
     controller:
       persistence:
         storageClassName: lvm-thin-r1
+      # Internal ranges workspace pods may not reach (the chart refuses to
+      # render while the policy is enabled and this is empty). Read from the
+      # kabat-stage cluster; CoreDNS sits in ovn-default and is allowed by its
+      # own rule. No IPv6 entry: the cluster is IPv4-only, and a family with
+      # no CIDR here gets no outside access at all.
+      workspaceEgress:
+        denyCidrs:
+          - 10.16.0.0/16    # Kube-OVN ovn-default subnet (the pod network)
+          - 10.112.0.0/12   # service CIDR (ServiceCIDR object, kube-ovn flag)
+          - 10.118.149.0/24 # LINSTOR storage network (STORAGE_CIDR), inside the service CIDR
+          - 100.64.0.0/16   # Kube-OVN join subnet (node-switch-cidr)
+          - 100.65.0.0/24   # Kube-OVN egress-fabric subnet
+          - 10.244.0.0/24   # node spec.podCIDRs (allocated, unused by Kube-OVN)
+          - 10.103.0.0/16   # node network: kabat-05 InternalIP 10.103.0.127; prefix assumed
+          - 169.254.0.0/16  # link-local / metadata
 
     vmApi:
       jwt:
