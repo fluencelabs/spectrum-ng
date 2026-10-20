@@ -14,3 +14,10 @@ spec:
     namespace: flux-system
   dependsOn:
     - name: kubevirt-cdi-operator
+    # The CDI resource points importers at the proxy (app/cdi.yml), so it is
+    # applied only once the proxy and its AdminNetworkPolicy are Ready. The
+    # operator install (kubevirt-cdi-operator) does not wait. The proxy
+    # setting cannot be a Kustomization of its own: two Kustomizations
+    # applying one object share kustomize-controller's field manager, and
+    # each apply would drop the other's fields.
+    - name: smokescreen

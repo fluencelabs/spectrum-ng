@@ -1,0 +1,55 @@
+# Lets CDI's importer pods in workspace namespaces reach the proxy. The
+# workspace-egress NetworkPolicy crd-operator keeps in every workspace
+# namespace denies the pod network (`denyCidrs`), the proxy's pods included;
+# an AdminNetworkPolicy Allow sits in Kube-OVN's ACL tier 1, ahead of every
+# NetworkPolicy (tier 2), so it opens exactly this path and nothing else.
+#
+# Subject: CDI labels every importer pod `app=containerized-data-importer`,
+# `cdi.kubevirt.io=importer`; crd-operator labels every workspace namespace
+# `app.kubernetes.io/managed-by=lightmare-crd-controller`. Peer: the proxy's
+# pods on their port, as a number (Kube-OVN 1.16 ignores namedPort).
+#
+# Priority: Kube-OVN refuses two ANPs with the same priority, and a lower
+# number wins. The peer is the proxy's pod addresses only, which no Deny that
+# closes nodes or networks overlaps, so the order against such a policy does
+# not matter; 90 leaves every lower number for them anyway.
+#
+# Kube-OVN adds a new importer pod to the subject's port group only after CNI:
+# until then its dial to the proxy is dropped by the NetworkPolicy (fails
+# closed) and the import retries.
+#
+# Selectors are written out by hand: no kustomize `labels` here, which would
+# be copied into them.
+apiVersion: policy.networking.k8s.io/v1alpha1
+kind: AdminNetworkPolicy
+metadata:
+  name: smokescreen-import-egress
+  labels:
+    app.kubernetes.io/name: smokescreen
+    app.kubernetes.io/component: import-proxy
+spec:
+  priority: 90
+  subject:
+    pods:
+      namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/managed-by: lightmare-crd-controller
+      podSelector:
+        matchLabels:
+          app: containerized-data-importer
+          cdi.kubevirt.io: importer
+  egress:
+    - name: importer-to-smokescreen
+      action: Allow
+      to:
+        - pods:
+            namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: fluence
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: smokescreen
+      ports:
+        - portNumber:
+            protocol: TCP
+            port: 4750

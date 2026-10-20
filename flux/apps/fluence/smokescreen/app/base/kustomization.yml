@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/name: smokescreen
+      app.kubernetes.io/component: import-proxy
+    # Not into selectors: the NetworkPolicy's `from` selects CDI's importer
+    # pods, which do not carry these. Selectors are written out instead.
+    includeSelectors: false
+    includeTemplates: true
+resources:
+  - deployment.yml
+  - service.yml
+  - networkpolicy.yml
+# The hash suffix rolls the Deployment when the config changes.
+configMapGenerator:
+  - name: smokescreen-config
+    files:
+      - config.yaml
