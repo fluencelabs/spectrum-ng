@@ -17,3 +17,25 @@ spec:
     namespace: flux-system
   wait: true
   timeout: 5m
+---
+# The cluster-scoped AdminNetworkPolicy that lets workspace importers reach the
+# proxy (admin-policy/adminnetworkpolicy.yml). Its own Kustomization: no
+# targetNamespace for a cluster-scoped object, and it needs the
+# network-policy-api CRDs. The same on every cluster that gets the proxy.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: smokescreen-admin-policy
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./flux/apps/fluence/smokescreen/admin-policy
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  dependsOn:
+    - name: network-policy-api-crds
+  wait: true
+  timeout: 5m
