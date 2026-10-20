@@ -14,4 +14,3 @@ resources:
   - ../../flux/apps/networking/kube-oidc-proxy/users-full-access
   - ../../flux/apps/networking/netbird-crd-api
   - ../../flux/apps/fluence
-  - ../../flux/apps/fluence/smokescreen

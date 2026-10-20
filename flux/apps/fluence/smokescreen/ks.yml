@@ -1,6 +1,7 @@
-# Egress proxy for CDI's importer pods (stripe/smokescreen); included only by
-# clusters/stage and clusters/testnet — a cluster needs its own deny list
-# (overlays/<NETWORK>/config.yaml) before it gets one.
+# Egress proxy for CDI's importer pods (stripe/smokescreen), on every cluster
+# that runs fluence; app/overlays/<NETWORK> holds only that network's deny list.
+# Order: network-policy-api CRDs -> smokescreen-admin-policy (the ANP) ->
+# smokescreen -> kubevirt-cdi (the CDI resource that points importers here).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -15,13 +16,17 @@ spec:
     kind: GitRepository
     name: spectrum
     namespace: flux-system
+  # Workspace importers reach the proxy only through the AdminNetworkPolicy.
+  dependsOn:
+    - name: smokescreen-admin-policy
+  # Ready only once the Deployment is: kubevirt-cdi waits on this.
   wait: true
   timeout: 5m
 ---
 # The cluster-scoped AdminNetworkPolicy that lets workspace importers reach the
 # proxy (admin-policy/adminnetworkpolicy.yml). Its own Kustomization: no
 # targetNamespace for a cluster-scoped object, and it needs the
-# network-policy-api CRDs. The same on every cluster that gets the proxy.
+# network-policy-api CRDs.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

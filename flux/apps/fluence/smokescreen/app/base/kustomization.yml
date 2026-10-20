@@ -12,3 +12,9 @@ resources:
   - deployment.yml
   - service.yml
   - networkpolicy.yml
+# The hash suffix rolls the Deployment when the config changes; each
+# network's overlay generates `smokescreen-deny-ranges` the same way.
+configMapGenerator:
+  - name: smokescreen-config
+    files:
+      - config.yaml

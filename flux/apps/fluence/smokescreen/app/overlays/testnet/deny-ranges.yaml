@@ -1,12 +1,10 @@
-# smokescreen's configuration on testnet. `deny_ranges` is the crd-operator
+# smokescreen's deny list on testnet. `deny_ranges` is the crd-operator
 # testnet overlay's `workspaceEgress.denyCidrs` as proposed alongside this
 # (not read live from the cluster; that change carries the provenance of each
 # range), kept in step with it by hand. smokescreen refuses private,
 # loopback, link-local, CGNAT and its own addresses by itself, so what
 # matters here is every PUBLIC address of the cluster: the nodes'
 # ExternalIPs are not listed yet (neither list has them).
-ip: 0.0.0.0
-port: 4750
 deny_ranges:
   - 10.16.0.0/16
   - 10.112.0.0/12
@@ -16,6 +14,3 @@ deny_ranges:
   - 10.244.0.0/16
   - 10.103.0.0/16
   - 169.254.0.0/16
-# smokescreen's default (300s) bounds a plain-http response streamed through
-# it: a slower download is cut. https tunnels are bounded by idleness.
-write_timeout: 6h
