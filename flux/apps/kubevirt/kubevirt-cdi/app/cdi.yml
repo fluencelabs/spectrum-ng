@@ -8,6 +8,7 @@ spec:
     filesystemOverhead:
       storageClass:
         lvm-thin-r1: "0.15"
+        lvm-thin-r2: "0.15"
     featureGates:
     - HonorWaitForFirstConsumer
     - WebhookPvcRendering
