@@ -2,7 +2,8 @@
 # that runs fluence.
 # Order: smokescreen -> smokescreen-admin-policy (the ANP, after the
 # network-policy-api CRDs) -> kubevirt-cdi (the CDI resource that points
-# importers here).
+# importers here) -> smokescreen-images-policy (golden Image importers may
+# reach nothing but the proxy and DNS).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -49,5 +50,43 @@ spec:
   dependsOn:
     - name: network-policy-api-crds
     - name: smokescreen
+  wait: true
+  timeout: 5m
+---
+# Golden Image importers in `cloudless-images` (images-policy/): a
+# NetworkPolicy that leaves them only DNS and the proxy, and an
+# AdminNetworkPolicy that denies them everything off the pod network, their own
+# node included. No targetNamespace (the ANP is cluster-scoped; the
+# NetworkPolicy names its namespace).
+#
+# After kubevirt-cdi, so importers carry the proxy env before their direct
+# path closes (an importer keeps the env it was created with), and after
+# crd-operator, whose chart creates `cloudless-images`. crd-operator is Ready
+# once its HelmRelease is applied, not installed: on a new cluster the first
+# applies may fail on the missing namespace and are retried every interval.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: smokescreen-images-policy
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./flux/apps/fluence/smokescreen/images-policy
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  dependsOn:
+    - name: network-policy-api-crds
+    - name: crd-operator
+    - name: kubevirt-cdi
+  # POD_CIDR, the pod network the ANP passes (defaults to kube-ovn's
+  # 10.16.0.0/16 when unset).
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
   wait: true
   timeout: 5m
