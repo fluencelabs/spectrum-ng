@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.31](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.30...v0.3.31) (2026-10-21)
+
+
+### Features
+
+* **fluence,kubevirt-cdi:** route CDI imports through a smokescreen egress proxy on every cluster ([#389](https://github.com/fluencelabs/spectrum-ng/issues/389)) ([e443cfc](https://github.com/fluencelabs/spectrum-ng/commit/e443cfc1195b0a9e6338c09fb3699eb7e46e1725))
+* **fluence:** label the fluence namespace privileged for crd-operator heap dumps on hostPath ([#385](https://github.com/fluencelabs/spectrum-ng/issues/385)) ([f96891d](https://github.com/fluencelabs/spectrum-ng/commit/f96891de24d4ace18782277b0e11492a95487d73))
+* **kube-ovn:** install network-policy-api CRDs and enable AdminNetworkPolicy ([#381](https://github.com/fluencelabs/spectrum-ng/issues/381)) ([979417e](https://github.com/fluencelabs/spectrum-ng/commit/979417ef1ff3f620345c2cac433afde1a73fd135))
+
+
+### Bug Fixes
+
+* **alloy:** scrape cAdvisor from the kubelet directly so container metrics land again ([#383](https://github.com/fluencelabs/spectrum-ng/issues/383)) ([c88af0b](https://github.com/fluencelabs/spectrum-ng/commit/c88af0b242cfa2a852f357697ba53f72f1cd12fe))
+* **cdi:** allow filesystem overhead for checksum scratch ([#395](https://github.com/fluencelabs/spectrum-ng/issues/395)) ([343ad74](https://github.com/fluencelabs/spectrum-ng/commit/343ad745a4936983dfcf3657aaa38218901fb1b6))
+* **crd-operator:** set the workspace egress deny list on stage ([#386](https://github.com/fluencelabs/spectrum-ng/issues/386)) ([6402500](https://github.com/fluencelabs/spectrum-ng/commit/6402500830be31bd289accef7cccb347f8ac3270))
+* **crd-operator:** share one workspace egress deny list across clusters, extended by NODE_PUBLIC_CIDRS ([#388](https://github.com/fluencelabs/spectrum-ng/issues/388)) ([f36b698](https://github.com/fluencelabs/spectrum-ng/commit/f36b69862f0da4518f43d90dfa1cb10e94a71ea8))
+* **fluence:** apply the smokescreen AdminNetworkPolicy after the proxy is up, so Kube-OVN writes its ACL ([#393](https://github.com/fluencelabs/spectrum-ng/issues/393)) ([ae1e637](https://github.com/fluencelabs/spectrum-ng/commit/ae1e63702b1464e8f153c61c94577fb8016c37a4))
+* **fluence:** confine golden Image importers in cloudless-images to DNS and the smokescreen proxy ([#394](https://github.com/fluencelabs/spectrum-ng/issues/394)) ([a66e71a](https://github.com/fluencelabs/spectrum-ng/commit/a66e71ac5e5f733e127cd64bfd22200841edc86c))
+
 ## [0.3.30](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.29...v0.3.30) (2026-10-14)
 
 
