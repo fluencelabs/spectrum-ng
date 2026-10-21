@@ -4,6 +4,10 @@ metadata:
   name: cdi
 spec:
   config:
+    # Cover measured ext4 scratch overhead for checksum imports.
+    filesystemOverhead:
+      storageClass:
+        lvm-thin-r1: "0.15"
     featureGates:
     - HonorWaitForFirstConsumer
     - WebhookPvcRendering
