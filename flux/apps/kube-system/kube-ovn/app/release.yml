@@ -96,11 +96,11 @@ spec:
       ovnDirectory: "/var/lib/ovn"
       resources:
         requests:
-          cpu: "${OVS_OVN_CPU:=2}"
-          memory: "3Gi"
+          cpu: "${OVS_OVN_CPU:=200m}"
+          memory: "${OVS_OVN_MEMORY:=1Gi}"
         limits:
           cpu: "${OVS_OVN_CPU:=2}"
-          memory: "3Gi"
+          memory: "${OVS_OVN_MEMORY:=3Gi}"
     cni:
       mountToolingDirectory: false
 
@@ -141,8 +141,8 @@ spec:
                 path: /spec/template/spec/initContainers/0/resources
                 value:
                   requests:
-                    cpu: "${OVS_OVN_CPU:=2}"
+                    cpu: "100m"
                     memory: "128Mi"
                   limits:
-                    cpu: "${OVS_OVN_CPU:=2}"
+                    cpu: "100m"
                     memory: "128Mi"
