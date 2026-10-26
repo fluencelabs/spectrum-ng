@@ -26,6 +26,7 @@ Cluster-specific overrides, created manually.
 | `STORAGE_PREF_NIC` | Name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage` |
 | `OVN_TUNNEL_IFACE` | Interface carrying Geneve traffic, kube-ovn `--iface` (optional; default is the interface holding the node IP) |
 | `OVN_POD_MTU` | Pod MTU on overlay subnets, kube-ovn `--mtu` (optional; `0` = derived from the tunnel interface). Pin the current value before moving `OVN_TUNNEL_IFACE` to a jumbo interface |
+| `OVS_OVN_CPU` | Integer CPU count of the `ovs-ovn` pods, set as both request and limit so they are Guaranteed and get an exclusive cpuset from the static CPU manager (optional; default `2`). Must be an integer |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `POD_CIDR` | The v4 CIDR of kube-ovn's `ovn-default` subnet, which the golden Image importers' AdminNetworkPolicy passes to their NetworkPolicy (optional; defaults to kube-ovn's `10.16.0.0/16`; check with `kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'`) |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |

@@ -94,10 +94,21 @@ spec:
       disableModulesManagement: true
       ovsDirectory: "/var/lib/openvswitch"
       ovnDirectory: "/var/lib/ovn"
+      # Guaranteed QoS with an integer CPU count: kubelet's static CPU manager
+      # then gives ovs-vswitchd a fixed exclusive cpuset. As Burstable it sat in
+      # the shared pool, which shrinks and grows whenever a dedicated-CPU VM
+      # starts or stops, and OVS in per-cpu upcall mode tears down and recreates
+      # every handler thread (~640 on a 768-core node) on each change, losing
+      # upcalls meanwhile (DatapathFlowsLost). Must stay an integer — a
+      # fractional value keeps the pod in the shared pool. The init container
+      # also needs requests == limits for the pod to be Guaranteed
+      # (postRenderers below).
       resources:
         requests:
-          memory: "1Gi"
+          cpu: "${OVS_OVN_CPU:=2}"
+          memory: "3Gi"
         limits:
+          cpu: "${OVS_OVN_CPU:=2}"
           memory: "3Gi"
     cni:
       mountToolingDirectory: false
@@ -126,3 +137,25 @@ spec:
               - op: add
                 path: /spec/template/spec/hostPID
                 value: true
+          # The chart gives hostpath-init no resources and no value to set
+          # them; without these the ovs-ovn pod is Burstable whatever
+          # ovsOvn.resources says. CPU equals the main container's, so the pod's
+          # effective request does not change. The test op fails the release
+          # instead of patching the wrong container if the chart puts another
+          # one first.
+          - target:
+              kind: DaemonSet
+              name: ovs-ovn
+            patch: |
+              - op: test
+                path: /spec/template/spec/initContainers/0/name
+                value: hostpath-init
+              - op: add
+                path: /spec/template/spec/initContainers/0/resources
+                value:
+                  requests:
+                    cpu: "${OVS_OVN_CPU:=2}"
+                    memory: "128Mi"
+                  limits:
+                    cpu: "${OVS_OVN_CPU:=2}"
+                    memory: "128Mi"
