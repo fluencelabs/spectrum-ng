@@ -14,7 +14,7 @@ spec:
         name: nfd
         namespace: flux-system
       interval: 1h
-      version: "0.20.0"
+      version: "0.20.1"
 
   install:
     createNamespace: true
