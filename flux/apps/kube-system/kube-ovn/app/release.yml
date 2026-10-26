@@ -96,9 +96,11 @@ spec:
       ovnDirectory: "/var/lib/ovn"
       resources:
         requests:
-          memory: "1Gi"
+          cpu: "${OVS_OVN_CPU:=200m}"
+          memory: "${OVS_OVN_MEMORY:=1Gi}"
         limits:
-          memory: "3Gi"
+          cpu: "${OVS_OVN_CPU:=2}"
+          memory: "${OVS_OVN_MEMORY:=3Gi}"
     cni:
       mountToolingDirectory: false
 
@@ -126,3 +128,21 @@ spec:
               - op: add
                 path: /spec/template/spec/hostPID
                 value: true
+          # The chart cannot set hostpath-init resources; this does, for Guaranteed
+          # QoS (узел #3633). The test op guards the init container order.
+          - target:
+              kind: DaemonSet
+              name: ovs-ovn
+            patch: |
+              - op: test
+                path: /spec/template/spec/initContainers/0/name
+                value: hostpath-init
+              - op: add
+                path: /spec/template/spec/initContainers/0/resources
+                value:
+                  requests:
+                    cpu: "100m"
+                    memory: "128Mi"
+                  limits:
+                    cpu: "100m"
+                    memory: "128Mi"
