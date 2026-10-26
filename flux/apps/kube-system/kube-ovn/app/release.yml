@@ -94,8 +94,6 @@ spec:
       disableModulesManagement: true
       ovsDirectory: "/var/lib/openvswitch"
       ovnDirectory: "/var/lib/ovn"
-      # Guaranteed with an integer CPU: fixed exclusive cpuset for ovs-vswitchd
-      # (граф @cloudless/fluence, узел #3633; риск #3634). Must stay an integer.
       resources:
         requests:
           cpu: "${OVS_OVN_CPU:=2}"
