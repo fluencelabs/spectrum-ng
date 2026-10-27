@@ -11,7 +11,7 @@ spec:
       # (SetupKey, SidecarProfile, NetworkRouter, NetworkResource); the chart still ships the legacy
       # v1 CRDs. New in 0.4.0+: an admission webhook (see values.webhook below).
       chart: netbird-operator
-      version: "0.8.0"
+      version: "0.9.0"
       sourceRef:
         kind: HelmRepository
         name: netbirdio
