@@ -1,0 +1,47 @@
+# Runtime detection of a tenant escaping its VM (graph @cloudless/fluence,
+# node #2722). Only the events of our own TracingPolicies are exported; the
+# per-process exec/exit stream Tetragon emits by default is not shipped.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tetragon
+spec:
+  interval: 30m
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  chart:
+    spec:
+      chart: tetragon
+      version: 1.7.1
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+  values:
+    # CRDs ship with the release so Flux owns their lifecycle, instead of the
+    # operator creating them out of band.
+    crds:
+      installMethod: helm
+    tetragon:
+      exportAllowList: |-
+        {"event_set":["PROCESS_KPROBE"],"policy_names":["qemu-exec","kernel-module-load"]}
+      # The chart default also drops namespace "" (host processes) and
+      # kube-system; a module load is a host event, so that default would hide
+      # exactly what kernel-module-load is for.
+      exportDenyList: |-
+        {"health_check":true}
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+    export:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi

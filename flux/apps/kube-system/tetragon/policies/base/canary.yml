@@ -1,0 +1,42 @@
+# Proves the whole path policy → export → Alloy → VictoriaLogs → vmalert is
+# alive: a copy of `env` placed at /usr/libexec/qemu-kvm execs `true`, which is
+# exactly what qemu-exec matches. TetragonCanarySilent fires when this event
+# stops arriving. The outer shell exits 0 even if the inner exec is killed, so
+# the job stays green once enforcement is switched on.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tetragon-canary
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tetragon-canary
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+            - name: canary
+              image: docker.io/library/debian:13.7-slim
+              command:
+                - sh
+                - -c
+                - mkdir -p /usr/libexec && cp /usr/bin/env /usr/libexec/qemu-kvm && /usr/libexec/qemu-kvm true; exit 0
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  memory: 64Mi

@@ -1,0 +1,60 @@
+# qemu-kvm in a virt-launcher pod never starts another program: its parent is
+# virt-launcher-monitor and its only children are threads. Any exec it makes is
+# the first step after a guest-to-host escape (graph @cloudless/fluence, #2722).
+# In security_bprm_check, matchBinaries is the CALLER (the process about to be
+# replaced), not the binary being executed.
+# Observe-only: Sigkill is a separate, owner-approved step (#2729).
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: qemu-exec
+spec:
+  kprobes:
+    - call: security_bprm_check
+      syscall: false
+      args:
+        - index: 0
+          type: linux_binprm
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
+---
+# Talos loads its modules at boot, before Tetragon runs; at runtime a module
+# load or an autoload request is unexpected on any node.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: kernel-module-load
+spec:
+  kprobes:
+    - call: security_kernel_module_request
+      syscall: false
+      args:
+        - index: 0
+          type: string
+    - call: security_kernel_read_file
+      syscall: false
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "2" # READING_MODULE (finit_module)
+    - call: security_kernel_load_data
+      syscall: false
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "2" # LOADING_MODULE (init_module)
