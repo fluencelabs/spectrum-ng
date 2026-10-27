@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.32](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.31...v0.3.32) (2026-10-27)
+
+
+### Miscellaneous Chores
+
+* release 0.3.32 ([#411](https://github.com/fluencelabs/spectrum-ng/issues/411)) ([2089ee9](https://github.com/fluencelabs/spectrum-ng/commit/2089ee9c71fc6ad6c9a674774699bd6ada6990ad))
+
 ## [0.3.31](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.30...v0.3.31) (2026-10-26)
 
 
