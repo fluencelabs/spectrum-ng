@@ -76,7 +76,6 @@ spec:
     admission:
       config:
         LTM__LOG_FORMAT: json
-      # On by default in every cluster; decision: https://github.com/fluencelabs/lightmare/issues/863#issuecomment-6476408305
       vmiCreateFence:
         enabled: true
 
