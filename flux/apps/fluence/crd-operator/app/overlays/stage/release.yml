@@ -17,6 +17,12 @@ spec:
       persistence:
         storageClassName: lvm-thin-r1
 
+    admission:
+      # Stage first; testnet/mainnet follow after the stage fence metrics are reviewed.
+      # Decision: https://github.com/fluencelabs/lightmare/issues/863#issuecomment-6476408305
+      vmiCreateFence:
+        enabled: true
+
     vmApi:
       jwt:
         jwksUrl: "https://api.stage.fluence.dev/v1/internal/.well_known/jwks.json"
