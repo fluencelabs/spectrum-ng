@@ -76,6 +76,8 @@ spec:
     admission:
       config:
         LTM__LOG_FORMAT: json
+      vmiCreateFence:
+        enabled: true
 
     vmApi:
       config:
