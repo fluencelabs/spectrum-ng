@@ -28,6 +28,15 @@
     "enabled": true,
     "pinDigests": false
   },
+  "hostRules": [
+    {
+      "description": "Private zot registry (lightmare images and crd-operator chart); read-only user `renovate` on release/**",
+      "matchHost": "containers.cloudless.dev",
+      "hostType": "docker",
+      "username": "renovate",
+      "password": "{{ secrets.ZOT_RENOVATE_PASSWORD }}"
+    }
+  ],
   "regexManagers": [
     {
       "description": "Update FluxInstance distribution version",
