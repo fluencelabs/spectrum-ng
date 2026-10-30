@@ -81,6 +81,7 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^containers\\.cloudless\\.dev/release/crd-/"],
       "groupName": "lightmare",
+      "commitMessagePrefix": "fix(crd-operator):",
       "separateMajorMinor": false,
       "automerge": false
     },
