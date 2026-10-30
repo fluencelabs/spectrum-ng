@@ -29,6 +29,6 @@ spec:
     vmApi:
       image:
         repository: "containers.cloudless.dev/release/crd-vm-api"
-        tag: "0.3.8"
+        tag: "0.3.9"
       jwt:
         jwksUrl: "https://api.testnet.fluence.dev/v1/internal/.well_known/jwks.json"
