@@ -24,7 +24,7 @@ spec:
     admission:
       image:
         repository: "containers.cloudless.dev/release/crd-admission"
-        tag: "0.6.0"
+        tag: "0.7.0"
 
     vmApi:
       image:
