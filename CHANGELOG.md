@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.33](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.32...v0.3.33) (2026-10-30)
+
+
+### Features
+
+* **fluence:** enable crd-admission VMI create fence by default ([#415](https://github.com/fluencelabs/spectrum-ng/issues/415)) ([2a96d23](https://github.com/fluencelabs/spectrum-ng/commit/2a96d23c01b7041b45cf04ae1f60ac2f7e728e51))
+
+
+### Bug Fixes
+
+* **renovate:** type Renovate bumps as fix so release-please releases them ([#427](https://github.com/fluencelabs/spectrum-ng/issues/427)) ([0b84d4c](https://github.com/fluencelabs/spectrum-ng/commit/0b84d4c66cd05f48b31405ef49377655f9e15218))
+
 ## [0.3.32](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.31...v0.3.32) (2026-10-27)
 
 
