@@ -3,7 +3,7 @@
   "extends": ["config:recommended"],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Renovate Dashboard 🤖",
-  "commitMessagePrefix": "chore:",
+  "commitMessagePrefix": "fix:",
   "semanticCommits": "enabled",
   "timezone": "UTC",
   "prConcurrentLimit": 5,
@@ -89,6 +89,7 @@
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
+      "commitMessagePrefix": "chore(ci):",
       "automerge": false,
       "prPriority": 5
     },
