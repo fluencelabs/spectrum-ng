@@ -77,6 +77,14 @@
       "prPriority": 10
     },
     {
+      "description": "Group lightmare components: the crd-* images and the crd-operator chart ship as one release, and the chart carries the CRDs (crds: CreateReplace), so an image bumped without its chart runs against the old schema",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^containers\\.cloudless\\.dev/release/crd-/"],
+      "groupName": "lightmare",
+      "separateMajorMinor": false,
+      "automerge": false
+    },
+    {
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
