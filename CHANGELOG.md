@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.34](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.33...v0.3.34) (2026-10-31)
+
+
+### Bug Fixes
+
+* **netbird:** drop the NetworkRouter env override so operator 0.9.0 can apply its liveness probe ([#428](https://github.com/fluencelabs/spectrum-ng/issues/428)) ([0d524bd](https://github.com/fluencelabs/spectrum-ng/commit/0d524bd327f4b92fddf6e8d43755add83aa9cc0a))
+
 ## [0.3.33](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.32...v0.3.33) (2026-10-30)
 
 
