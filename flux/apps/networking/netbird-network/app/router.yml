@@ -14,10 +14,3 @@ spec:
   image: ghcr.io/netbirdio/netbird:0.82.0
   workloadOverride:
     replicas: 1
-    podTemplate:
-      spec:
-        containers:
-          - name: netbird
-            env:
-              - name: NB_DISABLE_UPDATE_SETTINGS
-                value: "false"
