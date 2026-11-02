@@ -25,6 +25,17 @@ spec:
       image:
         repository: "containers.cloudless.dev/release/crd-admission"
         tag: "0.7.0"
+      networkPolicy:
+        enabled: true
+        webhookFrom:
+          - ipBlock:
+              cidr: 10.103.0.130/32
+        metricsFrom:
+          - ipBlock:
+              cidr: 10.103.0.130/32
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
 
     vmApi:
       image:
