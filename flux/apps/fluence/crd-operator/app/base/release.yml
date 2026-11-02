@@ -78,10 +78,6 @@ spec:
         LTM__LOG_FORMAT: json
       vmiCreateFence:
         enabled: true
-      # The chart's ServiceMonitor carries `scrape: "true"`, which is what
-      # alloy-metrics picks up cluster-wide (observability/alloy); it scrapes
-      # the metrics port the fence already exposes, so the pods do not roll.
-      # The CrdAdmissionVmiCreateFenceUnannotated alert reads its counter.
       serviceMonitor:
         enabled: true
 
