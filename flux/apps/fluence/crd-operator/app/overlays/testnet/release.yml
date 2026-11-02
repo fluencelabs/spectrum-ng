@@ -31,7 +31,8 @@ spec:
       # InternalIP, testnet's only control-plane node. The webhooks are
       # failurePolicy Fail: a new or re-addressed control-plane node must be
       # added here BEFORE it serves the apiserver, or every routed write is
-      # refused. metricsFrom keeps the apiserver proxy to /metrics working.
+      # refused. metricsFrom keeps the apiserver proxy to /metrics working;
+      # its observability peer lets vmagent scrape /metrics.
       networkPolicy:
         enabled: true
         webhookFrom:
@@ -40,6 +41,9 @@ spec:
         metricsFrom:
           - ipBlock:
               cidr: 10.103.0.130/32
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
 
     vmApi:
       image:
