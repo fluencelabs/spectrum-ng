@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.34](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.33...v0.3.34) (2026-11-02)
+
+
+### Features
+
+* **crd-operator:** enable the crd-admission webhook NetworkPolicy on testnet ([#432](https://github.com/fluencelabs/spectrum-ng/issues/432)) ([c18c800](https://github.com/fluencelabs/spectrum-ng/commit/c18c800e8c262ba01c8acdef6e6fac47aa0f12b8))
+* **crd-operator:** scrape crd-admission metrics and alert when the VMI create fence stops protecting ([#433](https://github.com/fluencelabs/spectrum-ng/issues/433)) ([cd66bec](https://github.com/fluencelabs/spectrum-ng/commit/cd66becfa5c91f4bcb6a27290f9422e5316e0a4d))
+
+
+### Bug Fixes
+
+* **crd-operator:** Update lightmare ([#434](https://github.com/fluencelabs/spectrum-ng/issues/434)) ([98f9493](https://github.com/fluencelabs/spectrum-ng/commit/98f949340f5e2f0a9da3190b66f64e0e8cd8b4ab))
+* **netbird:** drop the NetworkRouter env override so operator 0.9.0 can apply its liveness probe ([#428](https://github.com/fluencelabs/spectrum-ng/issues/428)) ([0d524bd](https://github.com/fluencelabs/spectrum-ng/commit/0d524bd327f4b92fddf6e8d43755add83aa9cc0a))
+* Update alpine/k8s Docker tag to v1.37.2 ([#431](https://github.com/fluencelabs/spectrum-ng/issues/431)) ([e0c9040](https://github.com/fluencelabs/spectrum-ng/commit/e0c904007269f22c39f4840392e40c90ad77705a))
+* Update gcr.io/distroless/static:nonroot Docker digest to 25ac8f0 ([#430](https://github.com/fluencelabs/spectrum-ng/issues/430)) ([198751f](https://github.com/fluencelabs/spectrum-ng/commit/198751fe500d131d3341500a94c511d67b840a93))
+
 ## [0.3.33](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.32...v0.3.33) (2026-10-30)
 
 
