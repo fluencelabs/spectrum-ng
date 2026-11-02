@@ -78,6 +78,8 @@ spec:
         LTM__LOG_FORMAT: json
       vmiCreateFence:
         enabled: true
+      serviceMonitor:
+        enabled: true
 
     vmApi:
       config:

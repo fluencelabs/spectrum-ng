@@ -151,3 +151,16 @@ spec:
           annotations:
             summary: "Storage {{ $labels.name }} (workspace={{ $labels.workspace }}) is not ready"
             description: "cloudless.dev Storage {{ $labels.name }} has Ready condition {{ $labels.condition_status }} (reason: {{ $labels.condition_reason }}) for more than 5 minutes"
+
+    - name: crd-admission.vmi-create-fence.alerts
+      rules:
+        - alert: CrdAdmissionVmiCreateFenceUnannotated
+          expr: |
+            increase(crd_admission_vmi_create_fence_unannotated_total[15m]) > 0
+          for: 0s
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "crd-admission VMI create fence is not protecting"
+            description: "crd-admission {{ $labels.pod }} admitted {{ $value | printf \"%.0f\" }} VirtualMachineInstance CREATE(s) without the kubevirt.io/vm-generation annotation in the last 15m. KubeVirt stopped stamping it, so the fence lets every VMI through unchecked. Check the WARN logs of container admission-controller (namespace, VMI, VM) and the KubeVirt version."
