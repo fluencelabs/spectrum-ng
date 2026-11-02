@@ -25,14 +25,6 @@ spec:
       image:
         repository: "containers.cloudless.dev/release/crd-admission"
         tag: "0.7.0"
-      # Source of the kube-apiserver's webhook calls, observed via
-      # crd_admission_webhook_callers_total on 2026-11-02 on both admission
-      # pods, incl. the one on a node without a kube-apiserver: kabat-02's
-      # InternalIP, testnet's only control-plane node. The webhooks are
-      # failurePolicy Fail: a new or re-addressed control-plane node must be
-      # added here BEFORE it serves the apiserver, or every routed write is
-      # refused. metricsFrom keeps the apiserver proxy to /metrics working;
-      # its observability peer lets vmagent scrape /metrics.
       networkPolicy:
         enabled: true
         webhookFrom:
