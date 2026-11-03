@@ -5,6 +5,5 @@ resources:
   - kube-oidc-proxy
   - netbird-gate
   - netbird-operator
-  - netbird-operator-config
   - netbird-network
   - netbird-token-rotate
