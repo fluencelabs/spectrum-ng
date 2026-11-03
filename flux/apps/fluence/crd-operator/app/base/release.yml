@@ -84,12 +84,12 @@ spec:
         enabled: true
         # Only host-network sources (kube-apiserver, other hostNetwork) get in; the pod network is cut off.
         # NODE_CIDR (spectrum-manual-vars, see README): cross-node calls come from the apiserver node's InternalIP.
-        # 100.64.0.0/16, kube-ovn's join subnet: same-node calls come from the node's ovn0 address.
+        # JOIN_CIDR, kube-ovn's join subnet (defaults to kube-ovn's default): same-node calls come from the node's ovn0 address.
         webhookFrom:
           - ipBlock:
               cidr: ${NODE_CIDR}
           - ipBlock:
-              cidr: 100.64.0.0/16
+              cidr: ${JOIN_CIDR:=100.64.0.0/16}
         metricsFrom:
           - namespaceSelector:
               matchLabels:
