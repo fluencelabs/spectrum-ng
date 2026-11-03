@@ -17,6 +17,19 @@ spec:
       persistence:
         storageClassName: lvm-thin-r1
 
+    admission:
+      networkPolicy:
+        enabled: true
+        webhookFrom:
+          - ipBlock:
+              cidr: 10.103.0.127/32
+        metricsFrom:
+          - ipBlock:
+              cidr: 10.103.0.127/32
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
+
     vmApi:
       jwt:
         jwksUrl: "https://api.stage.fluence.dev/v1/internal/.well_known/jwks.json"

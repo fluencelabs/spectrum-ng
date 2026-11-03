@@ -25,6 +25,40 @@ spec:
       image:
         repository: "containers.cloudless.dev/release/crd-admission"
         tag: "0.7.1"
+      # This overlay is shared by both mainnet clusters, so every
+      # kube-apiserver of both is listed:
+      # fra-flix-01 = 10.113.0.1-3, poz-bey-c01 = 10.103.0.19-21.
+      networkPolicy:
+        enabled: true
+        webhookFrom:
+          - ipBlock:
+              cidr: 10.113.0.1/32
+          - ipBlock:
+              cidr: 10.113.0.2/32
+          - ipBlock:
+              cidr: 10.113.0.3/32
+          - ipBlock:
+              cidr: 10.103.0.19/32
+          - ipBlock:
+              cidr: 10.103.0.20/32
+          - ipBlock:
+              cidr: 10.103.0.21/32
+        metricsFrom:
+          - ipBlock:
+              cidr: 10.113.0.1/32
+          - ipBlock:
+              cidr: 10.113.0.2/32
+          - ipBlock:
+              cidr: 10.113.0.3/32
+          - ipBlock:
+              cidr: 10.103.0.19/32
+          - ipBlock:
+              cidr: 10.103.0.20/32
+          - ipBlock:
+              cidr: 10.103.0.21/32
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
 
     vmApi:
       image:
