@@ -80,6 +80,14 @@ spec:
         enabled: true
       serviceMonitor:
         enabled: true
+      networkPolicy:
+        enabled: true
+        # Per-cluster in spectrum-manual-vars (see README); list every kube-apiserver node: the webhook is failurePolicy Fail.
+        webhookFrom: ${KUBE_APISERVER_PEERS}
+        metricsFrom:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
 
     vmApi:
       config:

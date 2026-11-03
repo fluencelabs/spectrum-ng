@@ -30,6 +30,7 @@ Cluster-specific overrides, created manually.
 | `OVS_OVN_MEMORY` | Memory of the `ovs-ovn` container, as both request and limit, e.g. `3Gi` (optional; set with `OVS_OVN_CPU`). Unset keeps Burstable `1Gi`/`3Gi` |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
 | `POD_CIDR` | The v4 CIDR of kube-ovn's `ovn-default` subnet, which the golden Image importers' AdminNetworkPolicy passes to their NetworkPolicy (optional; defaults to kube-ovn's `10.16.0.0/16`; check with `kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'`) |
+| `KUBE_APISERVER_PEERS` | Compact JSON list of NetworkPolicy peers that kube-apiserver calls the crd-admission webhook from, one `{"ipBlock":{"cidr":"<node InternalIP>/32"}}` per control-plane node running kube-apiserver, e.g. `[{"ipBlock":{"cidr":"10.103.0.19/32"}},{"ipBlock":{"cidr":"10.103.0.20/32"}}]`. Required on every cluster that runs crd-operator: the webhook is `failurePolicy: Fail`, so a missing node makes writes fail intermittently. Check with `kubectl get pod -n kube-system -l component=kube-apiserver -o wide` |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
 | `LOG_HASH_SALT` | Salt for the email hashes in stored pod logs; lives in Secret `spectrum-manual-secrets`, required wherever `observability` runs. Seed once (`openssl rand -hex 16`) and never change it: a new salt stops hashes matching older logs |
 
