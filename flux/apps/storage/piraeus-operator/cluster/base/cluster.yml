@@ -20,6 +20,13 @@ spec:
   
   highAvailabilityController:
     enabled: false
+
+  # Thin pools take no new replica (autoplace, auto-diskful) once the volumes on
+  # them would exceed 1.5x the pool size; LINSTOR's default is 20x
+  # (граф `@cloudless/fluence`, узел #4157).
+  properties:
+    - name: MaxOversubscriptionRatio
+      value: "1.5"
 ---
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
