@@ -146,3 +146,16 @@ spec:
                   limits:
                     cpu: "100m"
                     memory: "128Mi"
+          # The chart has no value for it: turns off the ARP IP-conflict probe
+          # kube-ovn-cni runs on every pod NIC (граф `@cloudless/fluence`,
+          # узел #4138). The test op guards the container order.
+          - target:
+              kind: DaemonSet
+              name: kube-ovn-cni
+            patch: |
+              - op: test
+                path: /spec/template/spec/containers/0/name
+                value: cni-server
+              - op: add
+                path: /spec/template/spec/containers/0/args/-
+                value: --enable-arp-detect-ip-conflict=false
