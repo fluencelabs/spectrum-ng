@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.35](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.34...v0.3.35) (2026-11-05)
+
+
+### Bug Fixes
+
+* **crd-operator:** admit crd-admission webhook from the node network and kube-ovn join subnet ([#438](https://github.com/fluencelabs/spectrum-ng/issues/438)) ([2de61e3](https://github.com/fluencelabs/spectrum-ng/commit/2de61e3e942215cc276faed947cfcf608f55ea61))
+* **crd-operator:** restrict crd-admission webhook to per-cluster kube-apiserver peers ([#437](https://github.com/fluencelabs/spectrum-ng/issues/437)) ([939fe76](https://github.com/fluencelabs/spectrum-ng/commit/939fe76dd52b40c74482521bb4cd95871151706d))
+* **kube-ovn:** skip the ARP IP-conflict probe on pod NICs ([#443](https://github.com/fluencelabs/spectrum-ng/issues/443)) ([6ad3f3a](https://github.com/fluencelabs/spectrum-ng/commit/6ad3f3ad08118a193e6afeb74fcd93bc1c47aaf3))
+* **netbird:** remove the spent support-rbac-cleanup Job and its netbird-operator-config Kustomization ([#435](https://github.com/fluencelabs/spectrum-ng/issues/435)) ([5aaf70c](https://github.com/fluencelabs/spectrum-ng/commit/5aaf70cdb7771bf398492fe381c1cec3e9abfc6e))
+* **storage:** let LINSTOR volumes attach from any node and move to the node using them ([#442](https://github.com/fluencelabs/spectrum-ng/issues/442)) ([0be71e6](https://github.com/fluencelabs/spectrum-ng/commit/0be71e6baa6db3312b7d350c8f83e50fc5f648f7))
+* Update docker.io/tremolosecurity/kube-oidc-proxy:1.0.13 Docker digest to 9b7fc72 ([#439](https://github.com/fluencelabs/spectrum-ng/issues/439)) ([626111f](https://github.com/fluencelabs/spectrum-ng/commit/626111ff785e11cb65713c7785ca49b9b742ba3c))
+* Update ghcr.io/prometheus-community/charts/kube-state-metrics Docker tag to v9 ([#440](https://github.com/fluencelabs/spectrum-ng/issues/440)) ([3c38a1f](https://github.com/fluencelabs/spectrum-ng/commit/3c38a1fcd9287698adf3de7adac338e710209c80))
+* Update ghcr.io/prometheus-community/charts/prometheus-operator-crds Docker tag to v33 ([#441](https://github.com/fluencelabs/spectrum-ng/issues/441)) ([02c7fa0](https://github.com/fluencelabs/spectrum-ng/commit/02c7fa083920954a469ce9f32a09ba424b08d514))
+
 ## [0.3.34](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.33...v0.3.34) (2026-11-02)
 
 
