@@ -1,3 +1,8 @@
+# Volumes may be attached from any node over DRBD (allowRemoteVolumeAccess); after one minute of
+# diskless use LINSTOR adds a local replica on that node (auto-diskful) and removes the replica
+# the volume no longer needs (auto-diskful-allow-cleanup). StorageClass parameters are immutable,
+# so the force annotation lets Flux delete and recreate the class when they change; existing PVs
+# keep their LINSTOR resource-group settings and node affinity.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 provisioner: linstor.csi.linbit.com
@@ -5,6 +10,8 @@ metadata:
   name: lvm-thin-r1
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
+    cdi.kubevirt.io/clone-strategy: csi-clone
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
@@ -12,7 +19,9 @@ parameters:
   csi.storage.k8s.io/fstype: ext4
   linstor.csi.linbit.com/autoPlace: "1"
   linstor.csi.linbit.com/storagePool: lvm-thin
-  linstor.csi.linbit.com/allowRemoteVolumeAccess: "false"
+  linstor.csi.linbit.com/allowRemoteVolumeAccess: "true"
+  property.linstor.csi.linbit.com/DrbdOptions/auto-diskful: "1"
+  property.linstor.csi.linbit.com/DrbdOptions/auto-diskful-allow-cleanup: "true"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -21,6 +30,8 @@ metadata:
   name: lvm-thin-r2
   annotations:
     storageclass.kubernetes.io/is-default-class: "false"
+    cdi.kubevirt.io/clone-strategy: csi-clone
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Delete
@@ -28,3 +39,6 @@ parameters:
   csi.storage.k8s.io/fstype: ext4
   linstor.csi.linbit.com/autoPlace: "2"
   linstor.csi.linbit.com/storagePool: lvm-thin
+  linstor.csi.linbit.com/allowRemoteVolumeAccess: "true"
+  property.linstor.csi.linbit.com/DrbdOptions/auto-diskful: "1"
+  property.linstor.csi.linbit.com/DrbdOptions/auto-diskful-allow-cleanup: "true"
