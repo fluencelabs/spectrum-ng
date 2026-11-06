@@ -30,7 +30,8 @@ spec:
     # DRBD net options, values as in Cozystack's linstor chart. verify-alg lets
     # `drbdadm verify` compare replicas. Units: connect-int and ping-int in
     # seconds, ping-timeout and timeout in tenths of a second (15 s, 15 s, 2 s,
-    # 10 s); DRBD requires timeout < connect-int and timeout < ping-int.
+    # 10 s); DRBD requires timeout < connect-int and timeout < ping-int
+    # (граф `@cloudless/fluence`, узел #4290).
     - name: DrbdOptions/Net/verify-alg
       value: "crc32c"
     - name: DrbdOptions/Net/connect-int
