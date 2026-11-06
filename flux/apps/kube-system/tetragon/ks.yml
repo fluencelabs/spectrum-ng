@@ -1,0 +1,56 @@
+# Two Kustomizations because the TracingPolicy CRD comes from the HelmRelease:
+# in one apply the server-side dry-run of the policies would fail before the
+# chart that installs their CRD is ever created.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tetragon
+  namespace: flux-system
+spec:
+  path: ./flux/apps/kube-system/tetragon/app/overlays/${NETWORK}
+  prune: true
+  wait: true
+  targetNamespace: kube-system
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 10m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tetragon-policies
+  namespace: flux-system
+spec:
+  path: ./flux/apps/kube-system/tetragon/policies/overlays/${NETWORK}
+  prune: true
+  targetNamespace: kube-system
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: spectrum-vars
+        optional: false
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
+  dependsOn:
+    - name: tetragon
+    - name: prometheus-crds
