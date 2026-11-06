@@ -27,6 +27,20 @@ spec:
   properties:
     - name: MaxOversubscriptionRatio
       value: "1.5"
+    # DRBD net options, values as in Cozystack's linstor chart. verify-alg lets
+    # `drbdadm verify` compare replicas. Units: connect-int and ping-int in
+    # seconds, ping-timeout and timeout in tenths of a second (15 s, 15 s, 2 s,
+    # 10 s); DRBD requires timeout < connect-int and timeout < ping-int.
+    - name: DrbdOptions/Net/verify-alg
+      value: "crc32c"
+    - name: DrbdOptions/Net/connect-int
+      value: "15"
+    - name: DrbdOptions/Net/ping-int
+      value: "15"
+    - name: DrbdOptions/Net/ping-timeout
+      value: "20"
+    - name: DrbdOptions/Net/timeout
+      value: "100"
 ---
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
