@@ -1,0 +1,25 @@
+# Only CDI's importer pods, in any namespace, may reach the proxy, and only on
+# its port. CDI labels every importer pod `app=containerized-data-importer`,
+# `cdi.kubevirt.io=importer`; tenants create no pods. The kubelet's probes
+# come from the node, which Kube-OVN always lets through.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: smokescreen
+spec:
+  # Explicit: an empty selector would close every pod of the namespace.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: smokescreen
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: containerized-data-importer
+              cdi.kubevirt.io: importer
+      ports:
+        - protocol: TCP
+          port: proxy

@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# The policy.networking.k8s.io CRDs kube-ovn-controller needs with
+# `--enable-anp=true` (features.ENABLE_ANP in kube-ovn's release.yml). The
+# kube-ovn-v2 chart ships only the RBAC for them, not the CRDs.
+#
+# kube-ovn v1.16.12 is built against sigs.k8s.io/network-policy-api 3910463a
+# (pseudo-version v0.1.8-0.20251209142732-3910463a5686). With ANP enabled its
+# controller starts informers for AdminNetworkPolicy and
+# BaselineAdminNetworkPolicy (v1alpha1) and ClusterNetworkPolicy (v1alpha2),
+# and waits for all three caches before it runs any worker — a missing CRD
+# leaves the controller stuck at startup.
+#
+# Bump these together with kube-ovn, to whatever network-policy-api its go.mod
+# names.
+resources:
+  # v1alpha1 lives on the release-0.1 branch: 3910463a's apis/v1alpha1 is
+  # identical to v0.1.8's (and v0.1.7's), and v0.1.8 is that line's latest tag.
+  - https://raw.githubusercontent.com/kubernetes-sigs/network-policy-api/v0.1.8/config/crd/standard/policy.networking.k8s.io_adminnetworkpolicies.yaml
+  - https://raw.githubusercontent.com/kubernetes-sigs/network-policy-api/v0.1.8/config/crd/standard/policy.networking.k8s.io_baselineadminnetworkpolicies.yaml
+  # v1alpha2 is pinned to the exact commit kube-ovn compiled against: no tag
+  # carries it, and v0.2.0 (the first that does) reshaped the schema.
+  - https://raw.githubusercontent.com/kubernetes-sigs/network-policy-api/3910463a568629fe7e22688451eceaa47759c7a9/config/crd/standard/policy.networking.k8s.io_clusternetworkpolicies.yaml

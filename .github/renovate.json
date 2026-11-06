@@ -3,7 +3,7 @@
   "extends": ["config:recommended"],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Renovate Dashboard 🤖",
-  "commitMessagePrefix": "chore:",
+  "commitMessagePrefix": "fix:",
   "semanticCommits": "enabled",
   "timezone": "UTC",
   "prConcurrentLimit": 5,
@@ -28,6 +28,15 @@
     "enabled": true,
     "pinDigests": false
   },
+  "hostRules": [
+    {
+      "description": "Private zot registry (lightmare images and crd-operator chart); read-only user `renovate` on release/**",
+      "matchHost": "containers.cloudless.dev",
+      "hostType": "docker",
+      "username": "renovate",
+      "password": "{{ secrets.ZOT_RENOVATE_PASSWORD }}"
+    }
+  ],
   "regexManagers": [
     {
       "description": "Update FluxInstance distribution version",
@@ -68,9 +77,19 @@
       "prPriority": 10
     },
     {
+      "description": "Group lightmare components: the crd-* images and the crd-operator chart ship as one release, and the chart carries the CRDs (crds: CreateReplace), so an image bumped without its chart runs against the old schema",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^containers\\.cloudless\\.dev/release/crd-/"],
+      "groupName": "lightmare",
+      "commitMessagePrefix": "fix(crd-operator):",
+      "separateMajorMinor": false,
+      "automerge": false
+    },
+    {
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
+      "commitMessagePrefix": "chore(ci):",
       "automerge": false,
       "prPriority": 5
     },

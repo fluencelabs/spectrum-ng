@@ -45,7 +45,71 @@ spec:
           pull_frequency = "15m"
         }
         
-        k8s.cadvisor "scrape" {
+        // cAdvisor, scraped from each kubelet directly rather than through the
+        // k8s.cadvisor module. The module goes via the apiserver node proxy,
+        // which needs nodes/proxy; the Alloy chart dropped that rule upstream
+        // (it also lets the holder exec into pods through the kubelet), so the
+        // module only gets 403 since alloy-operator 0.8.0. A direct kubelet
+        // scrape is authorized by nodes/metrics, which the chart does grant.
+        discovery.kubernetes "cadvisor" {
+          role = "node"
+        }
+
+        discovery.relabel "cadvisor" {
+          targets = discovery.kubernetes.cadvisor.targets
+
+          rule {
+            source_labels = ["__meta_kubernetes_node_name"]
+            target_label  = "node"
+          }
+          rule {
+            target_label = "__metrics_path__"
+            replacement  = "/metrics/cadvisor"
+          }
+          rule {
+            target_label = "source"
+            replacement  = "kubernetes"
+          }
+        }
+
+        prometheus.scrape "cadvisor" {
+          targets           = discovery.relabel.cadvisor.output
+          job_name          = "integrations/kubernetes/cadvisor"
+          scheme            = "https"
+          scrape_interval   = "60s"
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+          // Kubelet serving certificates are self-signed (no serverTLSBootstrap).
+          tls_config {
+            insecure_skip_verify = true
+          }
+
+          forward_to = [prometheus.relabel.cadvisor.receiver]
+        }
+
+        // Per-container memory and CPU in every namespace: four series per
+        // container, enough to size requests and limits from history.
+        prometheus.relabel "cadvisor" {
+          rule {
+            source_labels = ["__name__"]
+            regex         = "up|container_(cpu_usage_seconds_total|memory_(rss|working_set_bytes)|oom_events_total)"
+            action        = "keep"
+          }
+          // Pod- and node-level cgroups and pause containers carry no container
+          // label; drop them, and series without an image (google/cadvisor#2688).
+          rule {
+            source_labels = ["__name__", "container"]
+            separator     = "@"
+            regex         = "container_.*@"
+            action        = "drop"
+          }
+          rule {
+            source_labels = ["__name__", "image"]
+            separator     = "@"
+            regex         = "container_.*@"
+            action        = "drop"
+          }
+
           forward_to = [prometheus.relabel.relable.receiver]
         }
         

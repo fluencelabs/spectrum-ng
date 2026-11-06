@@ -2,3 +2,14 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: fluence
+  labels:
+    # crd-operator (lightmare) writes heap dumps of its services to a hostPath
+    # on the node, so the dump taken on SIGTERM survives the pod's deletion
+    # (rollout, eviction, OOM kill); an emptyDir would go with the pod.
+    # Pod Security `baseline` (the Talos cluster default) forbids hostPath
+    # volumes, hence `privileged`. audit/warn stay on `restricted`, so any pod
+    # here that needs more than `restricted` still shows up in the audit log
+    # and as a warning on apply.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

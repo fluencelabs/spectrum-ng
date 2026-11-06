@@ -31,6 +31,10 @@ spec:
     crds: CreateReplace
   driftDetection:
     mode: enabled
+  valuesFrom:
+    - kind: ConfigMap
+      name: crd-operator-workspace-egress
+      valuesKey: values.yaml
   values:
     controller:
       config:
@@ -72,6 +76,24 @@ spec:
     admission:
       config:
         LTM__LOG_FORMAT: json
+      vmiCreateFence:
+        enabled: true
+      serviceMonitor:
+        enabled: true
+      networkPolicy:
+        enabled: true
+        # Only host-network sources (kube-apiserver, other hostNetwork) get in; the pod network is cut off.
+        # NODE_CIDR (spectrum-manual-vars, see README): cross-node calls come from the apiserver node's InternalIP.
+        # JOIN_CIDR, kube-ovn's join subnet (defaults to kube-ovn's default): same-node calls come from the node's ovn0 address.
+        webhookFrom:
+          - ipBlock:
+              cidr: ${NODE_CIDR}
+          - ipBlock:
+              cidr: ${JOIN_CIDR:=100.64.0.0/16}
+        metricsFrom:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: observability
 
     vmApi:
       config:

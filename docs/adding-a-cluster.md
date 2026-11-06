@@ -39,7 +39,7 @@ tokens in the manifests are filled from them at apply time.
 |---|---|---|---|---|
 | `spectrum-vars` | ConfigMap | **beam** | `false` (always required) | `NETWORK` |
 | `spectrum-manual-vars` | ConfigMap | **manual** | required for cert-manager / envoy / external-dns / piraeus; optional elsewhere | `CLUSTER_ID`, `PROVIDER`, `PUBLIC_SUBNET_LIST`, `ENVOY_PUBLIC_SUBNET`, `GRAFANA_OIDC_CLIENT_ID`, `STORAGE_SATELLITE_IPS`, `STORAGE_NAD`, `STORAGE_PREF_NIC`, `REGISTRY_PULL_SECRET` |
-| `spectrum-manual-secrets` | Secret | **manual** | optional | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN` |
+| `spectrum-manual-secrets` | Secret | **manual** | optional; required for alloy | `GRAFANA_OIDC_CLIENT_SECRET`, `CLOUDFLARE_TOKEN`, `LOG_HASH_SALT` |
 
 > ⚠️ `optional: true` means the *source object* may be absent — **not** that the
 > variables are optional. `CLUSTER_ID` etc. are still required for manifests to render
@@ -59,11 +59,16 @@ tokens in the manifests are filled from them at apply time.
 | `CLOUDFLARE_TOKEN` | `spectrum-manual-secrets` | baked into Secrets `cloudflare-certmanager-token` / `cloudflare-external-dns-token` (key `token`) | sensitive. `cluster-issuers` and `external-dns-cloudflare` list the Secret **after** the ConfigMaps, so it overrides a leftover plaintext copy while a cluster is being migrated |
 | `GRAFANA_OIDC_CLIENT_ID` | `spectrum-manual-vars` | grafana `auth.generic_oauth.client_id` | non-secret |
 | `GRAFANA_OIDC_CLIENT_SECRET` | `spectrum-manual-secrets` | baked into Secret `grafana-oidc` (key `client_secret`) | sensitive |
+| `LOG_HASH_SALT` | `spectrum-manual-secrets` | baked into Secret `alloy-log-hash-salt` (key `salt`) → env of alloy-logs, salts the `email:<hash>` written instead of addresses | sensitive. Seed once with `openssl rand -hex 16` and never change it: a new salt stops hashes matching older logs. A missing key renders an empty salt without any error |
 | `STORAGE_PREF_NIC` | `spectrum-manual-vars` | `PrefNic` on the LINSTOR satellite; `NIC_NAME` of nic-sync | name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage`; nic-sync registers it, see §3 |
 | `STORAGE_IFACE` | `spectrum-manual-vars` | `IFACE` of nic-sync | name of the Talos `VLANConfig` carrying replication, e.g. `storage`; see §3 |
 | `OVN_TUNNEL_IFACE` | `spectrum-manual-vars` | kube-ovn `agent.interface` → `--iface` | the interface Geneve leaves on. Unset means the interface holding the node IP — the 1G management port on every Kabat node, so all east-west shares it. Setting it needs an address on that interface first (Talos, beam); see §6 |
+| `OVS_OVN_CPU` | `spectrum-manual-vars` | kube-ovn `ovsOvn.resources` cpu request and limit | optional; an integer. Set **both** `OVS_OVN_CPU` and `OVS_OVN_MEMORY` and `ovs-ovn` becomes Guaranteed, so the static CPU manager pins it to an exclusive cpuset and OVS stops recreating its per-cpu upcall handlers each time a dedicated-CPU VM changes the shared pool. Unset keeps today's Burstable `200m` request / `2` limit. Changing it restarts `ovs-ovn` |
+| `OVS_OVN_MEMORY` | `spectrum-manual-vars` | kube-ovn `ovsOvn.resources` memory request and limit | optional, e.g. `3Gi`; set with `OVS_OVN_CPU` (one alone leaves the pod Burstable). Unset keeps today's `1Gi` request / `3Gi` limit. Changing it restarts `ovs-ovn` |
 | `SERVICE_CIDR` | `spectrum-manual-vars` | kube-ovn `networking.services.cidr.v4` → `--service-cluster-ip-range` | must equal what the apiserver actually allocates from (`kubectl -n default get svc kubernetes`). Defaults to the chart's `10.96.0.0/12`, which is **not** what every cluster runs — stage serves `10.112.0.0/12`. Nothing detects the mismatch; see gotcha #5 |
 | `KUBE_DNS_IP` | `spectrum-manual-vars` | second nameserver in the kube-oidc-proxy and grafana `dnsConfig` (first is the NetBird sidecar on `127.0.0.1`) | `kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.clusterIP}'`. required, no default: stage, testnet and mainnet poz-bey-c01 are `10.112.0.10`, mainnet fra-flix-01 is `10.208.0.10`. Unset renders an empty nameserver and the Deployments are rejected; a wrong value leaves both pods without cluster DNS |
+| `NODE_PUBLIC_CIDRS` | `spectrum-manual-vars` | appended to crd-operator's `controller.workspaceEgress.denyCidrs` (the `crd-operator-workspace-egress` values ConfigMap) and to smokescreen's `deny_ranges` (`flux/apps/fluence/smokescreen`) | the cluster's public node addresses — every node ExternalIP and any public underlay the nodes hold addresses in — as CIDRs, each **preceded by a comma and a space**: `, 203.0.113.10/32, 203.0.113.11/32` (it is appended after the last entry of a YAML flow list). Read the ExternalIPs with `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.status.addresses[?(@.type=="ExternalIP")].address}{"\n"}{end}'`. Defaults to empty: the shared default (every private and special range) then stands alone and the nodes' public addresses stay reachable from workspace pods and through the proxy |
+| `POD_CIDR` | `spectrum-manual-vars` | the `pod-network` Pass of AdminNetworkPolicy `smokescreen-images-importer-egress` (`flux/apps/fluence/smokescreen/images-policy`) | the v4 `cidrBlock` of kube-ovn's `ovn-default` subnet, one CIDR: `kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'` (on a dual-stack subnet, the v4 half). Defaults to kube-ovn's `10.16.0.0/16`, verified on stage only. A wrong value fails closed: the golden Image importers in `cloudless-images` lose DNS and the proxy, their imports fail, nothing opens. Never set it wider than the pod network: what it covers is handed to the NetworkPolicy, which cannot close the node's own addresses |
 
 `NETID`, `NEWEST_AGE`, `RENEW_AFTER_DAYS` are **not** bootstrap variables — they are
 shell variables inside Jobs (escaped `$${NETID}`) or hardcoded Job env, not Flux
@@ -75,7 +80,7 @@ substitutions.
 
 | Secret | Namespace | Key(s) | Consumer | Needed when |
 |---|---|---|---|---|
-| `spectrum-manual-secrets` | `flux-system` | `GRAFANA_OIDC_CLIENT_SECRET` | grafana OIDC (via substitution) | observability present |
+| `spectrum-manual-secrets` | `flux-system` | `GRAFANA_OIDC_CLIENT_SECRET`, `LOG_HASH_SALT` | grafana OIDC, alloy-logs email hashes (via substitution) | observability present |
 | `netbird-api-token` | `networking` | `NB_API_KEY` | netbird operator + rotate CronJob | `networking` group present (= every cluster with observability/Grafana mesh) |
 | `alertmanager-config` | `observability` | `alertmanager.yaml` | VMAlertmanager | observability present |
 | `fluence-mesh-intermediate` | `observability` | `ca.crt` + `tls.crt` + `tls.key` | cert-manager `fluence-intermediate` Issuer → issues `grafana-spectrum-tls`; Grafana also mounts its `ca.crt` | observability present (Grafana mesh TLS/OIDC) |
@@ -212,7 +217,8 @@ annotations are gone.
    # Substitution Secret (anything sensitive)
    kubectl -n flux-system create secret generic spectrum-manual-secrets \
      --from-literal=GRAFANA_OIDC_CLIENT_SECRET=<oidc_client_secret> \
-     --from-literal=CLOUDFLARE_TOKEN=<cf_token>
+     --from-literal=CLOUDFLARE_TOKEN=<cf_token> \
+     --from-literal=LOG_HASH_SALT=$(openssl rand -hex 16)
 
    # Standalone secrets
    kubectl create namespace networking

@@ -1,0 +1,19 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: network-policy-api-crds
+  namespace: flux-system
+spec:
+  path: ./flux/apps/kube-system/network-policy-api-crds/app
+  # Deleting a CRD deletes every object of its kind, so these are never pruned.
+  prune: false
+  # kube-ovn depends on this Kustomization; `wait` holds it NotReady until the
+  # CRDs are Established, so kube-ovn-controller never starts without them.
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: spectrum
+    namespace: flux-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m

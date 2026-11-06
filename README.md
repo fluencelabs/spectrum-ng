@@ -26,8 +26,14 @@ Cluster-specific overrides, created manually.
 | `STORAGE_PREF_NIC` | Name of the LINSTOR `NetInterface` DRBD replicates over, e.g. `storage` |
 | `OVN_TUNNEL_IFACE` | Interface carrying Geneve traffic, kube-ovn `--iface` (optional; default is the interface holding the node IP) |
 | `OVN_POD_MTU` | Pod MTU on overlay subnets, kube-ovn `--mtu` (optional; `0` = derived from the tunnel interface). Pin the current value before moving `OVN_TUNNEL_IFACE` to a jumbo interface |
+| `OVS_OVN_CPU` | Integer CPU count of the `ovs-ovn` container, as both request and limit (optional). Set together with `OVS_OVN_MEMORY` for Guaranteed QoS and an exclusive cpuset from the static CPU manager; unset keeps Burstable `200m`/`2` |
+| `OVS_OVN_MEMORY` | Memory of the `ovs-ovn` container, as both request and limit, e.g. `3Gi` (optional; set with `OVS_OVN_CPU`). Unset keeps Burstable `1Gi`/`3Gi` |
 | `SERVICE_CIDR` | The cluster's real service range, for kube-ovn `--service-cluster-ip-range` (optional; defaults to the chart's `10.96.0.0/12`) |
+| `POD_CIDR` | The v4 CIDR of kube-ovn's `ovn-default` subnet, which the golden Image importers' AdminNetworkPolicy passes to their NetworkPolicy (optional; defaults to kube-ovn's `10.16.0.0/16`; check with `kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'`) |
+| `JOIN_CIDR` | The v4 CIDR of kube-ovn's `join` subnet, where the nodes' `ovn0` addresses live, which crd-admission's NetworkPolicy admits same-node webhook calls from (optional; defaults to kube-ovn's `100.64.0.0/16`; check with `kubectl get subnets.kubeovn.io join -o jsonpath='{.spec.cidrBlock}'`) |
+| `NODE_CIDR` | The v4 CIDR of the cluster's node network, where the node InternalIPs live, e.g. `10.103.0.0/24`. Required on every cluster that runs crd-operator: crd-admission's NetworkPolicy admits the webhook from it (and from `JOIN_CIDR`). Check with `ip -4 addr` on a node, or the node IPs from `kubectl get node -o wide` |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
+| `LOG_HASH_SALT` | Salt for the email hashes in stored pod logs; lives in Secret `spectrum-manual-secrets`, required wherever `observability` runs. Seed once (`openssl rand -hex 16`) and never change it: a new salt stops hashes matching older logs |
 
 ### Secret: `alertmanager-config` (namespace: `observability`)
 
@@ -66,7 +72,7 @@ secret, so the rest of the cluster reconciles normally until it is present.
 
 ## CVE dashboard
 
-The `CVE scan` workflow (weekly and on demand) renders the `mainnet` and `testnet`
+The `CVE scan` workflow (daily and on demand) renders the `mainnet` and `testnet`
 clusters with flate, scans every image with trivy for fixable HIGH/CRITICAL CVEs
 and keeps the open issue **CVE Dashboard 🛡️** (label `security`) up to date. New
 findings are announced in a comment that mentions `@fluencelabs/DevOps`.

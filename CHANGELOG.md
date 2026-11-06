@@ -1,5 +1,95 @@
 # Changelog
 
+## [0.3.35](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.34...v0.3.35) (2026-11-05)
+
+
+### Bug Fixes
+
+* **crd-operator:** admit crd-admission webhook from the node network and kube-ovn join subnet ([#438](https://github.com/fluencelabs/spectrum-ng/issues/438)) ([2de61e3](https://github.com/fluencelabs/spectrum-ng/commit/2de61e3e942215cc276faed947cfcf608f55ea61))
+* **crd-operator:** restrict crd-admission webhook to per-cluster kube-apiserver peers ([#437](https://github.com/fluencelabs/spectrum-ng/issues/437)) ([939fe76](https://github.com/fluencelabs/spectrum-ng/commit/939fe76dd52b40c74482521bb4cd95871151706d))
+* **kube-ovn:** skip the ARP IP-conflict probe on pod NICs ([#443](https://github.com/fluencelabs/spectrum-ng/issues/443)) ([6ad3f3a](https://github.com/fluencelabs/spectrum-ng/commit/6ad3f3ad08118a193e6afeb74fcd93bc1c47aaf3))
+* **netbird:** remove the spent support-rbac-cleanup Job and its netbird-operator-config Kustomization ([#435](https://github.com/fluencelabs/spectrum-ng/issues/435)) ([5aaf70c](https://github.com/fluencelabs/spectrum-ng/commit/5aaf70cdb7771bf398492fe381c1cec3e9abfc6e))
+* **storage:** let LINSTOR volumes attach from any node and move to the node using them ([#442](https://github.com/fluencelabs/spectrum-ng/issues/442)) ([0be71e6](https://github.com/fluencelabs/spectrum-ng/commit/0be71e6baa6db3312b7d350c8f83e50fc5f648f7))
+* Update docker.io/tremolosecurity/kube-oidc-proxy:1.0.13 Docker digest to 9b7fc72 ([#439](https://github.com/fluencelabs/spectrum-ng/issues/439)) ([626111f](https://github.com/fluencelabs/spectrum-ng/commit/626111ff785e11cb65713c7785ca49b9b742ba3c))
+* Update ghcr.io/prometheus-community/charts/kube-state-metrics Docker tag to v9 ([#440](https://github.com/fluencelabs/spectrum-ng/issues/440)) ([3c38a1f](https://github.com/fluencelabs/spectrum-ng/commit/3c38a1fcd9287698adf3de7adac338e710209c80))
+* Update ghcr.io/prometheus-community/charts/prometheus-operator-crds Docker tag to v33 ([#441](https://github.com/fluencelabs/spectrum-ng/issues/441)) ([02c7fa0](https://github.com/fluencelabs/spectrum-ng/commit/02c7fa083920954a469ce9f32a09ba424b08d514))
+
+## [0.3.34](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.33...v0.3.34) (2026-11-02)
+
+
+### Features
+
+* **crd-operator:** enable the crd-admission webhook NetworkPolicy on testnet ([#432](https://github.com/fluencelabs/spectrum-ng/issues/432)) ([c18c800](https://github.com/fluencelabs/spectrum-ng/commit/c18c800e8c262ba01c8acdef6e6fac47aa0f12b8))
+* **crd-operator:** scrape crd-admission metrics and alert when the VMI create fence stops protecting ([#433](https://github.com/fluencelabs/spectrum-ng/issues/433)) ([cd66bec](https://github.com/fluencelabs/spectrum-ng/commit/cd66becfa5c91f4bcb6a27290f9422e5316e0a4d))
+
+
+### Bug Fixes
+
+* **crd-operator:** Update lightmare ([#434](https://github.com/fluencelabs/spectrum-ng/issues/434)) ([98f9493](https://github.com/fluencelabs/spectrum-ng/commit/98f949340f5e2f0a9da3190b66f64e0e8cd8b4ab))
+* **netbird:** drop the NetworkRouter env override so operator 0.9.0 can apply its liveness probe ([#428](https://github.com/fluencelabs/spectrum-ng/issues/428)) ([0d524bd](https://github.com/fluencelabs/spectrum-ng/commit/0d524bd327f4b92fddf6e8d43755add83aa9cc0a))
+* Update alpine/k8s Docker tag to v1.37.2 ([#431](https://github.com/fluencelabs/spectrum-ng/issues/431)) ([e0c9040](https://github.com/fluencelabs/spectrum-ng/commit/e0c904007269f22c39f4840392e40c90ad77705a))
+* Update gcr.io/distroless/static:nonroot Docker digest to 25ac8f0 ([#430](https://github.com/fluencelabs/spectrum-ng/issues/430)) ([198751f](https://github.com/fluencelabs/spectrum-ng/commit/198751fe500d131d3341500a94c511d67b840a93))
+
+## [0.3.33](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.32...v0.3.33) (2026-10-30)
+
+
+### Features
+
+* **fluence:** enable crd-admission VMI create fence by default ([#415](https://github.com/fluencelabs/spectrum-ng/issues/415)) ([2a96d23](https://github.com/fluencelabs/spectrum-ng/commit/2a96d23c01b7041b45cf04ae1f60ac2f7e728e51))
+
+
+### Bug Fixes
+
+* **renovate:** type Renovate bumps as fix so release-please releases them ([#427](https://github.com/fluencelabs/spectrum-ng/issues/427)) ([0b84d4c](https://github.com/fluencelabs/spectrum-ng/commit/0b84d4c66cd05f48b31405ef49377655f9e15218))
+
+## [0.3.32](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.31...v0.3.32) (2026-10-27)
+
+
+### Miscellaneous Chores
+
+* release 0.3.32 ([#411](https://github.com/fluencelabs/spectrum-ng/issues/411)) ([2089ee9](https://github.com/fluencelabs/spectrum-ng/commit/2089ee9c71fc6ad6c9a674774699bd6ada6990ad))
+
+## [0.3.31](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.30...v0.3.31) (2026-10-26)
+
+
+### Features
+
+* **fluence,kubevirt-cdi:** route CDI imports through a smokescreen egress proxy on every cluster ([#389](https://github.com/fluencelabs/spectrum-ng/issues/389)) ([e443cfc](https://github.com/fluencelabs/spectrum-ng/commit/e443cfc1195b0a9e6338c09fb3699eb7e46e1725))
+* **fluence:** label the fluence namespace privileged for crd-operator heap dumps on hostPath ([#385](https://github.com/fluencelabs/spectrum-ng/issues/385)) ([f96891d](https://github.com/fluencelabs/spectrum-ng/commit/f96891de24d4ace18782277b0e11492a95487d73))
+* **kube-ovn:** install network-policy-api CRDs and enable AdminNetworkPolicy ([#381](https://github.com/fluencelabs/spectrum-ng/issues/381)) ([979417e](https://github.com/fluencelabs/spectrum-ng/commit/979417ef1ff3f620345c2cac433afde1a73fd135))
+
+
+### Bug Fixes
+
+* **alloy:** scrape cAdvisor from the kubelet directly so container metrics land again ([#383](https://github.com/fluencelabs/spectrum-ng/issues/383)) ([c88af0b](https://github.com/fluencelabs/spectrum-ng/commit/c88af0b242cfa2a852f357697ba53f72f1cd12fe))
+* **cdi:** allow filesystem overhead for checksum scratch ([#395](https://github.com/fluencelabs/spectrum-ng/issues/395)) ([343ad74](https://github.com/fluencelabs/spectrum-ng/commit/343ad745a4936983dfcf3657aaa38218901fb1b6))
+* **crd-operator:** set the workspace egress deny list on stage ([#386](https://github.com/fluencelabs/spectrum-ng/issues/386)) ([6402500](https://github.com/fluencelabs/spectrum-ng/commit/6402500830be31bd289accef7cccb347f8ac3270))
+* **crd-operator:** share one workspace egress deny list across clusters, extended by NODE_PUBLIC_CIDRS ([#388](https://github.com/fluencelabs/spectrum-ng/issues/388)) ([f36b698](https://github.com/fluencelabs/spectrum-ng/commit/f36b69862f0da4518f43d90dfa1cb10e94a71ea8))
+* **fluence:** apply the smokescreen AdminNetworkPolicy after the proxy is up, so Kube-OVN writes its ACL ([#393](https://github.com/fluencelabs/spectrum-ng/issues/393)) ([ae1e637](https://github.com/fluencelabs/spectrum-ng/commit/ae1e63702b1464e8f153c61c94577fb8016c37a4))
+* **fluence:** confine golden Image importers in cloudless-images to DNS and the smokescreen proxy ([#394](https://github.com/fluencelabs/spectrum-ng/issues/394)) ([a66e71a](https://github.com/fluencelabs/spectrum-ng/commit/a66e71ac5e5f733e127cd64bfd22200841edc86c))
+* **kube-ovn:** run ovs-ovn as Guaranteed with a per-cluster integer CPU count ([#402](https://github.com/fluencelabs/spectrum-ng/issues/402)) ([bc4bc14](https://github.com/fluencelabs/spectrum-ng/commit/bc4bc14e1762a6e0775a2c6ceefc29c67e98c130))
+
+## [0.3.30](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.29...v0.3.30) (2026-10-14)
+
+
+### Bug Fixes
+
+* **alloy:** tail pod logs per node from files with persisted positions ([#377](https://github.com/fluencelabs/spectrum-ng/issues/377)) ([50b2d5e](https://github.com/fluencelabs/spectrum-ng/commit/50b2d5ea6aba6befa186578157e53cd8bf77cba0))
+
+## [0.3.29](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.28...v0.3.29) (2026-10-14)
+
+
+### Features
+
+* **alloy:** mask PII in pod logs at ingestion ([#375](https://github.com/fluencelabs/spectrum-ng/issues/375)) ([e280aab](https://github.com/fluencelabs/spectrum-ng/commit/e280aabcf2d1dc50c382505972ae1d79d930fd5e))
+
+## [0.3.28](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.27...v0.3.28) (2026-10-10)
+
+
+### Bug Fixes
+
+* **kube-ovn:** drop the bcast ARP flood CronJob, fixed upstream in 1.16.10 ([#369](https://github.com/fluencelabs/spectrum-ng/issues/369)) ([41d9fba](https://github.com/fluencelabs/spectrum-ng/commit/41d9fba59d2467f30981fb09f4b1d316403cf1c3))
+
 ## [0.3.27](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.26...v0.3.27) (2026-10-10)
 
 

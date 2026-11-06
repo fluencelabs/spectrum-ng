@@ -1,0 +1,59 @@
+# Golden `Image` imports: CDI's importer pods in `cloudless-images` (the
+# namespace crd-operator's chart creates for every golden DataVolume,
+# `controller.images.namespace`) may reach the cluster DNS and the proxy, and
+# nothing else, so every fetch goes through smokescreen, which refuses internal
+# destinations. Without it they had no policy at all: CDI's `http_proxy` env
+# was a convention, a direct dial reached the node, internal ranges and the
+# internet.
+#
+# Subject: CDI (v1.66) labels every importer pod `app=containerized-data-importer`,
+# `cdi.kubevirt.io=importer`. CDI's other pods in this namespace (a
+# host-assisted clone's source pod, an upload server) carry other
+# `cdi.kubevirt.io` values and stay unselected. Egress only: CDI's controller
+# still reads the importer's progress endpoint.
+#
+# Kube-OVN evaluates egress after load balancing, so the Services
+# (`kube-dns`, `smokescreen.fluence.svc:4750`) are matched by their pods.
+# Ports as numbers, like the AdminNetworkPolicies. Kube-OVN still lets a pod
+# reach its own node's IP and join IP above any NetworkPolicy:
+# adminnetworkpolicy.yml closes that.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: importer-egress
+  # Explicit: this Kustomization has no targetNamespace (it also carries a
+  # cluster-scoped AdminNetworkPolicy).
+  namespace: cloudless-images
+  labels:
+    app.kubernetes.io/name: smokescreen
+    app.kubernetes.io/component: import-proxy
+spec:
+  podSelector:
+    matchLabels:
+      app: containerized-data-importer
+      cdi.kubevirt.io: importer
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: fluence
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: smokescreen
+      ports:
+        - protocol: TCP
+          port: 4750

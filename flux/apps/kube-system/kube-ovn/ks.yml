@@ -14,6 +14,10 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 5m
+  # kube-ovn-controller runs with --enable-anp and waits at startup for the
+  # policy.networking.k8s.io informers, so their CRDs must exist first.
+  dependsOn:
+    - name: network-policy-api-crds
   postBuild:
     substituteFrom:
       - kind: ConfigMap
