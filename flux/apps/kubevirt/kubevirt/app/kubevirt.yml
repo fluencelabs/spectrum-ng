@@ -6,6 +6,18 @@ metadata:
     alpha.kubevirt.io/EmulatorThreadCompleteToEvenParity: ""
 spec:
   configuration:
+    # Node drain live-migrates VMIs instead of shutting them down. A VMI that
+    # is not live-migratable (RWO disk) gets its eviction refused, so the drain
+    # blocks rather than killing it. Copied into a VMI's spec at creation:
+    # running VMIs keep their old value until the VM restarts.
+    evictionStrategy: LiveMigrate
+    migrations:
+      # KubeVirt defaults for concurrency, set explicitly.
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+      # Per cluster from spectrum-manual-vars; 0Mi = unlimited. How to choose
+      # it: (граф `@cloudless/fluence`, узел #4321).
+      bandwidthPerMigration: ${KUBEVIRT_MIGRATION_BANDWIDTH:=0Mi}
     virtualMachineOptions:
       disableSerialConsoleLog: {}
     network:

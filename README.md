@@ -32,6 +32,7 @@ Cluster-specific overrides, created manually.
 | `POD_CIDR` | The v4 CIDR of kube-ovn's `ovn-default` subnet, which the golden Image importers' AdminNetworkPolicy passes to their NetworkPolicy (optional; defaults to kube-ovn's `10.16.0.0/16`; check with `kubectl get subnet ovn-default -o jsonpath='{.spec.cidrBlock}'`) |
 | `JOIN_CIDR` | The v4 CIDR of kube-ovn's `join` subnet, where the nodes' `ovn0` addresses live, which crd-admission's NetworkPolicy admits same-node webhook calls from (optional; defaults to kube-ovn's `100.64.0.0/16`; check with `kubectl get subnets.kubeovn.io join -o jsonpath='{.spec.cidrBlock}'`) |
 | `NODE_CIDR` | The v4 CIDR of the cluster's node network, where the node InternalIPs live, e.g. `10.103.0.0/24`. Required on every cluster that runs crd-operator: crd-admission's NetworkPolicy admits the webhook from it (and from `JOIN_CIDR`). Check with `ip -4 addr` on a node, or the node IPs from `kubectl get node -o wide` |
+| `KUBEVIRT_MIGRATION_BANDWIDTH` | KubeVirt `bandwidthPerMigration`, the bandwidth cap on each live migration, as a Kubernetes quantity per second, e.g. `32Mi` (optional; default `0Mi` = unlimited). How to choose: graph `@cloudless/fluence`, node #4321 |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
 | `LOG_HASH_SALT` | Salt for the email hashes in stored pod logs; lives in Secret `spectrum-manual-secrets`, required wherever `observability` runs. Seed once (`openssl rand -hex 16`) and never change it: a new salt stops hashes matching older logs |
 
