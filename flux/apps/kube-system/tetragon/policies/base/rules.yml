@@ -15,7 +15,7 @@ spec:
       interval: 1m
       rules:
         - alert: TenantQemuExec
-          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND -process_kprobe.process.pod.name:tetragon-canary* | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND -(process_kprobe.process.pod.namespace:=kube-system AND process_kprobe.process.pod.name:tetragon-canary*) | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
           for: 0m
           labels:
             team: devops
@@ -62,7 +62,7 @@ spec:
         # field in Tetragon's JSON blinds this alert's query too and it fires,
         # instead of TenantQemuExec silently matching nothing.
         - alert: TetragonCanarySilent
-          expr: '_time:30m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND process_kprobe.process.pod.name:tetragon-canary* | stats count() as hits | filter hits:=0'
+          expr: '_time:30m AND namespace:kube-system AND container:export-stdout AND "qemu-exec" | unpack_json | filter process_kprobe.policy_name:="qemu-exec" AND process_kprobe.process.pod.namespace:=kube-system AND process_kprobe.process.pod.name:tetragon-canary* | stats count() as hits | filter hits:=0'
           for: 10m
           labels:
             team: devops
