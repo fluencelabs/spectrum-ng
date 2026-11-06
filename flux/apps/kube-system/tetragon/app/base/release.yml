@@ -26,7 +26,7 @@ spec:
       installMethod: helm
     tetragon:
       exportAllowList: |-
-        {"event_set":["PROCESS_KPROBE"],"policy_names":["qemu-exec","kernel-module-load"]}
+        {"event_set":["PROCESS_KPROBE"],"policy_names":["qemu-exec","qemu-connect","qemu-setns","qemu-mount","qemu-ptrace","kernel-module-load"]}
       # The chart default also drops namespace "" (host processes) and
       # kube-system; a module load is a host event, so that default would hide
       # exactly what kernel-module-load is for.

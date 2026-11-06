@@ -32,15 +32,126 @@ spec:
               {{ $value }} times in the last 15 minutes. qemu never starts
               programs on its own, so this is the first step after a guest
               escape until proven otherwise (graph @cloudless/fluence, #2722).
-              The workspace id is the namespace suffix. What it ran:
-              `_time:1h namespace:kube-system container:export-stdout
+              The workspace id is the namespace suffix. What it ran: `_time:1h
+              namespace:kube-system container:export-stdout
               process_kprobe.policy_name:="qemu-exec"
               process_kprobe.process.pod.name:="{{ $labels.launcher_pod }}"`
+              in VictoriaLogs. On stage the policy also kills the process
+              (Sigkill), so the VM has crashed: the event's
+              process_kprobe.action is KPROBE_ACTION_SIGKILL. The kill stops
+              this exec, not whatever the escape did before it.
+              WHAT TO DO: isolate anyway — keep the VM stopped, cordon the
+              node until it is inspected — then find the owner. A hit from
+              KubeVirt itself is a false positive that crashed a tenant VM:
+              record it on #2729.
+
+        - alert: TenantQemuConnect
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND process_kprobe.policy_name:="qemu-connect" AND -(process_kprobe.process.pod.namespace:="kube-system" AND process_kprobe.process.pod.name:tetragon-canary*) | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: critical
+            component: vm-escape
+          annotations:
+            summary: "qemu-kvm in {{ $labels.launcher_pod }} opened an IP connection"
+            description: >-
+              The qemu-kvm process of {{ $labels.launcher_pod }} in
+              {{ $labels.tenant_namespace }} on {{ $labels.node }} connected
+              an AF_INET/AF_INET6 socket {{ $value }} times in the last 15
+              minutes. qemu's own sockets are unix sockets and its NICs are
+              tap fds, so an IP connect is code inside qemu reaching the
+              network from the host side; the address and port are in the
+              event args. The policy is observe-only, so nothing was blocked
+              (graph @cloudless/fluence, #2724). The workspace id is the
+              namespace suffix. Arguments: `_time:1h namespace:kube-system
+              container:export-stdout
+              process_kprobe.policy_name:="qemu-connect"
+              process_kprobe.process.pod.name:="{{ $labels.launcher_pod }}"`
               in VictoriaLogs.
-              WHAT TO DO: isolate first — stop the VM, keep the node cordoned
-              until it is inspected — then find the owner. On stage while the
-              policy is observe-only, a hit from KubeVirt itself is a false
-              positive and must be recorded on #2729 before enforcement.
+              WHAT TO DO: isolate first — stop the VM, cordon the node until
+              it is inspected — then find the owner. A hit from KubeVirt
+              itself is a false positive: record it on #2724 and narrow the
+              policy.
+
+        - alert: TenantQemuSetns
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND process_kprobe.policy_name:="qemu-setns" AND -(process_kprobe.process.pod.namespace:="kube-system" AND process_kprobe.process.pod.name:tetragon-canary*) | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: critical
+            component: vm-escape
+          annotations:
+            summary: "qemu-kvm in {{ $labels.launcher_pod }} entered another namespace"
+            description: >-
+              The qemu-kvm process of {{ $labels.launcher_pod }} in
+              {{ $labels.tenant_namespace }} on {{ $labels.node }} called
+              setns {{ $value }} times in the last 15 minutes. qemu never
+              changes namespaces; this is code inside qemu moving towards the
+              host (the nstype is in the event args). The policy is
+              observe-only, so nothing was blocked (graph @cloudless/fluence,
+              #2724). The workspace id is the namespace suffix. Arguments:
+              `_time:1h namespace:kube-system container:export-stdout
+              process_kprobe.policy_name:="qemu-setns"
+              process_kprobe.process.pod.name:="{{ $labels.launcher_pod }}"`
+              in VictoriaLogs.
+              WHAT TO DO: isolate first — stop the VM, cordon the node until
+              it is inspected — then find the owner. A hit from KubeVirt
+              itself is a false positive: record it on #2724 and narrow the
+              policy.
+
+        - alert: TenantQemuMount
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND process_kprobe.policy_name:="qemu-mount" AND -(process_kprobe.process.pod.namespace:="kube-system" AND process_kprobe.process.pod.name:tetragon-canary*) | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: critical
+            component: vm-escape
+          annotations:
+            summary: "qemu-kvm in {{ $labels.launcher_pod }} mounted a filesystem"
+            description: >-
+              The qemu-kvm process of {{ $labels.launcher_pod }} in
+              {{ $labels.tenant_namespace }} on {{ $labels.node }} mounted or
+              moved a mount {{ $value }} times in the last 15 minutes. Mounts
+              in a virt-launcher pod are made by libvirt and virt-handler,
+              never by qemu; source and target are in the event args. The
+              policy is observe-only, so nothing was blocked (graph
+              @cloudless/fluence, #2724). The workspace id is the namespace
+              suffix. Arguments: `_time:1h namespace:kube-system
+              container:export-stdout process_kprobe.policy_name:="qemu-mount"
+              process_kprobe.process.pod.name:="{{ $labels.launcher_pod }}"`
+              in VictoriaLogs.
+              WHAT TO DO: isolate first — stop the VM, cordon the node until
+              it is inspected — then find the owner. A hit from KubeVirt
+              itself is a false positive: record it on #2724 and narrow the
+              policy.
+
+        - alert: TenantQemuPtrace
+          expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND process_kprobe.policy_name:="qemu-ptrace" AND -(process_kprobe.process.pod.namespace:="kube-system" AND process_kprobe.process.pod.name:tetragon-canary*) | rename process_kprobe.process.pod.namespace as tenant_namespace, process_kprobe.process.pod.name as launcher_pod, node_name as node | stats by (tenant_namespace, launcher_pod, node) count() as hits'
+          for: 0m
+          labels:
+            team: devops
+            severity: critical
+            component: vm-escape
+          annotations:
+            summary: "qemu-kvm in {{ $labels.launcher_pod }} reached into another process"
+            description: >-
+              The qemu-kvm process of {{ $labels.launcher_pod }} in
+              {{ $labels.tenant_namespace }} on {{ $labels.node }} passed a
+              ptrace access check against another process {{ $value }} times
+              in the last 15 minutes. That is ptrace attach, opening
+              /proc/<pid>/mem or /proc/<pid>/environ, process_vm_readv or
+              pidfd_getfd on a process outside qemu; the target pid is in the
+              event args. The policy is observe-only, so nothing was blocked
+              (graph @cloudless/fluence, #2724). The workspace id is the
+              namespace suffix. Arguments: `_time:1h namespace:kube-system
+              container:export-stdout
+              process_kprobe.policy_name:="qemu-ptrace"
+              process_kprobe.process.pod.name:="{{ $labels.launcher_pod }}"`
+              in VictoriaLogs.
+              WHAT TO DO: isolate first — stop the VM, cordon the node until
+              it is inspected — then find the owner. A hit from KubeVirt
+              itself is a false positive: record it on #2724 and narrow the
+              policy.
 
         - alert: KernelModuleLoaded
           expr: '_time:15m AND namespace:kube-system AND container:export-stdout AND process_kprobe.policy_name:="kernel-module-load" | rename process_kprobe.function_name as hook, process_kprobe.process.binary as binary, node_name as node | stats by (node, hook, binary) count() as hits'
