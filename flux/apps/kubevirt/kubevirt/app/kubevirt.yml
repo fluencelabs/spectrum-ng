@@ -6,6 +6,19 @@ metadata:
     alpha.kubevirt.io/EmulatorThreadCompleteToEvenParity: ""
 spec:
   configuration:
+    # Node drain live-migrates VMIs instead of shutting them down. A VMI that
+    # is not live-migratable (RWO disk) gets its eviction refused, so the drain
+    # blocks rather than killing it. Copied into a VMI's spec at creation:
+    # running VMIs keep their old value until the VM restarts.
+    evictionStrategy: LiveMigrate
+    migrations:
+      # KubeVirt defaults for concurrency, set explicitly.
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+      # Default is unlimited. The node network is a shared 1 Gbit link that also
+      # carries DRBD replication: 2 outbound x 32Mi caps a draining node at
+      # ~540 Mbit/s of migration traffic.
+      bandwidthPerMigration: 32Mi
     virtualMachineOptions:
       disableSerialConsoleLog: {}
     network:
