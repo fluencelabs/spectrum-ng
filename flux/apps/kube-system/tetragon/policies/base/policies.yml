@@ -3,7 +3,10 @@
 # the first step after a guest-to-host escape (graph @cloudless/fluence, #2722).
 # In security_bprm_check, matchBinaries is the CALLER (the process about to be
 # replaced), not the binary being executed.
-# Observe-only: Sigkill is a separate, owner-approved step (#2729).
+# Enforcing on stage: Sigkill kills the whole qemu process, so a false positive
+# crashes that tenant VM (#2729). Sigkill goes through bpf_send_signal and needs
+# no bpf_override_return, which this kernel lacks. Post comes first so the
+# exported event carries action KPROBE_ACTION_SIGKILL (the last action run).
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -20,6 +23,9 @@ spec:
             - operator: In
               values:
                 - /usr/libexec/qemu-kvm
+          matchActions:
+            - action: Post
+            - action: Sigkill
 ---
 # Talos loads its modules at boot, before Tetragon runs; at runtime a module
 # load or an autoload request is unexpected on any node.

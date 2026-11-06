@@ -1,0 +1,118 @@
+# What code that escaped into qemu-kvm does next (graph @cloudless/fluence,
+# #2724). Observe-only: each fires only for processes whose binary is
+# /usr/libexec/qemu-kvm, and none of these calls is part of how KubeVirt runs
+# qemu, so the first days on stage double as the false-positive check.
+#
+# Outbound IP connect. qemu's own sockets are AF_UNIX (QMP, guest agent,
+# migration and NBD go through virt-handler's unix-socket proxies) and its NICs
+# are tap fds handed in by libvirt (bridge/masquerade bindings), so the Family
+# filter drops everything qemu legitimately connects. security_socket_connect
+# covers TCP and connected UDP; sendto() on an unconnected UDP socket does not
+# pass through it.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: qemu-connect
+spec:
+  kprobes:
+    - call: security_socket_connect
+      syscall: false
+      args:
+        - index: 1
+          type: sockaddr
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
+          matchArgs:
+            - index: 1
+              operator: Family
+              values:
+                - AF_INET
+                - AF_INET6
+---
+# Entering another namespace (host netns or mount ns via a pidfd or nsfs fd).
+# libvirt does its namespace work in the forked child before it execs qemu, so
+# that child is still virtqemud, not qemu-kvm.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: qemu-setns
+spec:
+  kprobes:
+    - call: sys_setns
+      syscall: true
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
+---
+# Mounting, through the old mount(2) and the new fsmount/move_mount API (which
+# never reaches security_sb_mount). Hotplug and /dev setup are libvirt's and
+# virt-handler's, not qemu's.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: qemu-mount
+spec:
+  kprobes:
+    - call: security_sb_mount
+      syscall: false
+      args:
+        - index: 0
+          type: string
+        - index: 1
+          type: path
+        - index: 2
+          type: string
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
+    - call: security_move_mount
+      syscall: false
+      args:
+        - index: 0
+          type: path
+        - index: 1
+          type: path
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
+---
+# Reaching into another process. The kernel calls this hook from
+# ptrace_may_access for ptrace attach and also for opening /proc/<pid>/mem and
+# /proc/<pid>/environ, process_vm_readv/writev and pidfd_getfd, and skips it
+# when the target is in the caller's own thread group, so qemu reading its own
+# /proc/self never lands here. That is why there is no separate file-open policy
+# for /proc/<pid>/mem: a path filter cannot tell self from other and is noisier.
+# Arg 0 reports the target's tgid, arg 1 the PTRACE_MODE_* bits.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: qemu-ptrace
+spec:
+  kprobes:
+    - call: security_ptrace_access_check
+      syscall: false
+      args:
+        - index: 0
+          type: int
+          resolve: tgid
+        - index: 1
+          type: uint32
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /usr/libexec/qemu-kvm
