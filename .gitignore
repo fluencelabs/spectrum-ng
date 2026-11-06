@@ -2,3 +2,6 @@
 .claude/worktrees/
 
 .claude/settings.local.json
+
+# scripts/storage default backup dir
+storage-backup/
