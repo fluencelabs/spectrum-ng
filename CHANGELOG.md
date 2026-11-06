@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.36](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.35...v0.3.36) (2026-11-06)
+
+
+### Features
+
+* **tetragon:** detect tenant VM escape on stage (observe-only) ([#368](https://github.com/fluencelabs/spectrum-ng/issues/368)) ([87828a7](https://github.com/fluencelabs/spectrum-ng/commit/87828a795052c91b5127b9cf9a1a03ae995d1d9c))
+
+
+### Bug Fixes
+
+* **crd-operator:** Update lightmare ([#447](https://github.com/fluencelabs/spectrum-ng/issues/447)) ([f3a4f24](https://github.com/fluencelabs/spectrum-ng/commit/f3a4f24eba2a0a3d0ef9e5a4cbd530bf7a49e1a4))
+* **storage:** cap LINSTOR thin-pool oversubscription at 1.5x ([#444](https://github.com/fluencelabs/spectrum-ng/issues/444)) ([88bb622](https://github.com/fluencelabs/spectrum-ng/commit/88bb6220f4d5bf7c2be70e8424c79cfb3198e03a))
+* Update ghcr.io/prometheus-community/charts/prometheus-operator-crds Docker tag to v33.0.1 ([#446](https://github.com/fluencelabs/spectrum-ng/issues/446)) ([8691f04](https://github.com/fluencelabs/spectrum-ng/commit/8691f04050138bd15aecc4d9874e709af5d0745a))
+
 ## [0.3.35](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.34...v0.3.35) (2026-11-05)
 
 
