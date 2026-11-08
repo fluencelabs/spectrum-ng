@@ -61,6 +61,9 @@ spec:
         LTM_CRD_CTRL__EGRESS__CLUSTER_DEFAULT_EXTERNAL_NETWORK: "${EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK:=false}"
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__NAMESERVERS: '["1.1.1.1" ,"8.8.8.8"]'
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__SEARCHES: '[]'
+      images:
+        # Clone image disks at Storage creation, not when the VM pod lands; needs allowRemoteVolumeAccess on lvm-thin-r1/r2 (граф `@cloudless/fluence`, узел #4161).
+        cloneBindImmediate: true
       persistence:
         enabled: true
         accessModes:
