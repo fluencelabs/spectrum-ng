@@ -14,8 +14,11 @@ spec:
     # linstor-csi v1.13.2 places clone replicas from a resource cache that
     # ResourceDefinitions.Clone does not invalidate (default timeout 30s), so a
     # clone gets an extra diskful replica and its resize stalls for minutes
-    # (piraeusdatastore/linstor-csi#521). A 1s cache shortens the window in
-    # which placement reads stale replicas (граф `@cloudless/fluence`, узел #3352).
+    # (piraeusdatastore/linstor-csi#521). A 1s cache closes the race in
+    # practice: placement reads replicas at most 1s old, while the clone's
+    # resource appears at least 2s before placement runs. Never set 0: in
+    # golinstor 0 means the cache never expires
+    # (граф `@cloudless/fluence`, узел #3352).
     # podTemplate patches args as a whole list: this is a full copy of the
     # operator's default linstor-csi args (piraeus-operator v2.12.1,
     # pkg/resources/cluster/csi-controller/csi-controller-deployment.yaml) plus
