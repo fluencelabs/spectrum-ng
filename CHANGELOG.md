@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.38](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.37...v0.3.38) (2026-11-08)
+
+
+### Features
+
+* **crd-operator:** bind image clones immediately ([#457](https://github.com/fluencelabs/spectrum-ng/issues/457)) ([9e7670b](https://github.com/fluencelabs/spectrum-ng/commit/9e7670b174ddf99b7d3889074092bb6a8b568df5))
+
 ## [0.3.37](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.36...v0.3.37) (2026-11-08)
 
 
