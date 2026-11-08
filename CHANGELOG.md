@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.37](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.36...v0.3.37) (2026-11-08)
+
+
+### Features
+
+* **kubevirt:** live-migrate VMs on node drain ([#449](https://github.com/fluencelabs/spectrum-ng/issues/449)) ([bdebe6e](https://github.com/fluencelabs/spectrum-ng/commit/bdebe6ed5261a64b22931d6a10fa326f2e663037))
+* **tetragon:** watch qemu connect/setns/mount/ptrace and kill qemu exec on stage ([#454](https://github.com/fluencelabs/spectrum-ng/issues/454)) ([228ed00](https://github.com/fluencelabs/spectrum-ng/commit/228ed000aa23e8784933ca9ad4364e4521c6156d))
+
+
+### Bug Fixes
+
+* **storage:** set DRBD verify-alg and Cozystack's network timeouts ([#448](https://github.com/fluencelabs/spectrum-ng/issues/448)) ([fc1bec8](https://github.com/fluencelabs/spectrum-ng/commit/fc1bec8cc70f4f9008edcc39d35abf292511817a))
+* **tetragon:** match unpacked event fields in VictoriaLogs rules ([#453](https://github.com/fluencelabs/spectrum-ng/issues/453)) ([c53921d](https://github.com/fluencelabs/spectrum-ng/commit/c53921d167cbb9e11c54330796175ec0c23bd170))
+* Update docker.io/envoyproxy/gateway-helm Docker tag to v1.10.0 ([#451](https://github.com/fluencelabs/spectrum-ng/issues/451)) ([971ce7a](https://github.com/fluencelabs/spectrum-ng/commit/971ce7a720532b197a9439977fe4e26b73c8a162))
+* Update docker.io/tremolosecurity/kube-oidc-proxy:1.0.13 Docker digest to 829242b ([#456](https://github.com/fluencelabs/spectrum-ng/issues/456)) ([30e1963](https://github.com/fluencelabs/spectrum-ng/commit/30e19634fc822cbd599c8e933bcb31e74a4e1dce))
+* Update ghcr.io/prometheus-community/charts/prometheus-node-exporter Docker tag to v5 ([#455](https://github.com/fluencelabs/spectrum-ng/issues/455)) ([f859fcb](https://github.com/fluencelabs/spectrum-ng/commit/f859fcbeeeabfd1865838894c30203df22170caa))
+
 ## [0.3.36](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.35...v0.3.36) (2026-11-06)
 
 
