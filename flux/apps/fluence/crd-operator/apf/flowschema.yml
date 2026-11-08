@@ -1,0 +1,27 @@
+# The controller's startup resync otherwise lands in the default `service-accounts`
+# schema (workload-low, shared by every SA) and gets queue-full 429s; give it workload-high.
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: crd-operator-controller
+spec:
+  matchingPrecedence: 1000
+  priorityLevelConfiguration:
+    name: workload-high
+  distinguisherMethod:
+    type: ByUser
+  rules:
+    - subjects:
+        - kind: ServiceAccount
+          serviceAccount:
+            name: crd-operator-controller
+            namespace: fluence
+      resourceRules:
+        - apiGroups: ["*"]
+          resources: ["*"]
+          verbs: ["*"]
+          clusterScope: true
+          namespaces: ["*"]
+      nonResourceRules:
+        - nonResourceURLs: ["*"]
+          verbs: ["*"]
