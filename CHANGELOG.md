@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.39](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.38...v0.3.39) (2026-11-08)
+
+
+### Bug Fixes
+
+* **crd-operator:** give the controller its own APF flow schema ([#459](https://github.com/fluencelabs/spectrum-ng/issues/459)) ([5b90cec](https://github.com/fluencelabs/spectrum-ng/commit/5b90ceca53c18aa6e44900a3964049e7c2209c89))
+* **storage:** shorten linstor-csi resource cache to stop extra clone replicas ([#460](https://github.com/fluencelabs/spectrum-ng/issues/460)) ([d1ee629](https://github.com/fluencelabs/spectrum-ng/commit/d1ee62915c979d5591c00cecf8a1fc76abf90c53))
+
 ## [0.3.38](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.37...v0.3.38) (2026-11-08)
 
 
