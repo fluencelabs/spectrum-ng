@@ -5,5 +5,6 @@ resources:
   - victoria-metrics
   - kube-state-metrics
   - node-exporter
+  - smartctl-exporter
   - grafana
   - alloy
