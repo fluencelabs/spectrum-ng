@@ -1,0 +1,47 @@
+# SMART / NVMe health-log exporter for the LINSTOR storage nodes. Talos has no
+# host packages, so smartctl runs inside this privileged pod against the host's
+# /dev. node-exporter only reads NVMe identity from sysfs (node_nvme_info), not
+# the health log, so without this nothing reports a degrading disk.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: smartctl-exporter
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: prometheus-smartctl-exporter
+    namespace: flux-system
+  values:
+    # https://github.com/prometheus-community/helm-charts/blob/prometheus-smartctl-exporter-0.18.0/charts/prometheus-smartctl-exporter/values.yaml
+    fullnameOverride: smartctl-exporter
+
+    # Only the nodes that hold LINSTOR storage pools (same selector as the
+    # LinstorCluster). The SmartctlExporterMissing alert keys on those pools.
+    nodeSelector:
+      beam/linstor_ready: "true"
+
+    serviceMonitor:
+      enabled: true
+      # Alloy scrapes only ServiceMonitors carrying this label.
+      extraLabels:
+        scrape: "true"
+      # Without these, `instance` is the pod IP and a restart changes every
+      # series; the alerts group by node.
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: instance
+
+    # The chart's only RBAC object binds the SA to a PodSecurityPolicy
+    # ClusterRole (unrestricted-psp) that does not exist since PSP's removal.
+    rbac:
+      create: false
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi

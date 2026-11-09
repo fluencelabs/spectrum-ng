@@ -4,3 +4,4 @@ resources:
   - operator-crds.yml
   - node-exporter.yml
   - kube-state-metrics.yml
+  - smartctl-exporter.yml
