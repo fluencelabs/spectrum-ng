@@ -5,4 +5,7 @@ resources:
   - service-monitor.yml
   - controller-service.yml
   - controller-service-monitor.yml
+  - lvm-exporter.yml
+  - lvm-exporter-service.yml
+  - lvm-exporter-service-monitor.yml
   - alerts.yml

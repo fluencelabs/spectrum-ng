@@ -152,3 +152,53 @@ spec:
           annotations:
             summary: "LINSTOR storage pool {{ $labels.storage_pool }} on {{ $labels.node }} is below 10% free"
             description: "Storage pool {{ $labels.storage_pool }} on {{ $labels.node }} has had only {{ $value | humanizePercentage }} free for more than 10 minutes. The thin pool is overprovisioned, so ordinary guest writes keep filling it; at 100% LVM stops writes and every VM on this node freezes at once. Act now: move replicas off the node or delete unused volumes and snapshots until it is back above 20%; check `linstor storage-pool list --nodes {{ $labels.node }}` and `lvs` on the node."
+
+    # Thin-pool metadata, from lvm-exporter (lvm-exporter.yml). LINSTOR's
+    # capacity metrics cover only the data area, so the pool alerts above stay
+    # silent while metadata fills. Aggregated by (node, lv_uuid) so an exporter
+    # restart (new pod label) does not reset `for`; lvm_lv_info adds the name.
+    - name: lvm.thinpool.alerts
+      rules:
+        - alert: LinstorThinPoolMetadataHigh
+          expr: |
+            max by (node, lv_uuid) (lvm_lv_metadata_percent)
+              * on (node, lv_uuid) group_left (lv_full_name)
+            max by (node, lv_uuid, lv_full_name) (lvm_lv_info)
+              > 75
+          for: 30m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "Thin pool {{ $labels.lv_full_name }} on {{ $labels.node }} has {{ $value | printf \"%.1f\" }}% metadata used"
+            description: "The metadata of thin pool {{ $labels.lv_full_name }} on {{ $labels.node }} has been above 75% for more than 30 minutes ({{ $value | printf \"%.1f\" }}%). When it reaches 100% the pool goes read-only and every VM with a replica on this node stops writing, whatever the data free space says. In the linstor-satellite pod on that node, check `vgs` and `lvs -a -o lv_name,lv_size,data_percent,metadata_percent {{ $labels.lv_full_name }}`: if the VG has free space, grow the metadata with `lvextend --poolmetadatasize +1G {{ $labels.lv_full_name }}` (leave room: LVM keeps the [*_pmspare] LV as large as the metadata); if it has none, move replicas off this node (place a replica on another node, then delete the one here) and delete unused volumes and snapshots."
+
+        - alert: LinstorThinPoolMetadataHigh
+          expr: |
+            max by (node, lv_uuid) (lvm_lv_metadata_percent)
+              * on (node, lv_uuid) group_left (lv_full_name)
+            max by (node, lv_uuid, lv_full_name) (lvm_lv_info)
+              > 90
+          for: 10m
+          labels:
+            team: devops
+            severity: critical
+          annotations:
+            summary: "Thin pool {{ $labels.lv_full_name }} on {{ $labels.node }} has {{ $value | printf \"%.1f\" }}% metadata used"
+            description: "The metadata of thin pool {{ $labels.lv_full_name }} on {{ $labels.node }} has been above 90% for more than 10 minutes ({{ $value | printf \"%.1f\" }}%). At 100% the pool goes read-only, every VM with a replica on this node freezes at once, and recovery needs thin_repair offline. Act now, in the linstor-satellite pod on that node: if `vgs` shows free space, `lvextend --poolmetadatasize +1G {{ $labels.lv_full_name }}` (LVM keeps the [*_pmspare] LV as large as the metadata, so it needs room for that too); otherwise move replicas off this node and delete unused volumes and snapshots until it is back below 75%."
+
+        # Every node with a diskful LINSTOR pool must be reporting LVM state, or
+        # the alerts above cannot fire for it. Covers the pod missing, the
+        # scrape failing, and `lvm fullreport` itself failing (lvm_up 0).
+        - alert: LvmExporterMissing
+          expr: |
+            max by (node) (linstor_storage_pool_capacity_total_bytes > 0)
+              unless on (node)
+            max by (node) (lvm_up == 1)
+          for: 15m
+          labels:
+            team: devops
+            severity: warning
+          annotations:
+            summary: "No LVM thin-pool data from storage node {{ $labels.node }}"
+            description: "{{ $labels.node }} holds a LINSTOR storage pool but no lvm-exporter there has reported a successful LVM scan for 15 minutes, so thin-pool metadata usage on it is not watched. Check the lvm-exporter DaemonSet in storage (the node needs the beam/linstor_ready=true label) and its pod logs; a failing scan logs the lvm error and sets lvm_up to 0."
