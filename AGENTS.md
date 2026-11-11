@@ -10,11 +10,12 @@ iskron:
 GitOps-определение spectrum-кластеров Fluence: Talos-бутстрап и Flux-приложения, которые кластер тянет по версии, закреплённой в его GitRepository.
 
 ## Проект
-- **Nature**: открыто — дело №598.
-- **Цена поломки**: открыто — дело №598. Мерж в `main` сам едет на stage (`{branch: main}`); testnet и mainnet получают изменение только сменой pin'а (граф, #2389).
-- **Потребители**: кластеры stage, testnet, mainnet (fra-flix-01, poz-bey-c01) — через GitRepository `flux-system/spectrum` (граф, #2389); как узнают о поломке — открыто, дело №598.
+- **Nature**: production — mainnet (fra-flix-01, poz-bey-c01) держит VM арендаторов, послаблений нет; stage и testnet — тестовые стенды (согласовано: владелец, дело №598).
+- **Цена поломки**: stage и testnet — тест, поломка терпима; mainnet — сеть, диски и запуск VM арендаторов. Мерж в `main` сам едет на stage (`{branch: main}`); testnet и mainnet получают изменение только сменой pin'а, не сразу (граф, #2389). Откат на прежний тег есть не у каждого релиза: до смены pin'а на mainnet проверь, откатывается ли релиз, и скажи прямо, если нет (согласовано: владелец, дело №598).
+- **Потребители**: кластеры stage, testnet, mainnet (fra-flix-01, poz-bey-c01) — через GitRepository `flux-system/spectrum` (граф, #2389); о поломке узнают по алертам: Alertmanager → Grafana Cloud → Slack и почта (граф, #1676); дежурства нет (согласовано: владелец, дело №598).
 - **Стек**: Kubernetes на Talos; Flux (flux-operator, Kustomize, HelmRelease, OCI/Git-источники); devshell — Nix flake через direnv.
-- **Гейт**: вызываемого нет — открыто, дело №598; до пуша — `kubectl kustomize` каждого тронутого кластера. CI на PR — только заголовок PR (semantic) и actionlint + renovate-validator на `.github/**`.
+- **Гейт**: вызываемого нет — `just check` (рендер всех кластеров, kubeconform `-strict`, yamllint, actionlint, `nixfmt --check`) в CI и required check — отдельным изменением позже (согласовано: владелец, дело №598); до пуша — `kubectl kustomize` каждого тронутого кластера. CI на PR — только заголовок PR (semantic) и actionlint + renovate-validator на `.github/**`.
+- **Мерж**: PR сливает человек (`gh pr merge --squash --admin`); агент доводит PR до готовности (согласовано: владелец, дело №598).
 - **Раскладка**: README компонентов нет — карта в «Структуре проекта», первый, кто тронет компонент, переносит её в его README; ловушки — узлами графа на контуре #2425.
 - **Фидбэк-рефлексия**: да (умолчание шаблона).
 - **Interop с workflow-набором**: нет — коэрсивного набора не найдено.
@@ -149,7 +150,7 @@ GitOps-определение spectrum-кластеров Fluence: Talos-бут�
 - **Conventional commits** (`feat:`/`fix:`/`chore:`/`refactor:`/`docs:`/`test:`), скоуп — группа приложений (`fix(kube-ovn): …`); ветки `feat/…`, `fix/…`, `chore/…`; заголовки PR тем же форматом — CI их проверяет, release-please по ним режет версию.
 - **Тело PR — одна-две строки**: что изменилось, номер дела. Ход работы и строки — в деле, в PR не копируются.
 - **Без co-author-трейлера и без упоминания Claude** (строки «Generated with Claude Code» и подобных) в коммитах и телах PR, если пользователь не просил.
-- **Гейт — один вызов**: вызываемого нет (дело №598); до пуша — `kubectl kustomize` каждого тронутого кластера (таблица «Команды»).
+- **Гейт — один вызов**: вызываемого нет (`just check` — позже, «Проект»); до пуша — `kubectl kustomize` каждого тронутого кластера (таблица «Команды»).
 - **Pre-commit-хука нет** — гейт до пуша.
 - **Ветка пачки не живёт без PR**: запушил — тем же ходом открой PR (черновой, если пачка не собрана).
 - **Definition of done**: PR в `main` слит (`gh pr view <n> --json state`); stage стоит на `{branch: main}` и получает изменение сам с мержем; остальные кластеры — только релизом release-please и сменой pin'а в их GitRepository (граф, #2389).

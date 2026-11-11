@@ -1,11 +1,11 @@
 # Reality — против чего проверяется заявка
 Граф — модель работы, репо — часть её воплощения; здесь названо третье — чем работа становится, когда бежит, и как на это смотреть. Носитель — по заявке: поведение решает собранный продукт, не исходник, который должен был его произвести; содержание исходника или нормы — сам текст; тесты — ступень свидетельства, не носитель.
 
-Все строки — предложены прогоном iskronify из кода и графа, держателем не подтверждены (дело №598).
+Строки предложены прогоном iskronify из кода и графа; доступ агента к кластерам — согласован владельцем, носители — им не подтверждены (дело №598).
 
 | Класс заявки | Канонический носитель | Как наблюдать | Кто может |
 |---|---|---|---|
-| Изменение применено на кластере (stage — с мержем в `main`; testnet, mainnet — после смены pin'а) | GitRepository `flux-system/spectrum` и Kustomization Flux живого кластера (граф, #2389) | `kubectl -n flux-system get gitrepository spectrum -o jsonpath='{.status.artifact.revision}'` = ожидаемая ревизия; `kubectl -n flux-system get kustomization` — `lastAppliedRevision` на ней и `Ready=True` у всех (кроме `piraeus-operator-crd`); фальсификатор — старая ревизия или `Ready=False` дольше каскада `dependsOn`. Доступ — через beam-agent на infra-кластере (граф, #2389, #448) | user; agent — только с доступом к kubeconfig infra, открыто |
+| Изменение применено на кластере (stage — с мержем в `main`; testnet, mainnet — после смены pin'а) | GitRepository `flux-system/spectrum` и Kustomization Flux живого кластера (граф, #2389) | `kubectl -n flux-system get gitrepository spectrum -o jsonpath='{.status.artifact.revision}'` = ожидаемая ревизия; `kubectl -n flux-system get kustomization` — `lastAppliedRevision` на ней и `Ready=True` у всех (кроме `piraeus-operator-crd`); фальсификатор — старая ревизия или `Ready=False` дольше каскада `dependsOn`. Доступ — через beam-agent на infra-кластере (граф, #2389, #448) | user; agent — на чтение через beam-agent (kubeconfig infra); запись на кластер — только по слову человека |
 | Приложение работает на кластере (под поднят, алерт срабатывает, трафик идёт) | живой объект в кластере: под, Service/Gateway, правило vmalert | `kubectl get`/`describe` нужного объекта в кластере носителя выше; для алерта — его состояние в vmalert/Alertmanager | user; agent — как выше |
 | Манифест кластера собирается | рендер оверлея текущего дерева | `kubectl kustomize clusters/<кластер>` — код 0; фальсификатор — ошибка рендера | agent |
 | Релиз выпущен | тег на origin | `git ls-remote origin refs/tags/vX.Y.Z` — непусто | agent |
