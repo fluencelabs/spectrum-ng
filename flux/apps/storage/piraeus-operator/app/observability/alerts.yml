@@ -124,7 +124,7 @@ spec:
             summary: "LINSTOR is generating error reports rapidly"
             description: "The LINSTOR controller has written more than 10 error reports in 15 minutes, sustained for 10 minutes ({{ $value | printf \"%.0f\" }} in the last window). Inspect with `linstor error-reports list`; this accompanied the create-md storm in the 2026-08-18 incident."
 
-        # (граф @cloudless/fluence, узел #2528)
+        # (graph `@cloudless/fluence`, node #2528)
         # Aggregated by (node, storage_pool) so a controller reschedule (new pod/instance labels)
         # does not reset `for`; `total > 0` drops diskless pools (capacity 0).
         - alert: LinstorStoragePoolLowSpace

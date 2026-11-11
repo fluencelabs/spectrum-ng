@@ -7,150 +7,152 @@ iskron:
   stamp: 2026-11-11
 ---
 # spectrum-ng
-GitOps-определение spectrum-кластеров Fluence: Talos-бутстрап и Flux-приложения, которые кластер тянет по версии, закреплённой в его GitRepository.
+GitOps definition of Fluence spectrum clusters: the Talos bootstrap and the Flux applications each cluster pulls at the version pinned in its GitRepository.
 
-## Проект
-- **Nature**: открыто — дело №598.
-- **Цена поломки**: открыто — дело №598. Мерж в `main` сам едет на stage (`{branch: main}`); testnet и mainnet получают изменение только сменой pin'а (граф, #2389).
-- **Потребители**: кластеры stage, testnet, mainnet (fra-flix-01, poz-bey-c01) — через GitRepository `flux-system/spectrum` (граф, #2389); как узнают о поломке — открыто, дело №598.
-- **Стек**: Kubernetes на Talos; Flux (flux-operator, Kustomize, HelmRelease, OCI/Git-источники); devshell — Nix flake через direnv.
-- **Гейт**: вызываемого нет — открыто, дело №598; до пуша — `kubectl kustomize` каждого тронутого кластера. CI на PR — только заголовок PR (semantic) и actionlint + renovate-validator на `.github/**`.
-- **Раскладка**: README компонентов нет — карта в «Структуре проекта», первый, кто тронет компонент, переносит её в его README; ловушки — узлами графа на контуре #2425.
-- **Фидбэк-рефлексия**: да (умолчание шаблона).
-- **Interop с workflow-набором**: нет — коэрсивного набора не найдено.
+## Project
+- **Nature**: production — mainnet (fra-flix-01, poz-bey-c01) holds tenant VMs, no relaxations; stage and testnet are test environments (agreed: owner, case 598).
+- **Cost of breakage**: stage and testnet are tests, breakage is tolerable; mainnet — tenant VMs' network, disks and startup. A merge to `main` rolls out to stage by itself (`{branch: main}`); testnet and mainnet get a change only through a pin change, not right away (graph, #2389). Not every release can be rolled back to the previous tag: before changing the mainnet pin, check whether the release rolls back, and say so plainly if it does not (agreed: owner, case 598).
+- **Consumers**: the stage, testnet and mainnet (fra-flix-01, poz-bey-c01) clusters — through the GitRepository `flux-system/spectrum` (graph, #2389); breakage is learned from alerts: Alertmanager → Grafana Cloud → Slack and email (graph, #1676); there is no on-call (agreed: owner, case 598).
+- **Stack**: Kubernetes on Talos; Flux (flux-operator, Kustomize, HelmRelease, OCI/Git sources); devshell — Nix flake via direnv.
+- **Gate**: no callable gate — `just check` (render of all clusters, kubeconform `-strict`, yamllint, actionlint, `nixfmt --check`) in CI and as a required check comes as a separate change later (agreed: owner, case 598); before a push — `kubectl kustomize` of every touched cluster. CI on PRs checks only the PR title (semantic) and runs actionlint + renovate-validator on `.github/**`.
+- **Merge**: a human merges the PR (`gh pr merge --squash --admin`); the agent brings the PR to readiness (agreed: owner, case 598).
+- **Layout**: there are no component READMEs — the map is in "Project structure"; the first one to touch a component moves its part of the map into that component's README; gotchas live as graph nodes on holon #2425.
+- **Feedback reflection**: yes (template default).
+- **Interop with a workflow suite**: none — no coercive suite found.
 
-## Правила персистентности
-Состояние живёт в **репо** или в **графе** — больше нигде. Встроенная память харнеса (директория памяти, сводки разговоров, `/tmp`, машинно-локальные файлы) **запрещена целиком, не по категориям**; временный каталог — только скретч сессии, и она его убирает.
-- **Репо**: код, конфиги, ритуалы (как действовать здесь), состояние веток.
-- **Граф**: решения, вопросы по сути (вимарши), планы (карта превращений), уроки; ловушки — по слоту «Раскладка». Граф в репо не пересказывай — линкуй.
-- **Дело** (разговор на узле графа): разовые постановка, вопрос, договорённость, приём; ход и исход работы — строками его сводки («Работа идёт в графе» ниже); состояние того, что работа меняет, — в графе.
-- **Доставай состояние, не вспоминай.** Нет источника у «мы решили…» — прочти граф или репо до действия.
-- **Узел не записан, пока не назван тянущий его** — какая крия сломается, если он исчезнет? Укрытия и форма записи — скилл `writing`.
-- **Чей это факт?** — спрашивай всегда, поверх инструкции памяти харнеса; прежде чем закончить, разнеси каждый долгий факт разговора: свойство кода, ритуал, команда, порядок этого репо → этот файл; ловушка → дом по «Раскладке»; смысл кода (решения, основания, связи) и знание, переживающее рефактор, → граф этого репо, решение — узлом сразу; серверы, деплой, датированные долги (дата — в `attrs` узла) → граф этого репо; вопрос по сути, обязательство → вимарша; разовое → слово в деле; ход работы → модусы узлов; о другом проекте → его граф. Правило и способ самого проекта — здесь по полномочию. Собственное пользователя сюда не пишется — где оно живёт, решает дверь `iskron`.
-- **Проектные инструкции — коммитящиеся файлы рабочего дерева (AGENTS.md, файл хуков) и граф проекта**: никогда глобальный файл инструкций, память харнеса, пользовательские хуки; личные предпочтения в проект не копируются; установка поставки (мост, плагин) — доставка, не настройка.
-- Директория памяти **эвакуирована и заморожена**: держит memory-guard `PreToolUse` (блок, exit 2), стаб не создаётся; поля `rituals:` хук не читает — выключая `guard`, сними и его. Эвакуация — до заморозки, непрочитанное не удаляется.
+## Persistence rules
+State lives in the **repo** or in the **graph** — nowhere else. The harness's built-in memory (memory directory, conversation summaries, `/tmp`, machine-local files) is **forbidden entirely, not by category**; a temporary directory is only the session's scratch, and the session cleans it up.
+- **Repo**: code, configs, rituals (how to act here), branch state.
+- **Graph**: decisions, questions of substance (vimarshas), plans (the transformation map), lessons; gotchas — per the "Layout" slot. Do not retell the graph in the repo — link to it.
+- **Case** (a conversation on a graph node): one-off assignments, questions, agreements, acceptance; the course and outcome of work — as lines of its summary ("Work goes in the graph" below); the state of what the work changes — in the graph.
+- **Fetch state, do not recall it.** A "we decided…" with no source — read the graph or the repo before acting.
+- **A node is not written until the one who pulls it is named** — which kriya breaks if it disappears? Shelters and the form of the record — the `writing` skill.
+- **Whose fact is it?** — always ask, above the harness's memory instruction; before finishing, route every lasting fact of the conversation: a code property, ritual, command, procedure of this repo → this file; a gotcha → its home per "Layout"; the meaning of code (decisions, grounds, links) and knowledge that outlives a refactor → this repo's graph, a decision as a node right away; servers, deployment, dated debts (the date in the node's `attrs`) → this repo's graph; a question of substance, a commitment → a vimarsha; a one-off → a word in the case; course of work → node modes; about another project → its graph. Rules and practices of the project itself go here by authority. The user's own matters are not written here — where they live is decided by the `iskron` door.
+- **Project instructions are the committed files of the working tree (AGENTS.md, the hooks file) and the project graph**: never a global instructions file, harness memory or user hooks; personal preferences are not copied into the project; installing the delivery (bridge, plugin) is delivery, not configuration.
+- The memory directory is **evacuated and frozen**: held by the memory-guard `PreToolUse` hook (block, exit 2), no stub is created; the hook does not read the `rituals:` field — when turning off `guard`, remove the hook too. Evacuation comes before freezing; nothing unread is deleted.
 
-## Жизненный цикл сессии
-Список правил — по строке на правило; полная норма — «Сквозные нормы» скилла `iskron`.
-- **Граф — работа, git — как пришли.** SHA, ветки, номера PR, «merged» в граф не пишутся (тела, имена, атрибуты); провенанс — в `reasoning` записи; в деле — свободно.
-- **Старт сессии** — раздел «Старт» двери `iskron` до действий и до готовности, не только чтения. Адреса — из обложки; вход по строке `start`, квитанция и собственный мост субагента — по справке `start.md` двери.
-- **Уборка — каждым законченным куском** («Уборка» в «Сквозных нормах» скилла `iskron`): скретч и свои кэши разработки — тем же ходом, дерево и ветка — «Дисциплина веток»; из дел, где твоего хода не ждут, — свои строки исходом и `leave` (ведущий — `propose_close` или передача ведения). Сидишь только там, где ждёшь ответа или ведёшь незакрытое.
-- **Ремесло графа — у решающего**: чтение для решения, решение, ткачество, интеграция и приёмка («Ремесло графа» в «Сквозных нормах» скилла `iskron`). Субагентам со своим мостом-спутником — объёмное по готовому решению: код, гейт, ревью, проверка, правка многих задетых узлов с референсами на решение и окрестность; поиск по лестнице `recall` — `recaller` (находку решающий открывает сам), впуск сложного рассказа — `ingester`; итог сверяет запустивший.
-- **Начало работы: граф, потом проект, потом код.** (1) разведка графа (`entry`): записанное о месте изменения, открытые вимарши, решённое и отвергнутое; (2) поле интеграции (`integrity`, раздел ниже); (3) проектирование (`design`), затем код. Пропуск — только по явному «работай сразу» или другому названному протоколу, долг разведки — на reconcile; молчание человека — не разрешение.
-- **Решение — в граф в момент принятия**, откуда бы ни пришло (чат, сокет, договор агентов), — в холон репо правкой задетого и связями, тезис — своим узлом, модусы — по `writing`; что считается исполнением — в узле; кто решил — в `reasoning` и деле, не в узле. Изменившаяся ситуация — так же сразу.
-- **Задача описана до начала — тем, что она есть.** Разовая — в одном деле: постановка и договорённость — словом, ход и исход — строками по `cases.md` двери `iskron`; пришла без дела — открой его (`open_room` на узле предмета либо `iskron_case(action="talk", about=<предмет>)`) до первой перемены снаружи. В граф — переходы, которые она меняет, и решения. Вимарша — только вопрос по сути или обязательство; крия — повторяемый переход. Различение задачи и законной односторонней крии края — по `reconcile`, проходка 2.
-- **Работа идёт в графе** — «Сквозные нормы» двери `iskron`; до хода в деле прочти её справку `cases.md`, ведёшь дело — ещё `leading.md`. Там живут различение графа и дела, адресация, форма хода/исхода и передача ведения; здесь метод не копируется.
-- **Мерж → граф.** Пуш, открывший или обновивший PR, не отгрузил ничего; последовательность висит на событии мержа, не на затишье. PR слит на форже, не командой сессии — хук мержа молчит: последовательность запускай сам, увидев `MERGED` (`gh pr view <n> --json state`). Все акты обязательны — кроме работы по ссылке от агента (постановка референсами, отчёт в деле): там ткачество, закрытие по оси и сведение — постановщику, делателю — семя превращения и модусы поставки (скилл `vahta`):
-  - **Протки** (`weaving`): отгруженное — в целевую систему узлами и рёбрами, не абзацем; механика репо остаётся в git. Ноль узлов и стрелок после содержательной волны — скажи прямо, почему.
-  - **Продвинь карту**: открытая работа — `anga` к превращению; семя `genre=hint` одно на превращение — только не восстановимое чтением графа и дел; живые дела — указателем на их чтение (`iskron_case(action="at")`, `read`), номер — только где существенный выбор иначе не восстановить.
-  - **Переключи модусы** по свидетельству на носителе (`REALITY.md`, **reality-audit**), не по мержу: мерж двигает узлы того, что несёт код; практику (`anagata→vartamana`) — выкат или прогон, увиденный на носителе (`anumita`), наблюдённый — `pratyakshita`.
-  - **Закрой по оси** (`inquiry`): `addressed_by` к несущему узлу; `visarjana` — когда ответ стоит узлом, репо его показывает и реальность показывает достижимость (где нет — слово пользователя); иначе предъяви владельцу. Тем же ходом — инбокс `posed_to` (будит перемена у якоря, не возраст), `propose_close` со свидетельством.
-  - **Сведи — `reconcile`**: узлы против кода, код против графа, отброшенное записано и референсируемо; остаток — вимаршами.
-  - **Фидбэк-рефлексия** — на мерже и на закрытии сессии без мержа: опыт *о методе* (скилл, правило, поверхность подвели или удивили) — случаем, не мнением, после проверки на сказанное, в граф работы якорем на узел инструмента, адресом его стюарду; о методе вообще — по маршруту скилла `feedback`. Ноль записей — валидный исход.
-  - **Словарный проход**: заимствованные слова (список — принцип 8) в приземляемом тексте и узлах назови человеку и спроси, как это зовётся в проекте; сам не подменяй.
-- **Дизайн не готов, пока решения, риски и жизненный цикл не в графе** — каким бы скиллом ни элиситирован; внешний design/spec-файл — черновик на впуск в той же сессии, решения держит граф. Без владельца: решения и риски — сейчас, превращение — с телосом на подтверждение.
-- **Наборы исполнения ведут исполнение** (план, TDD, отладка, ревью); граф несёт память и дизайн: решения и риски исполнения — в граф до конца сессии.
-- **Утверждение, которое ты сделал, — не утверждение, которое ты принимаешь.** Поведенческое закрывает холодный `verifier`: бриф — утверждение, носитель и фальсификатор из `REALITY.md`; дождись вердикта. Роли нет — наблюдай носитель сам, никогда исходник.
-- **Мерж хуков**: записи разных наборов в файле хуков сосуществуют — добавляй рядом, чужие не перезаписывай.
-- Ритуалы старта, пуша и мержа несёт поставка по обложке; memory-guard — Claude Code: в репо (`.claude/settings.json`).
-- **Держи этот файл честным.** Контракт — число после «КОНТРАКТ AGENTS.md:» в начале описания скилла `iskronify`: сравни с `contract` обложки, ничего не загружая. Выше `contract` или источники сдвинулись после `stamp` (`git log -1 --format=%cd -- <те файлы>`) — прогони `iskronify` первым ходом, в чистом дереве и ветке работы, по правилу «Кто исполняет прогон»; прогон не ждёт человека, порядок слотов — Шаг 1 `iskronify`. **Ниже `contract`** — файл впереди поставки: не понижай и прогон не зови, обнови затеняющую копию `iskronify` и перечитай описание. Строка файла расходится со скиллом — назови вслух (в деле постановщику, иначе человеку): `contract` ниже — прав скилл; выше — прав файл; равен — дефект шаблона, фидбэк стюарду поставки скиллов (скилл `feedback`).
-- **Держи тулчейн свежим**: обновления включены по умолчанию, бери как доставляет канал. Канал без автообновления (распакованная копия) — проверь версию перед сессией или переезжай.
+## Session lifecycle
+A list of rules — one line per rule; the full norm is the "Cross-cutting norms" of the `iskron` skill.
+- **The graph is the work, git is how it arrived.** SHAs, branches, PR numbers, "merged" are not written to the graph (bodies, names, attributes); provenance goes in the record's `reasoning`; in a case — freely.
+- **Session start** — the "Start" section of the `iskron` door, before actions and through to readiness, not just reading. Addresses come from the cover; entry by a `start` line, the receipt and a subagent's own bridge — per the door's `start.md` reference.
+- **Cleanup — with every finished piece** ("Cleanup" in the "Cross-cutting norms" of the `iskron` skill): scratch and your own development caches — in the same move, worktree and branch — "Branch discipline"; from cases where no move of yours is awaited — your lines with an outcome and `leave` (the lead — `propose_close` or handing over the lead). Stay only where you await an answer or lead something unclosed.
+- **Graph craft belongs to the decider**: reading for a decision, the decision, weaving, integration and acceptance ("Graph craft" in the "Cross-cutting norms" of the `iskron` skill). Subagents with their own satellite bridge get the bulk work on a ready decision: code, gate, review, verification, editing many affected nodes with references to the decision and its neighbourhood; search along the `recall` ladder — `recaller` (the decider opens the finding personally), intake of a complex story — `ingester`; the launcher checks the result.
+- **Starting work: graph, then project, then code.** (1) graph reconnaissance (`entry`): what is recorded about the place of change, open vimarshas, what was decided and rejected; (2) the integration field (`integrity`, section below); (3) design (`design`), then code. Skipping only on an explicit "work right away" or another named protocol, the reconnaissance debt goes to reconcile; a human's silence is not permission.
+- **A decision goes to the graph the moment it is made**, wherever it came from (chat, socket, agents' agreement) — into the repo's holon by editing what it affects and its links, the thesis as its own node, modes per `writing`; what counts as fulfilment — in the node; who decided — in `reasoning` and the case, not in the node. A changed situation — likewise, right away.
+- **A task is described before it starts — as what it is.** A one-off — in one case: the assignment and agreement as words, course and outcome as lines per the `iskron` door's `cases.md`; if it arrived without a case — open one (`open_room` on the subject's node or `iskron_case(action="talk", about=<subject>)`) before the first change outside. To the graph — the transitions it changes, and decisions. A vimarsha is only a question of substance or a commitment; a kriya is a repeatable transition. Telling a task from a legitimate one-sided edge kriya — per `reconcile`, pass 2.
+- **Work goes in the graph** — the "Cross-cutting norms" of the `iskron` door; before a move in a case read its `cases.md` reference, and when leading a case — also `leading.md`. That is where the distinction of graph and case, addressing, the form of course/outcome and handing over the lead live; the method is not copied here.
+- **Merge → graph.** A push that opened or updated a PR shipped nothing; the sequence hangs on the merge event, not on a lull. The PR is merged on the forge, not by a session command — the merge hook is silent: run the sequence yourself once you see `MERGED` (`gh pr view <n> --json state`). All acts are mandatory — except for work by reference from an agent (assignment by references, report in the case): there weaving, closing along the axis and reconciliation belong to the assigner, and the doer owns the transformation seed and the delivery modes (the `vahta` skill):
+  - **Weave** (`weaving`): what shipped — into the target system as nodes and edges, not a paragraph; repo mechanics stay in git. Zero nodes and arrows after a substantive wave — say plainly why.
+  - **Advance the map**: open work — `anga` to the transformation; one `genre=hint` seed per transformation — only what cannot be recovered by reading the graph and cases; live cases — as a pointer to reading them (`iskron_case(action="at")`, `read`), a number only where a substantive choice cannot otherwise be recovered.
+  - **Switch modes** by evidence on the carrier (`REALITY.md`, **reality-audit**), not by the merge: a merge moves the nodes of what the code carries; practice (`anagata→vartamana`) — a rollout or run seen on the carrier (`anumita`), observed — `pratyakshita`.
+  - **Close along the axis** (`inquiry`): `addressed_by` to the carrying node; `visarjana` — when the answer stands as a node, the repo shows it and reality shows reachability (where it does not — the user's word); otherwise present it to the owner. In the same move — the `posed_to` inbox (woken by a change at the anchor, not by age), `propose_close` with evidence.
+  - **Reconcile — `reconcile`**: nodes against code, code against graph, what was dropped is recorded and referenceable; the remainder — as vimarshas.
+  - **Feedback reflection** — on merge and on closing a session without a merge: experience *about the method* (a skill, rule or surface failed or surprised) — as a case, not an opinion, after checking against what has been said, into the work graph anchored on the tool's node, addressed to its steward; about the method in general — along the route of the `feedback` skill. Zero records is a valid outcome.
+  - **Vocabulary pass**: borrowed words (list — principle 8) in the landed text and nodes — name them to the human and ask what they are called in the project; do not substitute them yourself.
+- **A design is not ready until decisions, risks and lifecycle are in the graph** — whatever skill elicited it; an external design/spec file is a draft for intake in the same session, the graph holds the decisions. Without an owner: decisions and risks — now, the transformation — with a telos for confirmation.
+- **Execution suites lead execution** (plan, TDD, debugging, review); the graph carries memory and design: execution decisions and risks go to the graph before the session ends.
+- **A claim you made is not a claim you accept.** A behavioural claim is closed by a cold `verifier`: the brief is the claim, the carrier and the falsifier from `REALITY.md`; wait for the verdict. No such role — observe the carrier yourself, never the source.
+- **Hook merging**: entries of different suites in the hooks file coexist — add alongside, do not overwrite others'.
+- The start, push and merge rituals are carried by the delivery per the cover; memory-guard — Claude Code: in the repo (`.claude/settings.json`).
+- **Keep this file honest.** The contract is the number after the "AGENTS.md CONTRACT:" label (written in the skill's own language) at the start of the `iskronify` skill description: compare it with the cover's `contract` without loading anything. Higher than `contract`, or the sources moved after `stamp` (`git log -1 --format=%cd -- <those files>`) — run `iskronify` as the first move, in a clean tree and the work branch, per the "Who runs the pass" rule; the pass does not wait for a human, slot order — Step 1 of `iskronify`. **Lower than `contract`** — the file is ahead of the delivery: do not downgrade and do not call the pass, update the shadowing copy of `iskronify` and reread the description. A line of this file diverges from the skill — say so aloud (in the case to the assigner, otherwise to the human): `contract` lower — the skill is right; higher — the file is right; equal — a template defect, feedback to the steward of the skills delivery (the `feedback` skill).
+- **Keep the toolchain fresh**: updates are on by default, take them as the channel delivers. A channel without auto-update (an unpacked copy) — check the version before the session or move off it.
 
-### Самопроверка этапа
-Гейт зелёный и связный этап закончен (открыт или обновлён PR, либо собираешься тронуть узлы за пределами начальных) — перечитай дифф ветки против транка: баги, хрупкие места, слабая обработка ошибок, нарушения DRY/SOLID, недостающие или бесполезные тесты, файлы за 150 строк и бог-юниты. Чини в той же ветке или прямо скажи, что ничего не всплыло; находок не выдумывай. По этапу, не только в конце.
+### Stage self-check
+The gate is green and a coherent stage is finished (a PR opened or updated, or you are about to touch nodes beyond the initial ones) — reread the branch diff against trunk: bugs, fragile spots, weak error handling, DRY/SOLID violations, missing or useless tests, files over 150 lines and god units. Fix in the same branch or say plainly that nothing came up; do not invent findings. Per stage, not only at the end.
 
-### Холодное ревью пачки
-- **Самопроверка — всегда, холодное ревью после неё — где положено ниже**: своё видишь, как задумывал.
-- **Ревью до мержа — по политике репо**: ruleset `main` форжи — только squash, линейная история, одно одобрение code owner'а (`.github/CODEOWNERS`) после последнего пуша, все треды разрешены; обязательных статус-проверок нет — CI выше не гейтит мерж. Холодное ревью ролью `reviewer` — на каждой пачке до запроса одобрения; ревьюер — не автор диффа. CI, рендер задетых кластеров и адресная проверка угрозы безопасности (секрет вне шаблона `${VAR}`) или потери данных (`prune`, удаление PVC/CRD) — на каждой пачке.
-- Ревью — ролью `reviewer`, **в отдельном worktree**: где порождающий тул даёт изоляцию (Claude Code — `isolation`) — ею; где не даёт — ведущий сам кладёт отрешённое дерево (`git worktree add --detach .worktrees/<имя> <голова>`), путь идёт в бриф строкой «работай только там», запрет правки — второй линией; в отчёте — «изоляция ручная». Ни того ни другого — скажи, что холодного ревью не было. Сторож есть только у пуша: этап без пуша держишь ты.
-- Бриф ревьюера — дифф ветки против транка, фокус-холон со steward-ролью и референсы на узлы диффа, не пересказ; поле интеграции и отчёт — по роли `reviewer`; `NEEDS_CONTEXT` — дефект графа: допроектируй, доткни, поставь вимарши, повтори ревью. Находку, с которой не согласен, отклоняй записанным «почему».
+### Cold review of a batch
+- **Self-check — always, cold review after it — where required below**: you see your own work as you intended it.
+- **Review before merge — per the repo policy**: the forge's `main` ruleset — squash only, linear history, one code owner approval (`.github/CODEOWNERS`) after the last push, all threads resolved; no required status checks — the CI above does not gate the merge. Cold review by the `reviewer` role — on every batch before requesting approval; the reviewer is not the author of the diff. CI, render of the affected clusters and a targeted check for a security threat (a secret outside the `${VAR}` template) or data loss (`prune`, deleting a PVC/CRD) — on every batch.
+- Review — by the `reviewer` role, **in a separate worktree**: where the spawning tool provides isolation (Claude Code — `isolation`) — with it; where it does not — the lead lays down a detached tree (`git worktree add --detach .worktrees/<name> <head>`), the path goes into the brief as a line "work only there", the ban on editing — as a second line; in the report — "manual isolation". Neither — say that there was no cold review. Only a push has a guard: a stage without a push is yours to hold.
+- The reviewer's brief is the branch diff against trunk, the focus holon with its steward role and references to the diff's nodes, not a retelling; the integration field and the report — per the `reviewer` role; `NEEDS_CONTEXT` is a graph defect: finish the design, weave in, pose vimarshas, repeat the review. A finding you disagree with — reject it with a recorded "why".
 
-### Хвост ролевых файлов
+### Role file tails
 #### worker
-- До доклада — `kubectl kustomize clusters/<кластер>` каждого задетого кластера: нуль ошибок; секрет — только шаблоном `${VAR}`, значение в git не кладётся.
+- Before reporting — `kubectl kustomize clusters/<cluster>` of every affected cluster: zero errors; a secret — only as a `${VAR}` template, the value is not put into git.
 
-### Дисциплина веток
-Одна ветка и один PR на пачку: пункты и работы субагентов вливаются в неё локально. **Ветка — в своём рабочем дереве внутри репо** (`git worktree add .worktrees/<ветка> -b <ветка> origin/main`; `.worktrees/` в `.gitignore`), не в основной копии и не рядом с репо: основную делят сессии, и `checkout` там сносит чужую работу. После мержа: `git worktree remove` своего дерева, `git branch -d` слитой и прочих, уже в `main`, свои кэши разработки; `git pull` в основной копии; вплети отгруженное в граф; следующую ветку — от свежего `origin/main`; подтверди уборку до следующей задачи. **Брошенное дерево** (ветка в `main` или удалена на форже, копия чистая) убирает любой агент репо (`git worktree remove`, `prune`, `git branch -d`); незакоммиченное или неслитое не трогай — назови держателю или человеку.
+### Branch discipline
+One branch and one PR per batch: items and subagents' work merge into it locally. **A branch lives in its own worktree inside the repo** (`git worktree add .worktrees/<branch> -b <branch> origin/main`; `.worktrees/` is in `.gitignore`), not in the main checkout and not next to the repo: sessions share the main checkout, and a `checkout` there wipes others' work. After merge: `git worktree remove` of your tree, `git branch -d` of the merged branch and others already in `main`, your development caches; `git pull` in the main checkout; weave what shipped into the graph; the next branch — from a fresh `origin/main`; confirm cleanup before the next task. **An abandoned tree** (branch in `main` or deleted on the forge, clean copy) may be cleaned up by any agent of the repo (`git worktree remove`, `prune`, `git branch -d`); do not touch uncommitted or unmerged work — name it to its holder or the human.
 
-## Рабочие принципы
-1. **Думай до кода.** Называй допущения; при неуверенности спрашивай, *что именно* неясно. **Вопрос человеку — словами, не тулом выбора**: текстом — только тому, кто отвечает сейчас; переживший такт — карточкой `ask` в деле («Вопрос человеку» двери `iskron`; дела нет — возьми его; места нет — его стояние-мост); инструмент выбора вариантов харнеса — никогда. Возражай, видя более простой ход или ложную посылку. Тронь живую систему, прежде чем верить типу, имени, доке.
-2. **Сначала простота.** Минимум под задачу; без спекулятивных фич, абстракций для одноразового, обработки невозможного. Валидируй на границах.
-3. **Оставайся в границе репо.** Правки — только в рабочей директории; вне неё — чтение носителей, скретч сессии и дом поставки. Чужой контур — вимарша на его узле (`anga` к превращению) и слово его стюарду в деле (`iskron_case(action="talk", about=<предмет>)`). **Чужой код в контекст не бери** — ни чтением, ни клоном, ни разведкой субагента: нужное — из графа (контур того репо, феномены, эстафеты, вопрошания) или словом стюарду; чего нет ни там, ни в ответе — вимаршей `posed_to` ему.
-4. **Вторая имплементация — событие для доклада.** Выведи оба места через `integrity`, назови человеку, предложи воссоединение или названную развилку; новый потребитель встаёт рёбрами тем же ходом.
-5. **Хирургические изменения.** Трогай нужное задаче; не переформатируй и не рефактори соседний код; стиль держи; линтер авторитетен; удаляй только мёртвое от своего изменения, остальное флагуй, не удаляй.
-6. **Исполнение от цели.** Баг — падающим тестом до патча. Многошаговое — пары `шаг → проверка`. Рантайм — в реальном окружении. Фальсификатор — до взгляда; наблюдай носитель (`REALITY.md`), не исходник.
-7. **Прочти, прежде чем отвечать на открытый вопрос** — из записанного, не из training data (скилл `recall`). Выдача поиска — зацепка, не данные: структуру и связи читай `iskron_look`, `iskron_orient`; субагенту — разведка кода и файлов (`reader`), поиск по графу (`recaller`); чтение найденного для решения — твоё.
-8. **Думай в графе, говори на языке проекта.** Словарь графа (крия, феномен, контур, роль, вимарша, модусы) — для рассуждения; человеку — слова проекта, пока он не употребил первым. Заимствованное о работе — ticket, task, sprint, backlog, epic, story, done, blocker, committed — сам не подменяй: назови и спроси, как это зовётся в проекте («Словарный проход»); говори: вопрос, изменение, что открыто, что это разрешает.
+## Working principles
+1. **Think before code.** Name assumptions; when unsure, ask *what exactly* is unclear. **A question to the human — in words, not by a choice tool**: as text — only to the one answering now; one that outlives the turn — as an `ask` card in the case ("Question to the human" of the `iskron` door; no case — take one; no place — their standing bridge); the harness's option-picking tool — never. Push back when you see a simpler move or a false premise. Touch the live system before trusting a type, a name, a doc.
+2. **Simplicity first.** The minimum for the task; no speculative features, abstractions for one-offs, handling of the impossible. Validate at boundaries.
+3. **Stay within the repo boundary.** Edits — only in the working directory; outside it — reading carriers, the session scratch and the delivery home. Another holon — a vimarsha on its node (`anga` to the transformation) and a word to its steward in the case (`iskron_case(action="talk", about=<subject>)`). **Do not take others' code into context** — neither by reading, nor by cloning, nor by subagent reconnaissance: what you need comes from the graph (that repo's holon, phenomena, relays, inquiries) or by a word to the steward; what is neither there nor in the answer — a `posed_to` vimarsha to them.
+4. **A second implementation is an event to report.** Derive both places via `integrity`, name them to the human, propose reunification or a named fork; a new consumer comes in with its edges in the same move.
+5. **Surgical changes.** Touch what the task needs; do not reformat or refactor neighbouring code; keep the style; the linter is authoritative; delete only what your change made dead, flag the rest, do not delete it.
+6. **Goal-driven execution.** A bug — with a failing test before the patch. Multi-step work — `step → check` pairs. Runtime — in the real environment. The falsifier — before looking; observe the carrier (`REALITY.md`), not the source.
+7. **Read before answering an open question** — from what is recorded, not from training data (the `recall` skill). Search output is a lead, not data: read structure and links with `iskron_look`, `iskron_orient`; to a subagent — reconnaissance of code and files (`reader`), graph search (`recaller`); reading what was found for a decision is yours.
+8. **Think in the graph, speak the project's language.** The graph vocabulary (kriya, phenomenon, holon, role, vimarsha, modes) is for reasoning; to the human — the project's words, until they use the term first. Borrowed words about work — ticket, task, sprint, backlog, epic, story, done, blocker, committed — do not substitute them yourself: name them and ask what they are called in the project ("Vocabulary pass"); say: question, change, what is open, what this unblocks.
 
-## Поле интеграции — только из графа
-- Корень обхода — фокус-холон и steward-роль из обложки. Списка общих поверхностей и потребителей здесь не веди и у человека не спрашивай — чужое, что граф не моделирует, в «Внешних поверхностях».
-- Для каждого изменения назови узлы, чьё воплощение входит в дифф, и прогони `integrity`: феномен — `iskron_orient(lens="trace")` в обе стороны; крия — `next`-нить и эстафеты `ahara`/`utpatti`/`upadhi`; выход в другой холон — к его steward-роли.
-- Не найденная обходом зависимость — дефект модели: допроектируй (`design`), доткни (`weaving`), ожидание — вимаршей `posed_to` и словом в деле. Публичная ручка без следа в графе — либо не нужна, либо долг графа. Новый потребитель внесён, когда код и рёбра появились одним ходом.
+## Integration field — only from the graph
+- The root of the traversal is the focus holon and the steward role from the cover. Do not keep a list of shared surfaces and consumers here and do not ask the human for one — foreign things the graph does not model go in "External surfaces".
+- For every change name the nodes whose embodiment is in the diff and run `integrity`: a phenomenon — `iskron_orient(lens="trace")` both ways; a kriya — the `next` thread and the `ahara`/`utpatti`/`upadhi` relays; an exit into another holon — to its steward role.
+- A dependency not found by the traversal is a model defect: finish the design (`design`), weave it in (`weaving`), waiting — as a `posed_to` vimarsha and a word in the case. A public handle with no trace in the graph is either unneeded or a graph debt. A new consumer is in when the code and the edges appeared in one move.
 
-## Внешние поверхности — то, чем пользуешься и чем не владеешь
-- **Прежде работы зафиксируй трогаемую часть поверхности** (чужой API, SDK, CLI, протокол, схема, Helm-чарт, CRD) узлом в графе, с версией.
-- **Пратьякша прежде шабды**: наблюдение своими руками (вызов, `--help`, `helm show values`, установленная CRD) старше доков, доки старше памяти, память — не источник. `pratyakshita` — только наблюдённое.
-- **Протки связь**: узел поверхности — `upadhi` (или `ahara`/`utpatti`) к крие, что через него действует.
-- **Держи в ногу**: расхождение или новая версия — правь узел тем же ходом, эпистемику опусти, если не наблюдал.
-- Исходник у поверхности несёт `(граф …, узел #N)` — этот узел читай перед работой.
+## External surfaces — what you use and do not own
+- **Before work, pin the touched part of the surface** (a foreign API, SDK, CLI, protocol, schema, Helm chart, CRD) as a node in the graph, with its version.
+- **Pratyaksha before shabda**: observation with your own hands (a call, `--help`, `helm show values`, an installed CRD) outranks docs, docs outrank memory, memory is not a source. `pratyakshita` — only what was observed.
+- **Weave the link**: the surface node — `upadhi` (or `ahara`/`utpatti`) to the kriya that acts through it.
+- **Keep in step**: a divergence or a new version — edit the node in the same move, lower the epistemic mode if you did not observe it.
+- Source code at a surface carries `(graph …, node #N)` — read that node before working.
 
-## Reality — против чего проверяется заявка
-Таблица носителей — `REALITY.md` корня, читается по поводу: прежде чем сказать о поведении «работает», переключить модус или закрыть вопрос по заявке об исполнении — прочти строку своего класса заявки и наблюдай её носитель; в бриф `verifier` и `reviewer` строка идёт целиком. Первая строка — изменение применено на кластере: GitRepository и Kustomization Flux живого кластера, не рендер. Ceiling — классы без достижимого наблюдения — там же. Научился носителю, которого нет в таблице, — пиши строку туда тогда же.
+## Reality — what a claim is checked against
+The carrier table is the root `REALITY.md`, read when the occasion arises: before saying of behaviour "it works", switching a mode or closing a question on a claim about execution — read the row of your claim class and observe its carrier; the row goes into the `verifier` and `reviewer` brief in full. The first row — a change applied on a cluster: the GitRepository and Flux Kustomization of the live cluster, not the render. Ceiling — classes without a reachable observation — is there too. Learned a carrier that is not in the table — write the row there at the same time.
 
-## Граф ↔ репо: где что живёт
-| Забота | Репо | Граф |
+## Graph ↔ repo: what lives where
+| Concern | Repo | Graph |
 |---|---|---|
-| Код, конфиги, локфайлы | ✓ | |
-| Команды, конвенции, стек | ✓ (AGENTS.md) | |
-| Носители реальности | ✓ (REALITY.md) | |
-| Ловушки | | ✓ узел на контуре #2425, этот файл ссылается |
-| Состояние ветки, что в полёте | git + PR (номер дела в теле) | ✓ (семя `genre=hint` превращения) |
-| Методология, онтология | | ✓ |
-| Решения | | ✓ (узлом, сразу) |
-| Вопросы по сути, обязательства | | ✓ (вимарши) |
-| Планы | | ✓ (карта превращений) |
-| Разовая задача, разговор, передача смены | | ✓ (дело + семя превращения) |
-| История коммитов, PR, SHA | git | (никогда в графе) |
+| Code, configs, lockfiles | ✓ | |
+| Commands, conventions, stack | ✓ (AGENTS.md) | |
+| Reality carriers | ✓ (REALITY.md) | |
+| Gotchas | | ✓ node on holon #2425, this file links to it |
+| Branch state, what is in flight | git + PR (case number in the body) | ✓ (`genre=hint` seed of the transformation) |
+| Methodology, ontology | | ✓ |
+| Decisions | | ✓ (as a node, right away) |
+| Questions of substance, commitments | | ✓ (vimarshas) |
+| Plans | | ✓ (transformation map) |
+| One-off task, conversation, shift handover | | ✓ (case + transformation seed) |
+| Commit history, PRs, SHAs | git | (never in the graph) |
 
-**`HANDOVER.md` не заводится**: у состояния ветки есть дома — `git branch`/`log`, открытый PR и дело по номеру из его тела, модусы узлов, семя превращения; рукописный файл из них единственный, что врёт молча. Форжа недостижима — ход читается модусами и семенем.
+**No `HANDOVER.md` is created**: branch state has homes — `git branch`/`log`, the open PR and the case by the number in its body, node modes, the transformation seed; a hand-written file is the only one of them that lies silently. The forge is unreachable — progress is read from modes and the seed.
 
-## Команды
-| Что | Команда |
+## Commands
+| What | Command |
 |---|---|
-| Devshell (just, gh, kubectl, helm, virtctl, flux, nixfmt) | `direnv allow` (`.envrc`: `use flake`) либо `nix develop` |
-| Формат Nix | `nix fmt` (nixfmt-rfc-style) |
-| Сборка оверлея кластера | `kubectl kustomize clusters/<кластер>` |
-| Сборка всех кластеров | `for c in clusters/*; do kubectl kustomize "$c" >/dev/null \|\| echo "FAIL $c"; done` |
-| Наблюдение PR | `gh pr checks <n> --watch`; слит ли — `gh pr view <n> --json state` |
+| Devshell (just, gh, kubectl, helm, virtctl, flux, nixfmt) | `direnv allow` (`.envrc`: `use flake`) or `nix develop` |
+| Nix formatting | `nix fmt` (nixfmt-rfc-style) |
+| Build a cluster overlay | `kubectl kustomize clusters/<cluster>` |
+| Build all clusters | `for c in clusters/*; do kubectl kustomize "$c" >/dev/null \|\| echo "FAIL $c"; done` |
+| Watch a PR | `gh pr checks <n> --watch`; merged or not — `gh pr view <n> --json state` |
 
-## Структура проекта
-- `bootstrap/` — `bootstrap.yml` (flux-operator, его CRD и FluxInstance, одним файлом) и `bootstrap/` (kustomization: `instance.yml`, `spectrum.yml` — GitRepository + Kustomization spectrum); строки версии в `bootstrap.yml` и `spectrum.yml` двигает release-please (`extra-files`) — руками их не правь.
-- `clusters/<кластер>/kustomization.yml` — `bootstrap`, `dev`, `stage`, `testnet`, `mainnet`: какие группы `flux/apps` и `flux/repositories` получает кластер.
-- `flux/apps/<группа>/` — `fluence`, `flux-system`, `ingress`, `kube-system`, `kubevirt`, `networking`, `observability`, `storage`, `system`.
-- `flux/repositories/{git,helm,oci}/` — источники Flux.
+## Project structure
+- `bootstrap/` — `bootstrap.yml` (flux-operator, its CRDs and FluxInstance, in one file) and `bootstrap/` (kustomization: `instance.yml`, `spectrum.yml` — GitRepository + Kustomization spectrum); the version strings in `bootstrap.yml` and `spectrum.yml` are moved by release-please (`extra-files`) — do not edit them by hand.
+- `clusters/<cluster>/kustomization.yml` — `bootstrap`, `dev`, `stage`, `testnet`, `mainnet`: which `flux/apps` and `flux/repositories` groups the cluster gets.
+- `flux/apps/<group>/` — `fluence`, `flux-system`, `ingress`, `kube-system`, `kubevirt`, `networking`, `observability`, `storage`, `system`.
+- `flux/repositories/{git,helm,oci}/` — Flux sources.
 - `docs/` — `adding-a-cluster.md`, `egress-network-parameterization.md`, `kube-oidc-proxy-access.md`.
-- `.github/` — CI-воркфлоу (в т.ч. ежедневный `cve-scan.yml` → `scripts/cve-scan.sh`), `release-please/`, `renovate.json`, `CODEOWNERS`.
-- `README.md` — ручные предпосылки после бутстрапа (ConfigMap `spectrum-vars` / `spectrum-manual-vars`, секреты).
+- `.github/` — CI workflows (including the daily `cve-scan.yml` → `scripts/cve-scan.sh`), `release-please/`, `renovate.json`, `CODEOWNERS`.
+- `README.md` — manual prerequisites after bootstrap (ConfigMap `spectrum-vars` / `spectrum-manual-vars`, secrets).
 
-## Конвенции кода
-- **Смысл живёт в графе, код референсирует**: обоснование, отброшенные альтернативы, устройство интеграции — узел; в коде — «(граф `@cloudless/fluence`, узел #N)», и для отброшенного тоже («не кэшируем: #N»). Механика — словами на месте. Сославшись, проверь, что узел это говорит; разошёлся — правь узел.
-- Новая per-cluster переменная — строкой в таблицу `README.md` тем же коммитом.
-- Секрет в репо — только шаблон `${VAR}` (подстановка Flux postBuild из `spectrum-vars` / `spectrum-manual-vars`); значение в git не кладётся.
-- GitRepository `flux-system/spectrum` не объявляй ни в одном манифесте, который применяет Flux: он перетрёт pin кластеров (граф, #2389).
-- **Тестовая дисциплина**: тестов нет; свидетельство пачки — рендер `kubectl kustomize` каждого задетого кластера, поведение — на кластере по `REALITY.md`.
+## Code conventions
+- **Repository content is English only**: code, comments, docs, agent config, commit messages, PR titles and bodies.
+- **Meaning lives in the graph, code references it**: rationale, rejected alternatives, integration design — a node; in code — "(graph `@cloudless/fluence`, node #N)", and for what was rejected too ("not caching: #N"). Mechanics — in words on the spot. Having referenced a node, check that the node says it; if it diverged — edit the node.
+- A new per-cluster variable — a row in the `README.md` table in the same commit.
+- A secret in the repo — only as a `${VAR}` template (Flux postBuild substitution from `spectrum-vars` / `spectrum-manual-vars`); the value is not put into git.
+- Do not declare the GitRepository `flux-system/spectrum` in any manifest that Flux applies: it would overwrite the clusters' pin (graph, #2389).
+- **Test discipline**: there are no tests; the evidence of a batch is the `kubectl kustomize` render of every affected cluster, behaviour — on the cluster per `REALITY.md`.
 
-## Что обновлять когда
-- `AGENTS.md` — **узнаваемое из узла графа сюда не пишется**; держит нужное до того, как агент дотянется до графа (команды, вход в ориентацию, инварианты вне линтера, развилки-стопы). Вычистка прозы — перенос в несущие узлы, не удаление.
-- `REALITY.md` — носитель класса заявки появился, сменился или оказался недостижим; датированные замеры — в граф.
-- README компонента — тем же коммитом, что переносит, переименовывает или заводит файлы компонента.
-- Граф проекта — каждый мерж («Жизненный цикл сессии»).
+## What to update when
+- `AGENTS.md` — **what can be learned from a graph node is not written here**; it holds what is needed before the agent reaches the graph (commands, entry into orientation, invariants outside the linter, stop-forks). Pruning prose means moving it into carrying nodes, not deleting it.
+- `REALITY.md` — when a carrier of a claim class appeared, changed or turned out unreachable; dated measurements — to the graph.
+- A component README — in the same commit that moves, renames or creates the component's files.
+- The project graph — every merge ("Session lifecycle").
 
-## Git-воркфлоу
-- **Conventional commits** (`feat:`/`fix:`/`chore:`/`refactor:`/`docs:`/`test:`), скоуп — группа приложений (`fix(kube-ovn): …`); ветки `feat/…`, `fix/…`, `chore/…`; заголовки PR тем же форматом — CI их проверяет, release-please по ним режет версию.
-- **Тело PR — одна-две строки**: что изменилось, номер дела. Ход работы и строки — в деле, в PR не копируются.
-- **Без co-author-трейлера и без упоминания Claude** (строки «Generated with Claude Code» и подобных) в коммитах и телах PR, если пользователь не просил.
-- **Гейт — один вызов**: вызываемого нет (дело №598); до пуша — `kubectl kustomize` каждого тронутого кластера (таблица «Команды»).
-- **Pre-commit-хука нет** — гейт до пуша.
-- **Ветка пачки не живёт без PR**: запушил — тем же ходом открой PR (черновой, если пачка не собрана).
-- **Definition of done**: PR в `main` слит (`gh pr view <n> --json state`); stage стоит на `{branch: main}` и получает изменение сам с мержем; остальные кластеры — только релизом release-please и сменой pin'а в их GitRepository (граф, #2389).
-- **Никогда** `--no-verify`, `--force`, `--no-gpg-sign`, `git reset --hard` без явной инструкции.
+## Git workflow
+- **Conventional commits** (`feat:`/`fix:`/`chore:`/`refactor:`/`docs:`/`test:`), scope — the application group (`fix(kube-ovn): …`); branches `feat/…`, `fix/…`, `chore/…`; PR titles in the same format — CI checks them, release-please cuts the version from them.
+- **PR body — one or two lines**: what changed, the case number. The course of work and its lines stay in the case and are not copied to the PR.
+- **No co-author trailer and no mention of Claude** (lines like "Generated with Claude Code" and similar) in commits and PR bodies, unless the user asked.
+- **Gate — one call**: there is no callable gate (`just check` — later, "Project"); before a push — `kubectl kustomize` of every touched cluster (the "Commands" table).
+- **No pre-commit hook** — the gate runs before the push.
+- **A batch branch does not live without a PR**: pushed — open a PR in the same move (a draft if the batch is not assembled).
+- **Definition of done**: the PR into `main` is merged (`gh pr view <n> --json state`); stage sits on `{branch: main}` and gets the change by itself with the merge; the other clusters — only through a release-please release and a pin change in their GitRepository (graph, #2389).
+- **Never** `--no-verify`, `--force`, `--no-gpg-sign`, `git reset --hard` without an explicit instruction.

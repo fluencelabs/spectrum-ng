@@ -16,7 +16,7 @@ spec:
       parallelMigrationsPerCluster: 5
       parallelOutboundMigrationsPerNode: 2
       # Per cluster from spectrum-manual-vars; 0Mi = unlimited. How to choose
-      # it: (граф `@cloudless/fluence`, узел #4321).
+      # it: (graph `@cloudless/fluence`, node #4321).
       bandwidthPerMigration: ${KUBEVIRT_MIGRATION_BANDWIDTH:=0Mi}
     virtualMachineOptions:
       disableSerialConsoleLog: {}
