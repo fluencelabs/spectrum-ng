@@ -129,7 +129,7 @@ spec:
                 path: /spec/template/spec/hostPID
                 value: true
           # The chart cannot set hostpath-init resources; this does, for Guaranteed
-          # QoS (узел #3633). The test op guards the init container order.
+          # QoS (node #3633). The test op guards the init container order.
           - target:
               kind: DaemonSet
               name: ovs-ovn
@@ -147,8 +147,8 @@ spec:
                     cpu: "100m"
                     memory: "128Mi"
           # The chart has no value for it: turns off the ARP IP-conflict probe
-          # kube-ovn-cni runs on every pod NIC (граф `@cloudless/fluence`,
-          # узел #4138). The test op guards the container order.
+          # kube-ovn-cni runs on every pod NIC (graph `@cloudless/fluence`,
+          # node #4138). The test op guards the container order.
           - target:
               kind: DaemonSet
               name: kube-ovn-cni
