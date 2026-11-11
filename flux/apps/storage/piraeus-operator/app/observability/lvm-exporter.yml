@@ -1,0 +1,84 @@
+# LVM report exporter for the LINSTOR storage nodes. LINSTOR exports only the
+# thin pool's data free/total, not its metadata usage, and a thin pool whose
+# metadata fills up stops writes just like a full data area. Talos has no host
+# LVM tools, so `lvm fullreport` runs inside this privileged pod against the
+# host's /dev (hansmi/prometheus-lvm-exporter, metrics lvm_lv_metadata_percent
+# and lvm_lv_data_percent).
+#
+# It reads LVM next to the satellite, so it must see LVM the way the satellite
+# does:
+# - lvm.conf is the satellite's own ConfigMap (rendered by the linstor-cluster
+#   Kustomization in the same namespace): its global_filter skips /dev/drbd*,
+#   and scanning a DRBD device whose I/O is suspended would hang the scrape.
+# - /run/lock/lvm and /run/lvm are the same host paths the satellite mounts
+#   (piraeus-operator satellite DaemonSet), so the report's shared VG lock
+#   waits for the satellite's lvcreate/lvremove instead of reading metadata
+#   mid-write.
+# A report command does not change metadata. `--readonly` is not used on
+# purpose: it turns activation off, and then LVM does not query device-mapper
+# and leaves data_percent/metadata_percent empty.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: lvm-exporter
+  labels:
+    app.kubernetes.io/name: lvm-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lvm-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lvm-exporter
+    spec:
+      # Same selector as the LinstorCluster; the LvmExporterMissing alert keys
+      # on the nodes that report a LINSTOR storage pool.
+      nodeSelector:
+        beam/linstor_ready: "true"
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: lvm-exporter
+          # The image's entrypoint already passes --command=/sbin/lvm and
+          # --no-legacy-info-labels and listens on :9845.
+          image: ghcr.io/hansmi/prometheus-lvm-exporter:v0.6.3
+          ports:
+            - name: metrics
+              containerPort: 9845
+          securityContext:
+            # Opening the PVs and the device-mapper control node needs it.
+            privileged: true
+          volumeMounts:
+            - name: dev
+              mountPath: /dev
+            - name: lvm-conf
+              mountPath: /etc/lvm/lvm.conf
+              subPath: lvm.conf
+              readOnly: true
+            - name: run-lock-lvm
+              mountPath: /run/lock/lvm
+            - name: run-lvm
+              mountPath: /run/lvm
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: lvm-conf
+          configMap:
+            name: linstor-satellite-lvm-conf
+        - name: run-lock-lvm
+          hostPath:
+            path: /run/lock/lvm
+            type: DirectoryOrCreate
+        - name: run-lvm
+          hostPath:
+            path: /run/lvm
+            type: DirectoryOrCreate

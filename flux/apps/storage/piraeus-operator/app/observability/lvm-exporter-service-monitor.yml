@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: lvm-exporter
+  labels:
+    app.kubernetes.io/name: lvm-exporter
+    scrape: "true"
+spec:
+  endpoints:
+    - port: metrics
+      # Without these, `instance` is the pod IP and a restart changes every
+      # series; the alerts group by node.
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: instance
+      # The exporter reports every field of every LV (about 70 series per LV),
+      # and a storage node carries one thin LV per volume replica. Keep only
+      # what the alerts and an operator sizing the pool need.
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: lvm_up|lvm_lv_info|lvm_lv_data_percent|lvm_lv_metadata_percent|lvm_lv_metadata_size_bytes|lvm_vg_info|lvm_vg_free_bytes
+          action: keep
+  namespaceSelector:
+    matchNames:
+      - storage
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lvm-exporter
