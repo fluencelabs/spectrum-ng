@@ -67,6 +67,15 @@ spec:
       value: "20"
     - name: DrbdOptions/Net/timeout
       value: "100"
+    # DRBD activity log: 6433 extents x 4 MiB ~ 25 GiB of write coverage instead
+    # of the ~4.8 GiB default; writes outside it pay a synchronous metadata
+    # update. 6433 is the most the default on-disk AL holds (higher values are
+    # clamped). Seen applied online to one attached volume; a cluster-wide
+    # change adjusts every resource at once, so roll out stage -> testnet ->
+    # mainnet with a check on each. Costs a larger resync after a primary crash
+    # (graph `@cloudless/fluence`, node #4794).
+    - name: DrbdOptions/Disk/al-extents
+      value: "6433"
 ---
 apiVersion: piraeus.io/v1
 kind: LinstorSatelliteConfiguration
