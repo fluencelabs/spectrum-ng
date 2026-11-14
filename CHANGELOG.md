@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.40](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.39...v0.3.40) (2026-11-11)
+
+
+### Features
+
+* **observability:** alert on LINSTOR thin-pool metadata usage ([#466](https://github.com/fluencelabs/spectrum-ng/issues/466)) ([9f69883](https://github.com/fluencelabs/spectrum-ng/commit/9f69883b209db7cf19a3be664d354a1c3ed36e00))
+* **observability:** alert on NVMe health of LINSTOR storage nodes ([#463](https://github.com/fluencelabs/spectrum-ng/issues/463)) ([aa08e3f](https://github.com/fluencelabs/spectrum-ng/commit/aa08e3fcc896c7d61681585675c1d22d0d262af9))
+
+
+### Bug Fixes
+
+* Update ghcr.io/netbirdio/netbird Docker tag to v0.82.1 ([#467](https://github.com/fluencelabs/spectrum-ng/issues/467)) ([66f8bf8](https://github.com/fluencelabs/spectrum-ng/commit/66f8bf84be5148c6018556af7122b555350aa598))
+* Update ghcr.io/prometheus-community/charts/prometheus-node-exporter Docker tag to v5.1.0 ([#468](https://github.com/fluencelabs/spectrum-ng/issues/468)) ([cb7e7b6](https://github.com/fluencelabs/spectrum-ng/commit/cb7e7b6c2adb3b6b5cd9f37d18086f60ae93c808))
+* Update ghcr.io/prometheus-community/charts/prometheus-operator-crds Docker tag to v33.0.2 ([#469](https://github.com/fluencelabs/spectrum-ng/issues/469)) ([62179a4](https://github.com/fluencelabs/spectrum-ng/commit/62179a46dfe98639461d90d91b6296fdf7ebdcaa))
+* Update ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter Docker tag to v0.19.2 ([#465](https://github.com/fluencelabs/spectrum-ng/issues/465)) ([6169a59](https://github.com/fluencelabs/spectrum-ng/commit/6169a59750dd9930655c5c08bea6baca6a407d6d))
+
 ## [0.3.39](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.38...v0.3.39) (2026-11-08)
 
 
