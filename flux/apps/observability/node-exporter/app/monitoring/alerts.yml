@@ -188,11 +188,26 @@ spec:
     # Threshold and retrospective evidence: (graph @cloudless/fluence, node #5598).
     - alert: NodeCPUFrequencyAbnormallyLow
       annotations:
-        description: '{{ $labels.instance }} has {{ $value }} logical CPUs running below half their configured minimum frequency for at least 15 minutes.'
+        description: '{{ $labels.instance }} has had at least 16 logical CPUs below half their configured minimum frequency for 15 minutes; {{ $value }} are below it now.'
         summary: CPU frequency is abnormally low.
       expr: |
         count by (instance) (
           node_cpu_scaling_frequency_hertz{job="node"} < node_cpu_scaling_frequency_min_hertz{job="node"} * 0.5
+        ) >= 16
+      for: 15m
+      labels:
+        team: devops
+        severity: warning
+
+    - alert: NodeCPUFrequencyMetricsMissing
+      annotations:
+        description: '{{ $labels.instance }} is missing CPU frequency or minimum frequency metrics for {{ $value }} or more logical CPUs.'
+        summary: CPU frequency monitoring is incomplete.
+      expr: |
+        count by (instance) (
+          (node_cpu_seconds_total{job="node", mode="idle"} unless on (instance, cpu) node_cpu_scaling_frequency_hertz{job="node"})
+          or
+          (node_cpu_seconds_total{job="node", mode="idle"} unless on (instance, cpu) node_cpu_scaling_frequency_min_hertz{job="node"})
         ) >= 16
       for: 15m
       labels:
