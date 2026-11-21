@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.3.40](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.39...v0.3.40) (2026-11-21)
+
+
+### Features
+
+* **observability:** alert on LINSTOR thin-pool metadata usage ([#466](https://github.com/fluencelabs/spectrum-ng/issues/466)) ([9f69883](https://github.com/fluencelabs/spectrum-ng/commit/9f69883b209db7cf19a3be664d354a1c3ed36e00))
+* **observability:** alert on NVMe health of LINSTOR storage nodes ([#463](https://github.com/fluencelabs/spectrum-ng/issues/463)) ([aa08e3f](https://github.com/fluencelabs/spectrum-ng/commit/aa08e3fcc896c7d61681585675c1d22d0d262af9))
+* **piraeus-operator:** raise DRBD activity log to 6433 extents ([#473](https://github.com/fluencelabs/spectrum-ng/issues/473)) ([451ed2e](https://github.com/fluencelabs/spectrum-ng/commit/451ed2e199de8aaf8b480affb5633d006fc35a38))
+
+
+### Bug Fixes
+
+* **observability:** alert on abnormally low CPU frequency ([#478](https://github.com/fluencelabs/spectrum-ng/issues/478)) ([721452a](https://github.com/fluencelabs/spectrum-ng/commit/721452ac6d5110438bb478c1b5a4b9fdc17e67b1))
+* Update docker.io/tremolosecurity/kube-oidc-proxy:1.0.13 Docker digest to ee039e2 ([#476](https://github.com/fluencelabs/spectrum-ng/issues/476)) ([a621e8a](https://github.com/fluencelabs/spectrum-ng/commit/a621e8a1be8e39fbd6d09dec5b344a15a78aabea))
+* Update gcr.io/distroless/static:nonroot Docker digest to aafe993 ([#475](https://github.com/fluencelabs/spectrum-ng/issues/475)) ([25531d8](https://github.com/fluencelabs/spectrum-ng/commit/25531d8a65d7c88dd0015acbfbe2e01be755a064))
+* Update ghcr.io/controlplaneio-fluxcd/charts/flux-operator Docker tag to v0.63.0 ([#479](https://github.com/fluencelabs/spectrum-ng/issues/479)) ([2afb638](https://github.com/fluencelabs/spectrum-ng/commit/2afb63895a0705fb05c40e245ea83af2ed1dd81a))
+* Update ghcr.io/grafana/helm-charts/grafana-operator Docker tag to v5.26.0 ([#477](https://github.com/fluencelabs/spectrum-ng/issues/477)) ([02e67ab](https://github.com/fluencelabs/spectrum-ng/commit/02e67ab40b5c998fd65a761091346cbe9ad6db3c))
+* Update ghcr.io/netbirdio/netbird Docker tag to v0.82.1 ([#467](https://github.com/fluencelabs/spectrum-ng/issues/467)) ([66f8bf8](https://github.com/fluencelabs/spectrum-ng/commit/66f8bf84be5148c6018556af7122b555350aa598))
+* Update ghcr.io/netbirdio/netbird Docker tag to v0.83.2 ([#474](https://github.com/fluencelabs/spectrum-ng/issues/474)) ([b9ef095](https://github.com/fluencelabs/spectrum-ng/commit/b9ef095a0702b593612093d217a3ec0edf35bf82))
+* Update ghcr.io/prometheus-community/charts/kube-state-metrics Docker tag to v9.0.1 ([#472](https://github.com/fluencelabs/spectrum-ng/issues/472)) ([dccda25](https://github.com/fluencelabs/spectrum-ng/commit/dccda25cbe787a76e0ad460fbe42155ad812674c))
+* Update ghcr.io/prometheus-community/charts/prometheus-node-exporter Docker tag to v5.1.0 ([#468](https://github.com/fluencelabs/spectrum-ng/issues/468)) ([cb7e7b6](https://github.com/fluencelabs/spectrum-ng/commit/cb7e7b6c2adb3b6b5cd9f37d18086f60ae93c808))
+* Update ghcr.io/prometheus-community/charts/prometheus-operator-crds Docker tag to v33.0.2 ([#469](https://github.com/fluencelabs/spectrum-ng/issues/469)) ([62179a4](https://github.com/fluencelabs/spectrum-ng/commit/62179a46dfe98639461d90d91b6296fdf7ebdcaa))
+* Update ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter Docker tag to v0.19.2 ([#465](https://github.com/fluencelabs/spectrum-ng/issues/465)) ([6169a59](https://github.com/fluencelabs/spectrum-ng/commit/6169a59750dd9930655c5c08bea6baca6a407d6d))
+
 ## [0.3.39](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.38...v0.3.39) (2026-11-08)
 
 
