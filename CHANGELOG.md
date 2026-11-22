@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.43](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.42...v0.3.43) (2026-11-22)
+
+
+### Features
+
+* **crd-operator:** enable bridge-ovn-dhcp guest networking on every cluster ([#490](https://github.com/fluencelabs/spectrum-ng/issues/490)) ([7bf1ec0](https://github.com/fluencelabs/spectrum-ng/commit/7bf1ec03dbc84954179f09bafad55cb398c7aab9))
+
 ## [0.3.42](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.41...v0.3.42) (2026-11-22)
 
 
