@@ -14,12 +14,6 @@ spec:
       reconcileStrategy: Revision
   values:
     controller:
-      config:
-        # Keep the bridge binding, but let KubeOVN serve DHCP on managed IPv4
-        # subnets; stage goes first (graph `@cloudless/fluence`, node #3375).
-        # Roll back: set `bridge`, wait until no Subnet carries DhcpConfigured,
-        # only then touch the image.
-        LTM_CRD_CTRL__PRIVATE_NETWORK__GUEST_NETWORKING: bridge-ovn-dhcp
       persistence:
         storageClassName: lvm-thin-r1
 

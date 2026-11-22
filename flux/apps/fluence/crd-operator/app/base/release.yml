@@ -59,6 +59,12 @@ spec:
         # run, and the next teardown then disconnects the default gateway —
         # so set it to "true" BEFORE enabling egress on a cluster that has one.
         LTM_CRD_CTRL__EGRESS__CLUSTER_DEFAULT_EXTERNAL_NETWORK: "${EGRESS_CLUSTER_DEFAULT_EXTERNAL_NETWORK:=false}"
+        # Keep the bridge binding, but let KubeOVN serve DHCP on managed
+        # single-stack IPv4 subnets (dual-stack and IPv6-only subnets are skipped);
+        # graph `@cloudless/fluence`, node #3375. Needs crd-controller >= 0.11.0
+        # and KubeOVN >= 1.16.10. Roll back: set `bridge`, wait until no Subnet
+        # carries DhcpConfigured, only then touch the image.
+        LTM_CRD_CTRL__PRIVATE_NETWORK__GUEST_NETWORKING: bridge-ovn-dhcp
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__NAMESERVERS: '["1.1.1.1" ,"8.8.8.8"]'
         LTM_CRD_CTRL__VM_RUNTIME__DEFAULT_DNS_CONFIG__SEARCHES: '[]'
       images:
