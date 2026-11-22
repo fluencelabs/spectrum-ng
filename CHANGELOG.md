@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.42](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.41...v0.3.42) (2026-11-22)
+
+
+### Bug Fixes
+
+* **node-exporter:** replace the deprecated mount-point flag that crashes node-exporter 1.13 ([#488](https://github.com/fluencelabs/spectrum-ng/issues/488)) ([f7db08b](https://github.com/fluencelabs/spectrum-ng/commit/f7db08bedbbcaa3475e22567d66defc507ff097b))
+
 ## [0.3.41](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.40...v0.3.41) (2026-11-22)
 
 
