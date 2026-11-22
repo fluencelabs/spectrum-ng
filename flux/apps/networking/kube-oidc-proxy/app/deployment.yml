@@ -34,7 +34,7 @@ spec:
         - name: proxy
           # Tremolo Security maintained fork (jetstack's repo was archived 2024-05). Actively built
           # (docker.io/tremolosecurity/kube-oidc-proxy, multi-arch amd64/arm64). Pinned by digest (tag 1.0.12).
-          image: docker.io/tremolosecurity/kube-oidc-proxy:1.0.13@sha256:ee039e2d7c3ae450c66416f671082cda2c17c0e80523e072f4b338a9f22029f1
+          image: docker.io/tremolosecurity/kube-oidc-proxy:1.0.14@sha256:25d5ed2e9bb39d22f08548e48f829590ee0a4a1aad1e1f531026988ed4bdddf8
           command: ["kube-oidc-proxy"]
           args:
             - "--secure-port=443"
