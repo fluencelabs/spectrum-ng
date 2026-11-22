@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.41](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.40...v0.3.41) (2026-11-22)
+
+
+### Features
+
+* **crd-operator:** enable bridge-ovn-dhcp guest networking on stage ([#485](https://github.com/fluencelabs/spectrum-ng/issues/485)) ([e5496c8](https://github.com/fluencelabs/spectrum-ng/commit/e5496c8525623399b5c09865fc1ed650b99a7be7))
+
+
+### Bug Fixes
+
+* Update docker.io/tremolosecurity/kube-oidc-proxy Docker tag to v1.0.14 ([#481](https://github.com/fluencelabs/spectrum-ng/issues/481)) ([aa34c7d](https://github.com/fluencelabs/spectrum-ng/commit/aa34c7d2810dbb888addfa96b43e9736afa65dc0))
+* Update ghcr.io/controlplaneio-fluxcd/charts/flux-operator Docker tag to v0.63.1 ([#484](https://github.com/fluencelabs/spectrum-ng/issues/484)) ([8eb0933](https://github.com/fluencelabs/spectrum-ng/commit/8eb0933dea8680c5cd3c6147d9f0c33924c39e43))
+* Update ghcr.io/prometheus-community/charts/kube-state-metrics Docker tag to v9.1.0 ([#487](https://github.com/fluencelabs/spectrum-ng/issues/487)) ([70fff77](https://github.com/fluencelabs/spectrum-ng/commit/70fff771a0dc35f1c194e09250e486b4a6d5e83e))
+* Update ghcr.io/prometheus-community/charts/prometheus-node-exporter Docker tag to v6 ([#483](https://github.com/fluencelabs/spectrum-ng/issues/483)) ([8e6278d](https://github.com/fluencelabs/spectrum-ng/commit/8e6278d60b1fda9df36152da86111c0c5cbbfd94))
+
 ## [0.3.40](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.39...v0.3.40) (2026-11-21)
 
 
