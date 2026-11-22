@@ -15,6 +15,13 @@ spec:
       registry: quay.io
       repository: prometheus/node-exporter
 
+    # node-exporter 1.13 refuses --collector.filesystem.ignored-mount-points next to the
+    # chart's --collector.filesystem.mount-points-exclude (mutually exclusive, panic at start),
+    # so the mount filter replaces the chart default here; fs-types-exclude is the chart default.
+    defaultArgs:
+      - --collector.filesystem.mount-points-exclude=^/(run|etc|dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+
     extraArgs:
       - --no-collector.wifi
       - --no-collector.btrfs
@@ -25,7 +32,6 @@ spec:
       - --no-collector.powersupplyclass
       - --no-collector.thermal_zone
       - --no-collector.zfs
-      - --collector.filesystem.ignored-mount-points=^/(run|etc|dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
       - --collector.netclass.ignored-devices=^(veth.*)$
 
     prometheus:
