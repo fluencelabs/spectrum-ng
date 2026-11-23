@@ -102,10 +102,11 @@
       "automerge": false
     },
     {
-      "description": "KubeVirt and CDI upgrade only N-1 -> N between minors: one PR per minor, so a minor is never skipped",
+      "description": "KubeVirt and CDI upgrade only N-1 -> N between minors: one PR per minor, each opened only when approved on the dashboard, so the next minor is requested after the previous one reached every cluster",
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["kubevirt/kubevirt", "kubevirt/containerized-data-importer"],
       "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true,
       "automerge": false
     },
     {
