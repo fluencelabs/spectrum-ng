@@ -102,7 +102,7 @@
       "automerge": false
     },
     {
-      "description": "KubeVirt and CDI upgrade only N-1 -> N between minors: one PR per minor, each opened only when approved on the dashboard, so the next minor is requested after the previous one reached every cluster",
+      "description": "KubeVirt and CDI upgrade only N-1 -> N between minors: one PR per minor, and every update (patches too) waits for approval on the dashboard; approve the next minor only after the previous one reached every cluster",
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["kubevirt/kubevirt", "kubevirt/containerized-data-importer"],
       "separateMultipleMinor": true,

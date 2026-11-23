@@ -37,4 +37,4 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Renovate Config Validator
-        run: renovate-config-validator --strict .github/renovate.json
+        run: renovate-config-validator --strict --no-global .github/renovate.json
