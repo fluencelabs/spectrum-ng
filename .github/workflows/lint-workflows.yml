@@ -23,7 +23,7 @@ jobs:
           SHELLCHECK_OPTS: "-e SC2086 -e SC2207 -e SC2128"
         with:
           reporter: github-pr-check
-          fail_on_error: true
+          fail_level: error
 
   renovate:
     runs-on: ubuntu-latest
