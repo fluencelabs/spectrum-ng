@@ -1,32 +1,30 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "dependencyDashboard": {
+    "enabled": true,
+    "title": "Renovate Dashboard 🤖"
+  },
   "commitMessagePrefix": "fix:",
   "semanticCommits": "enabled",
   "timezone": "UTC",
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "flux": {
-    "fileMatch": ["flux/.*\\.ya?ml$"]
+    "managerFilePatterns": ["/flux/.*\\.ya?ml$/"]
   },
   "kubernetes": {
-    "fileMatch": ["flux/.*\\.ya?ml$"]
+    "managerFilePatterns": ["/flux/.*\\.ya?ml$/"]
   },
   "helm-values": {
-    "fileMatch": ["flux/.*\\.ya?ml$"]
+    "managerFilePatterns": ["/flux/.*\\.ya?ml$/"]
   },
   "kustomize": {
-    "fileMatch": ["flux/.*\\.ya?ml$"]
+    "managerFilePatterns": ["/flux/.*\\.ya?ml$/"]
   },
   "github-actions": {
     "enabled": true,
-    "fileMatch": ["^\\.github/workflows/.+\\.ya?ml$", "(^|/)action\\.ya?ml$"]
-  },
-  "docker": {
-    "enabled": true,
-    "pinDigests": false
+    "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/", "/(^|/)action\\.ya?ml$/"]
   },
   "hostRules": [
     {
@@ -37,10 +35,11 @@
       "password": "{{ secrets.ZOT_RENOVATE_PASSWORD }}"
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
       "description": "Update FluxInstance distribution version",
-      "fileMatch": ["flux/.*\\.ya?ml$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/flux/.*\\.ya?ml$/"],
       "matchStrings": [
         "apiVersion: fluxcd\\.controlplane\\.io/v1\\s+kind: FluxInstance[\\s\\S]*?distribution:\\s*\\n[\\s]*version: [\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
@@ -50,7 +49,8 @@
     },
     {
       "description": "Update Flux Operator manifests artifact",
-      "fileMatch": ["flux/.*\\.ya?ml$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/flux/.*\\.ya?ml$/"],
       "matchStrings": [
         "artifact: [\"']?oci://ghcr\\.io/controlplaneio-fluxcd/flux-operator-manifests:(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
@@ -59,18 +59,34 @@
     },
     {
       "description": "Update Flux components versions",
-      "fileMatch": ["flux/.*\\.ya?ml$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/flux/.*\\.ya?ml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s.*?version: (?<currentValue>.*)\\s"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "fluxcd/{{{depName}}}"
+    },
+    {
+      "description": "Update the KubeVirt and CDI operator manifests, pulled by release URL in kustomization resources (no built-in manager reads such a URL)",
+      "customType": "regex",
+      "managerFilePatterns": ["/flux/apps/kubevirt/.+/kustomization\\.ya?ml$/"],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>kubevirt/(?:kubevirt|containerized-data-importer))/releases/download/(?<currentValue>v[^/\\s]+)/"
+      ],
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
     }
   ],
   "packageRules": [
     {
+      "matchCategories": ["docker"],
+      "enabled": true,
+      "pinDigests": false
+    },
+    {
       "description": "Group Flux Operator updates",
-      "matchPackagePatterns": ["^fluxcd/", "flux-operator"],
+      "matchPackageNames": ["/^fluxcd//", "/flux-operator/"],
       "matchDatasources": ["github-releases", "docker"],
       "groupName": "flux-operator",
       "automerge": false,
@@ -83,6 +99,20 @@
       "groupName": "lightmare",
       "commitMessagePrefix": "fix(crd-operator):",
       "separateMajorMinor": false,
+      "automerge": false
+    },
+    {
+      "description": "KubeVirt and CDI upgrade only N-1 -> N between minors: one PR per minor, and every update (patches too) waits for approval on the dashboard; approve the next minor only after the previous one reached every cluster",
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["kubevirt/kubevirt", "kubevirt/containerized-data-importer"],
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    },
+    {
+      "description": "kube-ovn: the patch line and the next minor as separate PRs, so a patch lands without the minor's breaking changes",
+      "matchPackageNames": ["kube-ovn-v2"],
+      "separateMinorPatch": true,
       "automerge": false
     },
     {

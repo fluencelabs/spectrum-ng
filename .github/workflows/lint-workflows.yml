@@ -23,15 +23,18 @@ jobs:
           SHELLCHECK_OPTS: "-e SC2086 -e SC2207 -e SC2128"
         with:
           reporter: github-pr-check
-          fail_on_error: true
+          fail_level: error
 
   renovate:
     runs-on: ubuntu-latest
+    # The validator of the Renovate release that reads the config: the
+    # tj-actions wrapper ran a years-old Renovate that rejected current options.
+    container:
+      image: ghcr.io/renovatebot/renovate:44
+      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
       - name: Renovate Config Validator
-        uses: tj-actions/renovate-config-validator@v2
-        with:
-          config_file: .github/renovate.json
+        run: renovate-config-validator --strict --no-global .github/renovate.json
