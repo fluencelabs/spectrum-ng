@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - alloy.yml
   - log-hash-salt.yml
+  - platform-logs-token.yml

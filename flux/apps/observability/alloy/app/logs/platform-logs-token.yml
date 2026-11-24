@@ -1,0 +1,12 @@
+# Token for the environment's log receiver (alloy.yml, loki.write "platform_logs"); the receiver
+# derives cluster_id from it. PLATFORM_LOGS_TOKEN comes from the per-cluster Secret
+# spectrum-manual-secrets (ks postBuild). The non-empty default keeps the value a string after
+# substitution on clusters that have not enabled platform logs (kustomize drops the quotes, and
+# an empty value would become null); nothing is sent there.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alloy-platform-logs-token
+type: Opaque
+stringData:
+  token: ${PLATFORM_LOGS_TOKEN:=unset}

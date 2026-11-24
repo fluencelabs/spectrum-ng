@@ -35,6 +35,9 @@ Cluster-specific overrides, created manually.
 | `KUBEVIRT_MIGRATION_BANDWIDTH` | KubeVirt `bandwidthPerMigration`, the bandwidth cap on each live migration, as a Kubernetes quantity per second, e.g. `32Mi` (optional; default `0Mi` = unlimited). How to choose: graph `@cloudless/fluence`, node #4321 |
 | `CLOUDFLARE_TOKEN` | Cloudflare API token for DNS and cert-manager |
 | `LOG_HASH_SALT` | Salt for the email hashes in stored pod logs; lives in Secret `spectrum-manual-secrets`, required wherever `observability` runs. Seed once (`openssl rand -hex 16`) and never change it: a new salt stops hashes matching older logs |
+| `PLATFORM_LOGS_ENABLED` | `true` makes alloy-logs also send platform-namespace pod logs (masked, allowlisted) to the environment's log store (optional; default `false`). Set only together with `PLATFORM_LOGS_URL` and `PLATFORM_LOGS_TOKEN`. Why and what is sent: graph `@cloudless/fluence`, node #5835 |
+| `PLATFORM_LOGS_URL` | Loki push URL of the environment's log receiver, e.g. `http://<receiver>/insert/loki/api/v1/push` (required when `PLATFORM_LOGS_ENABLED=true`) |
+| `PLATFORM_LOGS_TOKEN` | Per-cluster bearer token for that receiver, which derives `cluster_id` from it; lives in Secret `spectrum-manual-secrets` (required when `PLATFORM_LOGS_ENABLED=true`) |
 
 ### Secret: `alertmanager-config` (namespace: `observability`)
 

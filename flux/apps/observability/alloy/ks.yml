@@ -18,6 +18,11 @@ spec:
     # LOG_HASH_SALT for app/logs/log-hash-salt.yml. Not optional, so a cluster without the
     # Secret fails this build; a Secret without the key still renders an empty salt.
     substituteFrom:
+      # PLATFORM_LOGS_ENABLED and PLATFORM_LOGS_URL for app/logs/alloy.yml; unset keeps
+      # platform logs off.
+      - kind: ConfigMap
+        name: spectrum-manual-vars
+        optional: true
       - kind: Secret
         name: spectrum-manual-secrets
         optional: false

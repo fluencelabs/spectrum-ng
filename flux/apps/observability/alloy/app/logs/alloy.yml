@@ -31,6 +31,12 @@ spec:
           secretKeyRef:
             name: alloy-log-hash-salt
             key: salt
+      # Bearer token of loki.write "platform_logs" below (platform-logs-token.yml).
+      - name: PLATFORM_LOGS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: alloy-platform-logs-token
+            key: token
     configMap:
       content: |-
         logging {
@@ -225,5 +231,73 @@ spec:
         loki.write "victorialogs" {
           endpoint {
             url = "http://vlsingle-stack.observability.svc:9428/insert/loki/api/v1/push"
+          }
+        }
+
+        // PLATFORM LOGS TO THE ENVIRONMENT STORE (graph @cloudless/fluence, node #5835).
+        // A second, independent pipeline: its own file source and read positions, so a slow or
+        // unreachable receiver stalls only this branch and never the write above. Off unless
+        // PLATFORM_LOGS_ENABLED is "true" (spectrum-manual-vars): then no file is read for it.
+        discovery.relabel "platform_logs" {
+          targets = discovery.relabel.pod_logs.output
+
+          rule {
+            replacement  = "${PLATFORM_LOGS_ENABLED:=false}"
+            target_label = "__tmp_platform_logs_enabled"
+          }
+
+          rule {
+            source_labels = ["__tmp_platform_logs_enabled"]
+            regex         = "true"
+            action        = "keep"
+          }
+
+          // Allowlist: a namespace not listed here never leaves the cluster, so tenant
+          // workloads (workspace-*, their virt-launcher pods), test and default stay local.
+          rule {
+            source_labels = ["namespace"]
+            regex         = "fluence|kube-system|kubevirt|storage|networking|ingress|observability|flux-system|system|kube-oidc-proxy|egress-hub|cloudless-images"
+            action        = "keep"
+          }
+
+          // kube-ovn flow records (tenant traffic: addresses, ports) live in kube-system but
+          // never leave the cluster.
+          rule {
+            source_labels = ["namespace", "container"]
+            separator     = "/"
+            regex         = "kube-system/(syn|all)"
+            action        = "drop"
+          }
+        }
+
+        local.file_match "platform_logs" {
+          path_targets = discovery.relabel.platform_logs.output
+        }
+
+        loki.source.file "platform_logs" {
+          targets    = local.file_match.platform_logs.targets
+          forward_to = [loki.process.platform_logs.receiver]
+        }
+
+        loki.process "platform_logs" {
+          stage.cri {}
+
+          stage.label_drop {
+            values = ["filename"]
+          }
+
+          forward_to = [pii.platform_logs.receiver]
+        }
+
+        pii "platform_logs" {
+          forward_to = [loki.write.platform_logs.receiver]
+        }
+
+        // The receiver sets cluster_id from the token, so no client-side cluster label is sent.
+        loki.write "platform_logs" {
+          endpoint {
+            name         = "platform-logs"
+            url          = "${PLATFORM_LOGS_URL:=http://platform-logs.invalid/insert/loki/api/v1/push}"
+            bearer_token = sys.env("PLATFORM_LOGS_TOKEN")
           }
         }
