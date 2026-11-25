@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.44](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.43...v0.3.44) (2026-11-25)
+
+
+### Bug Fixes
+
+* Update gcr.io/distroless/static:nonroot Docker digest to 8ce6dd8 ([#492](https://github.com/fluencelabs/spectrum-ng/issues/492)) ([6746008](https://github.com/fluencelabs/spectrum-ng/commit/674600834567572cde3ad86dd3d787959afd461d))
+* Update Helm release external-dns to v1.24.0 ([#496](https://github.com/fluencelabs/spectrum-ng/issues/496)) ([bf608ef](https://github.com/fluencelabs/spectrum-ng/commit/bf608efac846b8f2ccfe6daa9e727e7524bd0a3c))
+* Update victoria-metrics-operator Docker tag to v0.68.2 ([#495](https://github.com/fluencelabs/spectrum-ng/issues/495)) ([d1e671a](https://github.com/fluencelabs/spectrum-ng/commit/d1e671a204a3fa35302851494c5c388c89548cbc))
+
 ## [0.3.43](https://github.com/fluencelabs/spectrum-ng/compare/v0.3.42...v0.3.43) (2026-11-22)
 
 
